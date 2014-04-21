@@ -1,0 +1,91 @@
+Rocker Network Switch Register Programming Guide
+Version 0.1, 4/21/2014
+
+
+SECTION 1: Introduction
+=======================
+
+Overview
+--------
+
+This document describes the registers and provides bit descriptions information
+about the Rocker Network Switch device.
+
+Notations and Conventions
+-------------------------
+
+o In register descriptions, [n:m] indicates a range from bit n to bit m,
+inclusive.
+o Use of leading 0x indicates a hexadecimal number.
+o Use of leading 0b indicates a binary number.
+o The use of RSVD or Reserved indicates that a bit or field is reserved for
+future use.
+
+
+SECTION 2: PCI Configuration Registers
+======================================
+
+PCI Configuration Space
+-----------------------
+
+Each switch instance registers as a PCI device with PCI configuration space:
+
+	offset	length	description		value
+	---------------------------------------------
+	0x0	2	Vendor ID		0x0666*
+	0x2	2	Device ID		0x0001
+	0x4	4	Command/Status
+	0x8	1	Revision ID		0x01
+	0x9	3	Class code		0x2800
+	0xC	1	Cache line size
+	0xD	1	Latency timer
+	0xE	1	Header type
+	0xF	1	Built-in self test
+	0x10	4	Base address low
+	0x14	4	Base address high
+	0x18-28		Reserved
+	0x2C	2	Subsystem vendor ID	0x0000
+	0x2E	2	Subsystem ID		0x0000
+	0x30-38		Reserved
+	0x3C	1	Interrupt line
+	0x3D	1	Interrupt pin		0x01
+	0x3E	1	Min grant		0x00
+	0x3D	1	Max latency		0x00
+	0x40	1	TRDY timeout
+	0x41	1	Retry count
+	0x42	2	Reserved
+
+* Not registered with PCI SIG (fictitious vendor)
+
+
+SECTION 3: Interrupts, DMA, and Endianess
+=========================================
+
+PCI Interrupts
+--------------
+
+Two registers manage interrupt state and source:
+
+	IRQ_MASK: interrupt mask register
+	IRQ_STAT: interrupt status register, clear-on-read
+
+Software should install the Interrupt Service Routine (ISR) before any ports
+are enabled.  On receiving an interrupt, the ISR will read IRQ_STAT register to
+get interrupt source.  IRQ_STAT uses clear-on-read semantics giving software
+race-free access to interrupt status.  Any interrupt sources firing after
+IRQ_STAT read will arm the device to generate another interrupts once device
+interrupts are unmasked at the CPU when ISR exits.  There is no need to
+enable/disable interrupt sources in the ISR.
+
+IRQ_MASK is used to enable/disable particular interrupt sources.
+
+IRQ_MASK and IRQ_STAT are both 32-bit wide and share the following source bit
+definitions:
+
+	bit	register		description
+	------------------------------------------------------------------------
+	0	IRQ_LINK		Link status changed on one or more ports
+	1	IRQ_TX_DMA_DONE		Transmit DMA operation complete
+	2	IRQ_RX_DMA_DONE		Receive DMA operation complete
+	3	IRQ_STAT_DMA_DONE	Statistics DMA operation complete
+	4	IRQ_TBL_DMA_DONE	Table DMA operation complete
