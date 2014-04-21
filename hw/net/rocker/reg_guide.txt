@@ -58,7 +58,25 @@ Each switch instance registers as a PCI device with PCI configuration space:
 * Not registered with PCI SIG (fictitious vendor)
 
 
-SECTION 3: Interrupts, DMA, and Endianess
+SECTION 3: Ports
+================
+
+Hardware supports 64 ports: one port for CPU-bound traffic, one port for
+internal loopback, and up to 62 ports for front-panel ports.  The CPU port is
+port #0.  The loopback port is port #63.  The front panel ports are ports
+#1-62.  The actual number of front-panel ports is available via the
+PORT_FRONT_COUNT register:
+
+	PORT_FRONT_COUNT, offset 0x001c, 32-bit, R/W
+
+Software should read PORT_FRONT_COUNT during initialization to know how front
+panel ports are available.  Front panel ports are number consecutively from #1.
+
+To specify one or more ports, a 64-bit port bitmap is constructed with a bit
+position for each port.
+
+
+SECTION 4: Interrupts, DMA, and Endianess
 =========================================
 
 PCI Interrupts
@@ -82,10 +100,85 @@ IRQ_MASK is used to enable/disable particular interrupt sources.
 IRQ_MASK and IRQ_STAT are both 32-bit wide and share the following source bit
 definitions:
 
-	bit	register		description
+	IRQ_MASK, offset 0x0010, 32-bit, R/W
+	IRQ_STAT, offset 0x0014, 32-bit, R (clear-on-read)
+
+	bit	name			description
 	------------------------------------------------------------------------
 	0	IRQ_LINK		Link status changed on one or more ports
 	1	IRQ_TX_DMA_DONE		Transmit DMA operation complete
 	2	IRQ_RX_DMA_DONE		Receive DMA operation complete
 	3	IRQ_STAT_DMA_DONE	Statistics DMA operation complete
 	4	IRQ_TBL_DMA_DONE	Table DMA operation complete
+	[5:31]	Reserved
+
+DMA Operations
+--------------
+
+Four DMA operations are used for packet DMA to/from the CPU, statistical
+counters, and table dumps.  Each DMA operation has a set of control registers
+to manage a descriptor and completion ring pair.  The descriptor and completion
+rings are allocated from contiguous host DMA-able memory and control registers
+specify the rings base address as well as current head and tail indices.  For
+descriptor rings, software writes and hardware reads.  For completion rings,
+hardware writes and software reads.  A generation bit in each completion
+descriptor marks hardware's progression through the descriptor ring.  Each time
+the ring wraps, the generation bit is toggled.  The generation bit allows
+software to know which descriptors are DMA complete.  Software must also toggle
+its sense of the generation bit each pass through the ring to remain
+synchronized with hardware.  Hardware will write '1' to generation bit on first
+pass through ring, so software should zero-set completion ring memory.
+
+Descriptor/completion ring sizes must be a power of 2 and range from 2 to 64K
+entries.  Descriptor and completion ring sizes must be the same for a given DMA
+operation.  Each descriptor ring will have these registers:
+
+	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 16), 64-bit, R/W
+	DMA_COMP_xxx_BASE_ADDR, offset 0x0108 + (x * 16), 64-bit, R/W
+	DMA_DESC_xxx_SIZE, offset 0x0110 + (x * 16), 32-bit, R/W
+	DMA_DESC_xxx_HEAD, offset 0x0114 + (x * 16), 32-bit, R/W
+	DMA_DESC_xxx_TAIL, offset 0x0118 + (x * 16), 32-bit, R/W
+	DMA_DESC_xxx_CTRL, offset 0x011c + (x * 16), 32-bit, R/W
+
+Where x is descriptor ring index:
+
+	index		ring
+	--------------------
+	0		TX
+	1		RX
+	2		STAT
+	3		TBL
+	[4-7]		Reserved
+
+Endianess
+---------
+
+Hardware can be enabled for big- or little-endian mode to avoid byte swapping
+by host CPU of multi-byte fields within registers, DMA descriptors, and
+non-packet DMA buffers.  Packet buffers and PCI configuration space registers
+are excluded from swapping.  Packet buffers are always in network-order
+(big-endian).
+
+Hardware default is little-endian.  Software can set endianess mode at hardware
+initialization time by writing to ENDIANESS_SEL register, without worrying
+about current byte-swapping mode, by writing endian-neutral values.
+
+	ENDIANESS_SEL, offset 0x0018, 32-bit, R/W
+
+	0x00000000	little-endian mode
+	0x01000001	big-endian mode
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
