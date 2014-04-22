@@ -1,4 +1,5 @@
 Rocker Network Switch Register Programming Guide
+Scott Feldman <sfeldma@cumulusnetworks.com>
 Version 0.1, 4/21/2014
 
 
@@ -20,7 +21,7 @@ o Use of leading 0x indicates a hexadecimal number.
 o Use of leading 0b indicates a binary number.
 o The use of RSVD or Reserved indicates that a bit or field is reserved for
 future use.
-o Field wide is in bytes, unless otherwise noted.
+o Field width is in bytes, unless otherwise noted.
 o Register are (R) read-only, (R/W) read/write, (W) write-only, or (COR) clear
 on read
 
@@ -32,7 +33,7 @@ PCI Configuration Space
 
 Each switch instance registers as a PCI device with PCI configuration space:
 
-	offset	wide	description		value
+	offset	width	description		value
 	---------------------------------------------
 	0x0	2	Vendor ID		0x0666*
 	0x2	2	Device ID		0x0001
@@ -60,51 +61,7 @@ Each switch instance registers as a PCI device with PCI configuration space:
 * Not registered with PCI SIG (fictitious vendor)
 
 
-SECTION 3: Ports
-================
-
-Physical, Virtual, and Logical Ports
-------------------------------------
-
-The switch supports up to 62 physical (front-panel) ports.  Register
-PORT_PHYS_COUNT returns the actual number of physical ports available:
-
-	PORT_PHYS_COUNT, offset 0x001c, 32-bit, (R)
-
-In addition to physical ports, the switch supports virtual ports representing
-higher-level constructs such as LAG, tunnels, or L2 bridges.
-
-The switch maps logical ports to physical and virtual ports.  A special CPU
-port is assigned logical port 0.  The physical ports are mapped to logical
-ports 1-62.  A special loopback port is assigned logical port 63.  Virtual
-ports are assigned logical ports 64-511.  The switch only uses logical port
-references.  To summarize the mapping:
-
-	logical port	mapping
-	-------------------------------------------------------
-	0		CPU port (for packets to/from host CPU)
-	1-62		front-panel physical ports
-	63		loopback port
-	64-511		virtual ports
-
-Switch Port Mode
-----------------
-
-Switch front-panel ports will operate in one of two modes: OpenFlow mode or
-L2/L3 legacy mode.  Across the switch, a mix of port modes is allowed for
-hybrid (OpenFlow and legacy) operation.  To set the mode for front-panel ports,
-write to PORT_PHYS_MODE:
-
-	PORT_PHYS_MODE, offset 0x0020, 64-bit, (R/W)
-
-	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
-	and always read as 0.  Write 1 for OpenFlow mode; write 0 for legacy
-	mode.  Default is 0.  Register should be set during switch
-	initialization.  Changing port mode post-initialization will result
-	in undefined behaviour.
-
-
-SECTION 4: Interrupts, DMA, and Endianess
+SECTION 3: Interrupts, DMA, and Endianess
 =========================================
 
 PCI Interrupts
@@ -145,8 +102,8 @@ DMA Operations
 DMA operations are used for packet DMA to/from the CPU, command and event
 processing.  Command processing includes statistical counters and table dumps,
 table insertion/deletion, and more.  Event processing provides an async
-notification method for device-originated events.  Each DMA operation has a set
-of control registers to manage a descriptor and completion ring pair.  The
+notification method for device-originating events.  Each DMA operation has a
+set of control registers to manage a descriptor and completion ring pair.  The
 descriptor and completion rings are allocated from contiguous host DMA-able
 memory and registers specify the rings base address as well as current head and
 tail indices.  For descriptor rings, software writes and hardware reads.  For
@@ -160,11 +117,16 @@ toggled.  The generation bit allows software to know which descriptors are DMA
 complete.  Software must also toggle its sense of the generation bit each pass
 through the ring to remain synchronized with hardware.  Hardware will write '1'
 to generation bit on first pass through ring, so software should zero-set
-completion ring memory.
+completion ring memory to be syncronized with hardware.  Next pass hardware
+writes '0', and so on.  When updating the completion, hardware writes the
+generation bit last, after all other fields are written.  This ensures software
+reads correct field values after reading a generation bit change.
 
 Descriptor/completion ring sizes must be a power of 2 and range from 2 to 64K
-entries.  Descriptor and completion ring sizes must be the same for a given DMA
-operation.  Each descriptor ring will have these registers:
+entries.  Descriptor and completion rings' base address must be 8-byte aligned.
+Descriptors and completions must be packed within ring.  Descriptor and
+completion ring sizes must be the same for a given DMA operation.  Each
+descriptor ring will have these registers:
 
 	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 16), 64-bit, (R/W)
 	DMA_COMP_xxx_BASE_ADDR, offset 0x0108 + (x * 16), 64-bit, (R/W)
@@ -185,22 +147,62 @@ Where x is descriptor ring index:
 
 All descriptor types share some common fields:
 
-	field			wide	description
+	field			width	description
 	-------------------------------------------------------------------
-	DMA_DESC_BUF_ADDR	4	Phys addr of desc payload
+	DMA_DESC_BUF_ADDR	8	Phys addr of desc payload, 8-byte
+					aligned
+	DMA_DESC_COOKIE		8	Desc cookie for completion matching,
+					upper-most bit is reserved
 	DMA_DESC_BUF_SIZE	2	Desc payload size in bytes
-	DMA_DESC_COOKIE		2	Desc cookie for completion matching
+	DMA_DESC_RESV		14	Reserved
 
 All completion types share some common fields: 
 
-	field			wide	description
+	field			width	description
 	-------------------------------------------------------------------
-	DMA_COMP_COOKIE		2	Cookie matching desc
-	DMA_COMP_GEN		2	Generation bit
-	DMA_COMP_RESULT		2	Result of desc processing
+	DMA_COMP_COOKIE_GEN	8	Cookie/generation bit.  Generation
+					bit is upper-most bit.  The remaining
+					bits is the desc cookie.
+	DMA_COMP_SIZE_WRITTEN	2	Bytes written back to desc payload,
+					if any.
+	DMA_COMP_STATUS		2	Completion results, see errno
+	DMA_COMP_RESV		4	Reserved
 
-Additional descriptor and completion fields are type-specfic and covered in
-later sections.
+To support forward- and backward-compatibility, descriptor and completion
+payloads are specified in TLV format.  Fields are packed with Type=field name,
+Length=field width, and Value=field value.  Software will ignore unknown fields
+filled in by the switch.  Likewise, the switch will ignore unknown fields
+filled in by software.
+
+Descriptor payload buffer is 8-byte aligned and TLVs are 8-byte aligned.  The
+value within a TLV is also 8-byte aligned.  The (packed, 8 byte) TLV header is:
+
+	field	width	description
+	-----------------------------
+	type	4	TLV type
+	len	2	TLV length
+	RESV	2	Reserved
+
+The alignment requirements for descriptors and TLVs are to avoid unaligned
+access exceptions in software.
+
+Descriptor TLV Types
+--------------------
+
+	type	name		length	value description
+	----------------------------------------------------------------
+	1	CMD		2	Command
+	2	LPORT		2	Logical port
+	3	MAX_SPEED	4	Max port interface speed,
+					in Mbps
+	4	SPEED		4	Current port interface speed,
+					in Mbps
+	5	DUPLEX		1	1 = Full, 0 = Half
+	6	MAC_ADDR	6	Port MAC address
+	7	TX_HDR		4	Tx header
+	8	TX_BUF		12	Tx buffer
+	9	RX_HDR		4	Rx header
+	10	RX_BUF		varies	Rx buffer
 
 Endianess
 ---------
@@ -220,6 +222,88 @@ about current byte-swapping mode, an endian-neutral value.
 	0x01000001	big-endian mode
 
 
+SECTION 4: Ports
+================
+
+Physical, Virtual, and Logical Ports
+------------------------------------
+
+The switch supports up to 62 physical (front-panel) ports.  Register
+PORT_PHYS_COUNT returns the actual number of physical ports available:
+
+	PORT_PHYS_COUNT, offset 0x001c, 32-bit, (R)
+
+In addition to physical ports, the switch supports virtual ports representing
+higher-level constructs such as LAG, tunnels, or L2 bridges.
+
+The switch maps logical ports to physical and virtual ports.  A special CPU
+port is assigned logical port 0.  The physical ports are mapped to logical
+ports 1-62.  A special loopback port is assigned logical port 63.  Virtual
+ports are assigned logical ports 64-511.  The switch only uses logical port
+references.  To summarize the mapping:
+
+	logical port	mapping
+	-------------------------------------------------------
+	0		CPU port (for packets to/from host CPU)
+	1-62		front-panel physical ports
+	63		loopback port
+	64-511		virtual ports
+
+Physical Port Mode
+------------------
+
+Switch front-panel ports will operate in one of two modes: OpenFlow mode or
+L2/L3 legacy mode.  Across the switch, a mix of port modes is allowed for
+hybrid (OpenFlow and legacy) operation.  To set the mode for front-panel ports,
+write to PORT_PHYS_MODE:
+
+	PORT_PHYS_MODE, offset 0x0020, 64-bit, (R/W)
+
+	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
+	and always read as 0.  Write 1 for OpenFlow mode; write 0 for legacy
+	mode.  Default is 0.  Register should be set during switch
+	initialization.  Changing port mode post-initialization will result
+	in undefined behaviour.
+
+Port Settings
+-------------
+
+Links status for all front-panel ports is available via PORT_PHYS_LINK_STATUS:
+
+	PORT_PHYS_LINK_STATUS, offset 0x0028, 64-bit, (R)
+
+	Value is logical port bitmap.  Bits 0 and 63 always read 0.  Bits 1-62
+	read 1 for link UP and 0 for link DOWN for respective front-panel ports.
+
+Other properties for ports are available via DMA CMD descriptors and
+completions:
+
+	CMD_GET_PORT_SETTINGS descriptor:
+
+		field		width	description
+		----------------------------------------------
+		CMD		2	CMD_GET_PORT_SETTINGS
+		LPORT		2	Logical port #
+
+	CMD_GET_PORT_SETTINGS completion:	
+
+		field		width	description
+		----------------------------------------------
+		MAX_SPEED	4	Max port interface speed, in Mbps
+		SPEED		4	Current port interface speed, in Mbps
+		DUPLEX		1	1 = Full, 0 = Half
+		MAC_ADDR	6	Port MAC address
+
+	CMD_SET_PORT_SETTINGS descriptor:
+
+		field		width	description
+		----------------------------------------------
+		CMD		2	CMD_SET_PORT_SETTINGS
+		LPORT		2	Logical port #
+		SPEED		4	Port interface speed, in Mbps
+		DUPLEX		1	1 = Full, 0 = Half
+		MAC_ADDR	6	Port MAC address
+
 
 SECTION 5: Configuration
 ========================
@@ -229,8 +313,6 @@ SECTION 5: Configuration
 
 o switch mode: OF vs. legacy L2/L3
 o set port mac address
-o link status change port register
-o port current speed, port max speed
 o port OFPPC_NO_RECV, OFPPC_NO_FWD, OFPPFL_NO_PACKET_IN
 
 
