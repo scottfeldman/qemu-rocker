@@ -1,3 +1,16 @@
 Read the documentation in qemu-doc.html or on http://wiki.qemu-project.org
 
 - QEMU team
+
+qemu-rocker is an effort to develop a new network switch simulated device for
+qemu.  The switch is ficituos.  It doesn't exist in the real world.  It is a
+vechicle to develop a device driver and device driver model in the Linux
+kernel.  The design of the switch device's hardware interface is approximating
+existing real-world enterprise-class switches.  Being a simulation of a real
+switch device, rocker switch device attempts to function as a real switch
+would.  Functions including, for example, L2 bridging, L3 routing, ACL
+filtering, and tunneling.  Interfaces to hardware expose traditional L2/L3
+object management, such as fdb and fib objects, as well as a flow-based
+objects, such as flow table and group table, ala OpenFlow.
+
+-scott
