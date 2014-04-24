@@ -14,7 +14,6 @@
  * GNU General Public License for more details.
  */
 
-
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
 #include "net/net.h"
@@ -24,28 +23,171 @@
 #include "sysemu/dma.h"
 #include "qemu/iov.h"
 
-/* PCI interface */
+#include "rocker_hw.h"
+
+#define ROCKER "rocker"
+#define ROCKER_FR_PORTS_MAX 62
+
+struct rocker {
+    /* private */
+    PCIDevice parent_obj;
+    /* public */
+
+    MemoryRegion mmio;
+
+    /* switch configuration */
+    uint16_t fp_ports;           /* front-panel port count */
+    MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
+
+    /* each front-panel port is a qemu nic, with private configuration */
+    NICState *fp_port[ROCKER_FP_PORTS_MAX];
+    NICConf fp_port_conf[ROCKER_FP_PORTS_MAX];
+};
+
+#define to_rocker(obj) \
+    OBJECT_CHECK(struct rocker, (obj), ROCKER)
+
+static int rocker_can_receive(NetClientState *nc)
+{
+    struct rocker *r = qemu_get_nic_opaque(nc);
+
+    return 0;
+}
+
+static ssize_t rocker_receive_iov(NetClientState *nc, const struct iovec *iov,
+                                  int iovcnt)
+{
+    size_t size = iov_size(iov, iovcnt);
+
+    return size;
+}
+
+static ssize_t rocker_receive(NetClientState *nc, const uint8_t *buf,
+                              size_t size)
+{
+    const struct iovec iov = {
+        .iov_base = (uint8_t *)buf,
+        .iov_len = size
+    };
+
+    return rocker_receive_iov(nc, &iov, 1);
+}
+
+static void rocker_cleanup(NetClientState *nc)
+{
+}
+
+static void rocker_set_link_status(NetClientState *nc)
+{
+}
+
+static NetClientInfo net_rocker_info = {
+    .type = NET_CLIENT_OPTIONS_KIND_NIC,
+    .size = sizeof(NICState),
+    .can_receive = rocker_can_receive,
+    .receive = rocker_receive,
+    .receive_iov = rocker_receive_iov,
+    .cleanup = rocker_cleanup,
+    .link_status_changed = rocker_set_link_status,
+};
+
+static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
+                              unsigned size)
+{
+    struct rocker *r = opaque;
+}
+
+static uint64_t rocker_mmio_read(void *opaque, hwaddr addr, unsigned size)
+{
+    struct rocker *r = opaque;
+
+    return 0;
+}
+
+static const MemoryRegionOps rocker_mmio_ops = {
+    .read = rocker_mmio_read,
+    .write = rocker_mmio_write,
+    .endianness = DEVICE_LITTLE_ENDIAN,
+    .impl = {
+        .min_access_size = 4,
+        .max_access_size = 4,
+    },
+};
 
 static void pci_rocker_uninit(PCIDevice *dev)
 {
+    struct rocker *r = to_rocker(pci_dev);
+    int i;
+
+    for (i = 0; i < r->fp_ports; i++)
+        qemu_del_nic(r->fp_port[i]);
+
+    memory_region_destroy(&r->mmio);
+}
+
+static rocker_set_fp_port_conf(struct rocker *r)
+{
+    const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
+    const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
+    static int index = 0;
+    int i;
+
+    if (memcmp(r->fp_start_macaddr, &zero, sizeof(zero)) == 0) {
+        memcpy(r->fp_start_macaddr, &dflt, sizeof(dflt));
+        r->fp_start_macaddr.a[4] += (index++);
+    }
+
+    for (i = 0; i < r->fp_ports; i++) {
+        memcpy(r->fp_port_conf[i].macaddr, r->fp_start_macaddr,
+               sizeof(r->fp_port_conf[i].macaddr));
+        r->fp_port_conf[i].macaddr.a[5] += i;
+        r->fp_port_conf[i].bootindex = -1;
+        r->fp_port_conf[i].peers = XXX; // XXX
+    }
 }
 
 static int pci_rocker_init(PCIDevice *pci_dev)
 {
+    uint8_t *pci_conf = pci_dev->config;
+    struct rocker *r = to_rocker(pci_dev);
+    int i;
+
+    pci_conf[PCI_INTERRUPT_PIN] = ROCKER_PCI_INTERRUPT_PIN;
+
+    /* set up memory-mapped region at BAR0 */
+
+    memory_region_init_io(&r->mmio, OBJECT(r), &rocker_mmio_ops, r,
+                          "rocker-mmio", ROCKER_PCI_BAR0_SIZE);
+    pci_register_bar(pci_dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &r->mmio);
+
+    /* validate switch properties */
+
+    if (r->fp_ports > ROCKER_FP_PORTS_MAX)
+        r->fp_ports = ROCKER_FP_PORTS_MAX;
+
+    rocker_set_fp_port_conf(r);
+
+    for (i = 0; i < r->fp_ports; i++) {
+        r->fp_port[i] = qemu_new_nic(&net_rocker_info, &r->fp_port_conf[i],
+                                     object_get_typename(OBJECT(r)), NULL, r);
+        qemu_format_nic_info_str(qemu_get_queue(r->fp_port[i]),
+                                 r->fp_port_conf[i].macaddr.a);
+    }
+
     return 0;
 }
 
-static void qdev_rocker_reset(DeviceState *dev)
+static void rocker_reset(DeviceState *dev)
 {
 }
 
 static Property rocker_properties[] = {
-    DEFINE_NIC_PROPERTIES(rocker_state, conf),
+    DEFINE_PROP_UINT16(front_panel_ports, struct rocker,
+                       fp_ports, 16);
+    DEFINE_PROP_MACADDR(start_mac_addr, struct rocker,
+                        fp_start_mac_addr);
     DEFINE_PROP_END_OF_LIST(),
 };
-
-#define PCI_VENDOR_ID_ROCKER      0x0666
-#define PCI_DEVICE_ID_ROCKER      0x0001
 
 static void rocker_class_init(ObjectClass *klass, void *data)
 {
@@ -56,18 +198,20 @@ static void rocker_class_init(ObjectClass *klass, void *data)
     k->exit = pci_rocker_uninit;
     k->vendor_id = PCI_VENDOR_ID_ROCKER;
     k->device_id = PCI_DEVICE_ID_ROCKER;
-    k->revision = 0x01;
-    k->class_id = PCI_CLASS_NETWORK_ETHERNET;
+    k->revision = ROCKER_PCI_REVISION;
+    k->class_id = ROCKER_PCI_CLASS;
+    k->subsystem_vendor_id = ROCKER_PCI_SUBSYSTEM_VENDOR_ID;
+    k->subsystem_id = ROCKER_PCI_SUBSYSTEM_ID;
     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
     dc->desc = "Rocker Switch";
-    dc->reset = qdev_rocker_reset;
+    dc->reset = rocker_reset;
     dc->props = rocker_properties;
 }
 
 static const TypeInfo rocker_info = {
-    .name          = TYPE_ROCKER,
+    .name          = ROCKER,
     .parent        = TYPE_PCI_DEVICE,
-    .instance_size = sizeof(rocker_state),
+    .instance_size = sizeof(struct rocker),
     .class_init    = rocker_class_init,
 };
 

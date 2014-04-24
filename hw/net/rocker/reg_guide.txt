@@ -60,6 +60,8 @@ Each switch instance registers as a PCI device with PCI configuration space:
 
 * Not registered with PCI SIG (fictitious vendor)
 
+A single memory-mapped BAR0 is defined to map device's register space and is
+0x1000 in size.
 
 SECTION 3: Interrupts, DMA, and Endianess
 =========================================
@@ -191,7 +193,7 @@ TLVs can be nested within other TVLs using NEST type.
 Endianess
 ---------
 
-Siwtch can be enabled for big- or little-endian mode to avoid byte swapping by
+Switch can be enabled for big- or little-endian mode to avoid byte swapping by
 host CPU of multi-byte fields within registers, DMA descriptors, and non-packet
 DMA buffers.  Packet buffers and PCI configuration space registers are excluded
 from swapping.  Packet buffers are always in network-order (big-endian).
@@ -237,14 +239,14 @@ Physical Port Mode
 ------------------
 
 Switch front-panel ports will operate in one of two modes: OpenFlow mode or
-L2/L3 legacy mode.  Across the switch, a mix of port modes is allowed for
-hybrid (OpenFlow and legacy) operation.  To set the mode for front-panel ports,
-write to PORT_PHYS_MODE:
+L2/L3 mode.  Across the switch, a mix of port modes is allowed for hybrid
+(OpenFlow and L2/L3) operation.  To set the mode for front-panel ports, write
+to PORT_PHYS_MODE:
 
 	PORT_PHYS_MODE, offset 0x0020, 64-bit, (R/W)
 
 	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
-	and always read as 0.  Write 1 for OpenFlow mode; write 0 for legacy
+	and always read as 0.  Write 1 for OpenFlow mode; write 0 for L2/L3 
 	mode.  Default is 0.  Register should be set during switch
 	initialization.  Changing port mode post-initialization will result
 	in undefined behaviour.
@@ -556,7 +558,7 @@ Group Table Interface
 xxx
 
 
-SECTION 7: Legacy L2/L3 Mode
+SECTION 7: L2/L3 Mode
 ============================
 
 Trunking
@@ -585,7 +587,7 @@ TLVs for CMD_TRUNK_ADD and CMD_TRUNK_MOD are:
 				     destination IP addresses
 	TRUNK_MEMBER	8	Trunk member lport bitmap; only
 				front-panel port bits should be set.
-				Ports must be in L2/L3 legacy mode.
+				Ports must be in L2/L3 mode.
 	TRUNK_ACTIVE	8	Trunk member lport active bitmap; only
 				front-panel port bits should be set,
 				and must be a subset of TRUNK_MEMBERS.
@@ -639,7 +641,7 @@ TLVs for CMD_BRIDGE_ADD and CMD_BRIDGE_MOD are:
 				port number
 	BRIDGE_MEMBER	8	Bridge member lport bitmap;
 				Front-panel ports must be in L2/L3
-				legacy mode.
+				mode.
 
 xxx add DEL cmd
 
