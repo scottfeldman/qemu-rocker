@@ -11,6 +11,6 @@ switch device, rocker switch device attempts to function as a real switch
 would.  Functions including, for example, L2 bridging, L3 routing, ACL
 filtering, and tunneling.  Interfaces to hardware expose traditional L2/L3
 object management, such as fdb and fib objects, as well as a flow-based
-objects, such as flow table and group table, ala OpenFlow.
+objects, such as flow table and group table.
 
 -scott
