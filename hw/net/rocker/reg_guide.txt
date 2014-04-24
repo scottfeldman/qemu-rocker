@@ -25,6 +25,7 @@ o Field width is in bytes, unless otherwise noted.
 o Register are (R) read-only, (R/W) read/write, (W) write-only, or (COR) clear
 on read
 
+
 SECTION 2: PCI Configuration Registers
 ======================================
 
@@ -60,10 +61,39 @@ Each switch instance registers as a PCI device with PCI configuration space:
 
 * Not registered with PCI SIG (fictitious vendor)
 
-A single memory-mapped BAR0 is defined to map device's register space and is
-0x1000 in size.
 
-SECTION 3: Interrupts, DMA, and Endianess
+SECTION 3: Memory-Mapped Register Space
+=======================================
+
+A single memory-mapped BAR0 is defined to map device's register space and is
+0x1000 in size.  The host BIOS will assign the base address location.  The host
+driver/OS will map the base address to host memory, giving the driver mmio
+access to the device register space.
+
+All registers are 4 or 8 bytes long.  It is assumed host software will access 4
+byte registers with one 4-byte access, and 8 byte registers with either two
+4-byte accesses or a single 8-byte access.  In the case of two 4-byte accesses,
+access must be lower and then upper 4-bytes, in that order.
+
+The 0x1000 device register space is organized as follows:
+
+	offset		description
+	----------------------------------------------------
+	0x0000-0x000f	Bogus registers to catch misbehaving
+			drivers.  Writes do nothing.  Reads
+			back as 0xDEADBABE.
+	0x0010-0x00ff	Test registers
+	0x0100-0x01ff	Descriptor control
+	0x0200-0x02ff	Interrupt support
+	0x0300-0x03ff	General purpose registers
+
+Holes in register space are reserved.  Writes to reserved registers do nothing.
+Reads to reserved registers read back as 0xFFFFFFFF.
+
+No fancy stuff like write-combining is enabled on any of the reigsters.
+
+
+SECTION 4: Interrupts, DMA, and Endianess
 =========================================
 
 PCI Interrupts
@@ -86,8 +116,8 @@ IRQ_MASK is used to enable/disable particular interrupt sources.
 
 IRQ_MASK and IRQ_STAT and share the following bit definitions:
 
-	IRQ_MASK, offset 0x0010, 32-bit, (R/W)
-	IRQ_STAT, offset 0x0014, 32-bit, (COR)
+	IRQ_MASK, offset 0x0200, 32-bit, (R/W)
+	IRQ_STAT, offset 0x0204, 32-bit, (COR)
 
 	bit	name			description
 	------------------------------------------------------------------------
@@ -131,12 +161,12 @@ completion ring sizes must be the same for a given DMA operation.  Each
 descriptor in each ring must also be aligned on an 8 byte boundary.  Each
 descriptor ring will have these registers:
 
-	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 16), 64-bit, (R/W)
-	DMA_COMP_xxx_BASE_ADDR, offset 0x0108 + (x * 16), 64-bit, (R/W)
-	DMA_DESC_xxx_SIZE, offset 0x0110 + (x * 16), 32-bit, (R/W)
-	DMA_DESC_xxx_HEAD, offset 0x0114 + (x * 16), 32-bit, (R/W)
-	DMA_DESC_xxx_TAIL, offset 0x0118 + (x * 16), 32-bit, (R/W)
-	DMA_DESC_xxx_CTRL, offset 0x011c + (x * 16), 32-bit, (R/W)
+	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 32), 64-bit, (R/W)
+	DMA_COMP_xxx_BASE_ADDR, offset 0x0108 + (x * 32), 64-bit, (R/W)
+	DMA_DESC_xxx_SIZE, offset 0x0110 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_HEAD, offset 0x0114 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_TAIL, offset 0x0118 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_CTRL, offset 0x011c + (x * 32), 32-bit, (R/W)
 
 Where x is descriptor ring index:
 
@@ -201,13 +231,49 @@ Switch default is little-endian.  Software can set endianess mode at switch
 initialization time by writing to ENDIANESS_SEL register, without worrying
 about current byte-swapping mode, an endian-neutral value.
 
-	ENDIANESS_SEL, offset 0x0018, 32-bit, (R/W)
+	ENDIANESS_SEL, offset 0x0300, 32-bit, (R/W)
 
 	0x00000000	little-endian mode
 	0x01000001	big-endian mode
 
 
-SECTION 4: Ports
+SECTION 5: Test Registers
+=========================
+
+Rocker switch supports several test registers to support troubleshooting
+register access, interrupt generation, and DMA operations:
+
+	TEST_REG, offset 0x0010, 32-bit (R/W)
+	TEST_REG64, offset 0x0018, 64-bit (R/W)
+	TEST_IRQ, offset 0x0020, 32-bit (R/W)
+	TEST_DMA_ADDR, offset 0x0028, 64-bit (R/W)
+	TEST_DMA_SIZE, offset 0x0030, 32-bit (R/W)
+	TEST_DMA_CTRL, offset 0x0034, 32-bit (R/W)
+
+Reads to TEST_REG and TEST_REG64 will read a value 2x the last value written to
+the register.  The 32-bit and 64-bit versions are for testing 32-bit and 64-bit
+host accesses.
+
+Bits written to TEST_IRQ will cause same (unmasked) bits to be written to
+IRQ_STAT and an interrupt generated.  Use IRQ_MASK to mask and unmask
+particular bits.
+
+To test basic DMA operations, allocate a DMA-able host buffer and put the
+buffer address into TEST_DMA_ADDR and size into TEST_DMA_SIZE.  Then, write to
+TEST_DMA_CTRL to manipulate the buffer contents.  TEST_DMA_CTRL operations are:
+
+	operation		value	description
+	-----------------------------------------------------------
+	TEST_DMA_CTRL_CLEAR	1	clear buffer
+	TEST_DMA_CTRL_FILL	2	fill buffer bytes with 0x96
+	TEST_DMA_CTRL_INVERT	4	invert bytes in buffer
+
+Various buffer address and sizes should be tested to verify no address boundary
+issue exists.  In particular, buffers that start on odd-8-byte boudary and/or
+span multiple PAGE sizes should be tested.
+
+
+SECTION 6: Ports
 ================
 
 Physical, Virtual, and Logical Ports
@@ -216,7 +282,7 @@ Physical, Virtual, and Logical Ports
 The switch supports up to 62 physical (front-panel) ports.  Register
 PORT_PHYS_COUNT returns the actual number of physical ports available:
 
-	PORT_PHYS_COUNT, offset 0x001c, 32-bit, (R)
+	PORT_PHYS_COUNT, offset 0x0304, 32-bit, (R)
 
 In addition to physical ports, the switch supports virtual ports representing
 higher-level constructs such as LAG, tunnels, or L2 bridges.
@@ -242,7 +308,7 @@ mode.  Across the switch, a mix of port modes is allowed for hybrid (Flow and
 L2/L3) operation.  To set the mode for front-panel ports, write to
 PORT_PHYS_MODE:
 
-	PORT_PHYS_MODE, offset 0x0020, 64-bit, (R/W)
+	PORT_PHYS_MODE, offset 0x0308, 64-bit, (R/W)
 
 	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
 	and always read as 0.  Write 1 for Flow mode; write 0 for L2/L3 
@@ -255,7 +321,7 @@ Port Settings
 
 Links status for all front-panel ports is available via PORT_PHYS_LINK_STATUS:
 
-	PORT_PHYS_LINK_STATUS, offset 0x0028, 64-bit, (R)
+	PORT_PHYS_LINK_STATUS, offset 0x0310, 64-bit, (R)
 
 	Value is logical port bitmap.  Bits 0 and 63 always read 0.  Bits 1-62
 	read 1 for link UP and 0 for link DOWN for respective front-panel ports.
@@ -290,7 +356,7 @@ completions:
 		MAC_ADDR	6	Port MAC address
 
 
-SECTION 5: CPU Packet Processing
+SECTION 7: CPU Packet Processing
 ================================
 
 For packets ingressing on switch ports that are not forwarded by the switch but
@@ -363,7 +429,7 @@ Rx Packet Processing
 XXX TODO
 
 
-SECTION 6: Flow Mode
+SECTION 8: Flow Mode
 ========================
 
 Flow mode allows the switch to offload Flow packet processing functions to
@@ -557,7 +623,7 @@ Group Table Interface
 xxx
 
 
-SECTION 7: L2/L3 Mode
+SECTION 9: L2/L3 Mode
 ============================
 
 Trunking
