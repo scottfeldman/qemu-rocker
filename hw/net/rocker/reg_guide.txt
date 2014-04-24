@@ -237,15 +237,15 @@ references.  To summarize the mapping:
 Physical Port Mode
 ------------------
 
-Switch front-panel ports will operate in one of two modes: OpenFlow mode or
-L2/L3 mode.  Across the switch, a mix of port modes is allowed for hybrid
-(OpenFlow and L2/L3) operation.  To set the mode for front-panel ports, write
-to PORT_PHYS_MODE:
+Switch front-panel ports will operate in one of two modes: Flow mode or L2/L3
+mode.  Across the switch, a mix of port modes is allowed for hybrid (Flow and
+L2/L3) operation.  To set the mode for front-panel ports, write to
+PORT_PHYS_MODE:
 
 	PORT_PHYS_MODE, offset 0x0020, 64-bit, (R/W)
 
 	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
-	and always read as 0.  Write 1 for OpenFlow mode; write 0 for L2/L3 
+	and always read as 0.  Write 1 for Flow mode; write 0 for L2/L3 
 	mode.  Default is 0.  Register should be set during switch
 	initialization.  Changing port mode post-initialization will result
 	in undefined behaviour.
@@ -363,24 +363,24 @@ Rx Packet Processing
 XXX TODO
 
 
-SECTION 6: OpenFlow Mode
+SECTION 6: Flow Mode
 ========================
 
-OpenFlow mode allows the switch to offload OpenFlow packet processing functions
-to hardware.  An OpenFlow controller would communicate with an OpenFlow agent
-installed on the host.  The OpenFlow agent would (directly or indirectly)
-communicate with the Rocker switch driver, which in turn would program switch
-hardware with OpenFlow functionality.  The block diagram is:
+Flow mode allows the switch to offload Flow packet processing functions to
+hardware.  An Flow controller would communicate with an Flow agent installed on
+the host.  The Flow agent would (directly or indirectly) communicate with the
+Rocker switch driver, which in turn would program switch hardware with Flow
+functionality.  The block diagram is:
 
-		+––––––––––––––––––+
-		|                  |
-		|  OF Controller   |
-		+––––––––+–––––––––+
+		+–––––––––––––––----–––+
+		|                      |
+		|  Remote Controller   |
+		+––––––––+––----–––––––+
 		         |          
 		         |          
 		+––––––––+–––––––––+
 		|                  |
-		|     OF Agent     |
+		|   Local Agent    |
 		+––––––––––––––––––+
 		|                  |
 		|   Rocker Driver  |
@@ -391,9 +391,9 @@ hardware with OpenFlow functionality.  The block diagram is:
 		|   Rocker Switch  |
 		+––––––––––––––––––+
 
-The switch interface for OpenFlow is roughly modeled from Broadcom's OF-DPA
-API.  To participate in OpenFlow functions, ports must be configure for
-OpenFlow mode during switch initialization.
+The switch interface for Flow is roughly modeled from Broadcom's OF-DPA API.
+To participate in Flow functions, ports must be configure for Flow mode during
+switch initialization.
 
 Flow Table Interface
 --------------------
@@ -402,17 +402,17 @@ There are commands to add, modify, delete, and get stats of flow table entries.
 The commands are issued using the DMA CMD descriptor ring.  The following
 commands are defined:
 
-	CMD_OF_FLOW_ADD:	add an entry to flow table
-	CMD_OF_FLOW_MOD:	modify an entry in flow table
-	CMD_OF_FLOW_DEL:	delete an entry from flow table
-	CMD_OF_FLOW_GET_STATS:	get stats for flow entry
+	CMD_FLOW_ADD:		add an entry to flow table
+	CMD_FLOW_MOD:		modify an entry in flow table
+	CMD_FLOW_DEL:		delete an entry from flow table
+	CMD_FLOW_GET_STATS:	get stats for flow entry
 
 TLVs for add and modify commands are:
 
 	field		width	description
 	--------------------------------------------------
-	CMD		2	CMD_OF_FLOW_[ADD|MOD]
-	OF_TBL		2	Flow table ID
+	CMD		2	CMD_FLOW_[ADD|MOD]
+	FLOW_TBL	2	Flow table ID
 				  0: ingress port
 				  10: vlan
 				  20: termination mac
@@ -420,126 +420,126 @@ TLVs for add and modify commands are:
 				  40: multicast routing
 				  50: bridging
 				  60: ACL policy
-	OF_PRIORITY	4	Flow priority
-	OF_HARDTIME	4	Hard timeout for flow
-	OF_IDLETIME	4	Idle timeout for flow
-	OF_COOKIE	8	Cookie
-	OF_FLOW_xxx	<var>	Nested flow entry TLVs.
+	FLOW_PRIORITY	4	Flow priority
+	FLOW_HARDTIME	4	Hard timeout for flow
+	FLOW_IDLETIME	4	Idle timeout for flow
+	FLOW_COOKIE	8	Cookie
+	FLOW_FLOW_xxx	<var>	Nested flow entry TLVs.
 
-OF_FLOW_xxx nested TLVs are defined below:
-
-	field			width	description
-	----------------------------------------------------
-	OF_FLOW_IG_PORT			nest
-	  OF_IN_PORT		4	ingress port number
-	  OF_TBL		2	goto table ID; zero to drop
+FLOW_FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
-	OF_FLOW_VLAN			nest
-	  OF_IN_PORT		4	ingress port number
-	  OF_VLAN_ID		2	vlan ID
-	  OF_VLAN_ID_MASK	2	vlan ID mask
-	  OF_TBL		2	goto table ID; zero to drop
-	  OF_NEW_VLAN_ID	2	new vlan ID
+	FLOW_IG_PORT			nest
+	  FLOW_IN_PORT		4	ingress port number
+	  FLOW_TBL		2	goto table ID; zero to drop
 
 	field			width	description
 	----------------------------------------------------
-	OF_FLOW_TERM_MAC		nest
-	  OF_IN_PORT		4	ingress port number
-	  OF_IN_PORT_MASK	4	ingress port number mask
-	  OF_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_DST_MAC		6	destination MAC
-	  OF_DST_MAC_MASK	6	destination MAC mask
-	  OF_VLAN_ID		2	vlan ID
-	  OF_VLAN_ID_MASK	2	vlan ID mask
-	  OF_TBL		2	only acceptable values are
+	FLOW_VLAN			nest
+	  FLOW_IN_PORT		4	ingress port number
+	  FLOW_VLAN_ID		2	vlan ID
+	  FLOW_VLAN_ID_MASK	2	vlan ID mask
+	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_NEW_VLAN_ID	2	new vlan ID
+
+	field			width	description
+	----------------------------------------------------
+	FLOW_TERM_MAC		nest
+	  FLOW_IN_PORT		4	ingress port number
+	  FLOW_IN_PORT_MASK	4	ingress port number mask
+	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
+	  FLOW_DST_MAC		6	destination MAC
+	  FLOW_DST_MAC_MASK	6	destination MAC mask
+	  FLOW_VLAN_ID		2	vlan ID
+	  FLOW_VLAN_ID_MASK	2	vlan ID mask
+	  FLOW_TBL		2	only acceptable values are
 					unicast or multicast routing
 					table IDs
-	  OF_OUT_PORT		4	if specified, must be controller,
+	  FLOW_OUT_PORT		4	if specified, must be controller,
 					set zero otherwise
 
 	field			width	description
 	----------------------------------------------------
-	OF_FLOW_BRIDGING		nest
-	  OF_VLAN_ID		2	vlan ID
-	  OF_TUNNEL_ID		2	tunnel ID
-	  OF_DST_MAC		6	destination MAC
-	  OF_DST_MAC_MASK	6	destination MAC mask
-	  OF_TBL		2	goto table ID; zero to drop
-	  OF_GROUP_ID		4	data for GROUP action must
+	FLOW_BRIDGING		nest
+	  FLOW_VLAN_ID		2	vlan ID
+	  FLOW_TUNNEL_ID	2	tunnel ID
+	  FLOW_DST_MAC		6	destination MAC
+	  FLOW_DST_MAC_MASK	6	destination MAC mask
+	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GROUP_ID		4	data for GROUP action must
 					be a L2 Interface, L2
 					Multicast, L2 Flood,
 					or L2 Overlay group entry
 					as appropriate
-	  OF_TUN_LOG_PORT	4	unicast Tenant Bridging
+	  FLOW_TUN_LOG_PORT	4	unicast Tenant Bridging
 					flows specify a tunnel
 					logical port ID
-	  OF_OUT_PORT		4	data for OUTPUT action,
+	  FLOW_OUT_PORT		4	data for OUTPUT action,
 					restricted to CONTROLLER,
 					set to 0 otherwise
 
 	field			width	description
 	----------------------------------------------------
-	OF_FLOW_UNICAST_ROUNTING	nest
-	  OF_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_DST_IP		4	destination IPv4 address
+	FLOW_UNICAST_ROUNTING	nest
+	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
+	  FLOW_DST_IP		4	destination IPv4 address
 					stored in host byte order.
 					Must be unicast address
-	  OF_DST_IP_MASK	4	IP mask stored in host byte
+	  FLOW_DST_IP_MASK	4	IP mask stored in host byte
 					order. Must be prefix mask
-	  OF_DST_IPV6		16	destination IPv6 address
+	  FLOW_DST_IPV6		16	destination IPv6 address
 					stored in host byte order.
 					Must be unicast address
-	  OF_DST_IPV6_MASK	16	IPv6 mask stored in host byte
+	  FLOW_DST_IPV6_MASK	16	IPv6 mask stored in host byte
 					order. Must be prefix mask
-	  OF_TBL		2	goto table ID; zero to drop
-	  OF_GROUP_ID		4	data for GROUP action must
+	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GROUP_ID		4	data for GROUP action must
 					be an L3 Unicast group entry
 
 	field			width	description
 	----------------------------------------------------
-	OF_FLOW_MULTICAST_ROUNTING	nest
-	  OF_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_VLAN_ID		2	vlan ID
-	  OF_SRC_IP		4	source IPv4 address stored
+	FLOW_MULTICAST_ROUNTING	nest
+	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
+	  FLOW_VLAN_ID		2	vlan ID
+	  FLOW_SRC_IP		4	source IPv4 address stored
 					in host byte order. Optional,
 					can contain IPv4 address,
 					must be completely masked
 					if not used
-	  OF_SRC_IP_MASK	4	IP Mask stored in host byte
+	  FLOW_SRC_IP_MASK	4	IP Mask stored in host byte
 					order
-	  OF_DST_IP		4	destination IPv4 address
+	  FLOW_DST_IP		4	destination IPv4 address
 					stored in host byte order.
 					Must be multicast address
-	  OF_SRC_IPV6		16	source IPv6 Address. Optional.
+	  FLOW_SRC_IPV6		16	source IPv6 Address. Optional.
 					Can contain IPv6 address,
 					must be completely masked
 					if not used
-	  OF_SRC_IPV6_MASK	16	IPv6 mask stored in host byte
-	  OF_DST_IPV6		16	destination IPv6 Address. Must
+	  FLOW_SRC_IPV6_MASK	16	IPv6 mask stored in host byte
+	  FLOW_DST_IPV6		16	destination IPv6 Address. Must
 					be multicast address
 					Must be multicast address
-	  OF_TBL		2	goto table ID; zero to drop
-	  OF_GROUP_ID		4	data for GROUP action must
+	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GROUP_ID		4	data for GROUP action must
 					be an L3 multicast group entry
 
 TLVs for flow delete and get stats command are:
 
 	field		width	description
 	---------------------------------------------------
-	CMD		2	CMD_OF_FLOW_[DEL|GET_STATS]
-	OF_COOKIE	8	Cookie
+	CMD		2	CMD_FLOW_FLOW_[DEL|GET_STATS]
+	FLOW_COOKIE	8	Cookie
 
 On completion of get stats command, the descriptor buffer is written back with
 the following TLVs:
 
 	field			width	description
 	---------------------------------------------------
-	OF_COOKIE		8	Cookie
-	OF_FLOW_STAT_DURATION	4	Flow duration
-	OF_FLOW_STAT_RX_PKTS	8	Received packets
-	OF_FLOW_STAT_TX_PKTS	8	Transmit packets
+	FLOW_COOKIE		8	Cookie
+	FLOW_STAT_DURATION	4	Flow duration
+	FLOW_STAT_RX_PKTS	8	Received packets
+	FLOW_STAT_TX_PKTS	8	Transmit packets
 
 Possible status return codes in completion descriptor are:
 
