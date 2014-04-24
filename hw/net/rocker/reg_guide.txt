@@ -128,6 +128,7 @@ Descriptor/completion ring sizes must be a power of 2 and range from 2 to 64K
 entries.  Descriptor and completion rings' base address must be 8-byte aligned.
 Descriptors and completions must be packed within ring.  Descriptor and
 completion ring sizes must be the same for a given DMA operation.  Each
+descriptor in each ring must also be aligned on an 8 byte boundary.  Each
 descriptor ring will have these registers:
 
 	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 16), 64-bit, (R/W)
@@ -156,7 +157,6 @@ All descriptor types share some common fields:
 	DMA_DESC_COOKIE		8	Desc cookie for completion matching,
 					upper-most bit is reserved
 	DMA_DESC_BUF_SIZE	2	Desc payload size in bytes
-	DMA_DESC_RESV		14	Reserved
 
 All completion types share some common fields: 
 
@@ -168,7 +168,6 @@ All completion types share some common fields:
 	DMA_COMP_SIZE_WRITTEN	2	Bytes written back to desc payload,
 					if any.
 	DMA_COMP_STATUS		2	Completion results, see errno
-	DMA_COMP_RESV		4	Reserved
 
 To support forward- and backward-compatibility, descriptor and completion
 payloads are specified in TLV format.  Fields are packed with Type=field name,
@@ -183,10 +182,10 @@ value within a TLV is also 8-byte aligned.  The (packed, 8 byte) TLV header is:
 	-----------------------------
 	type	4	TLV type
 	len	2	TLV length
-	RESV	2	Reserved
 
 The alignment requirements for descriptors and TLVs are to avoid unaligned
-access exceptions in software.
+access exceptions in software.  Note that the payload for each TLV must also be
+8 byte aligned.
 
 TLVs can be nested within other TVLs using NEST type.
 
