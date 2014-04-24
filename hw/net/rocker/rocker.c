@@ -26,7 +26,7 @@
 #include "rocker_hw.h"
 
 #define ROCKER "rocker"
-#define ROCKER_FR_PORTS_MAX 62
+#define ROCKER_FP_PORTS_MAX 62
 
 struct rocker {
     /* private */
@@ -49,8 +49,6 @@ struct rocker {
 
 static int rocker_can_receive(NetClientState *nc)
 {
-    struct rocker *r = qemu_get_nic_opaque(nc);
-
     return 0;
 }
 
@@ -94,13 +92,10 @@ static NetClientInfo net_rocker_info = {
 static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
                               unsigned size)
 {
-    struct rocker *r = opaque;
 }
 
 static uint64_t rocker_mmio_read(void *opaque, hwaddr addr, unsigned size)
 {
-    struct rocker *r = opaque;
-
     return 0;
 }
 
@@ -116,7 +111,7 @@ static const MemoryRegionOps rocker_mmio_ops = {
 
 static void pci_rocker_uninit(PCIDevice *dev)
 {
-    struct rocker *r = to_rocker(pci_dev);
+    struct rocker *r = to_rocker(dev);
     int i;
 
     for (i = 0; i < r->fp_ports; i++)
@@ -125,24 +120,24 @@ static void pci_rocker_uninit(PCIDevice *dev)
     memory_region_destroy(&r->mmio);
 }
 
-static rocker_set_fp_port_conf(struct rocker *r)
+static void rocker_set_fp_port_conf(struct rocker *r)
 {
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
     static int index = 0;
     int i;
 
-    if (memcmp(r->fp_start_macaddr, &zero, sizeof(zero)) == 0) {
-        memcpy(r->fp_start_macaddr, &dflt, sizeof(dflt));
+    if (memcmp(&r->fp_start_macaddr, &zero, sizeof(zero)) == 0) {
+        memcpy(&r->fp_start_macaddr, &dflt, sizeof(dflt));
         r->fp_start_macaddr.a[4] += (index++);
     }
 
     for (i = 0; i < r->fp_ports; i++) {
-        memcpy(r->fp_port_conf[i].macaddr, r->fp_start_macaddr,
+        memcpy(&r->fp_port_conf[i].macaddr, &r->fp_start_macaddr,
                sizeof(r->fp_port_conf[i].macaddr));
         r->fp_port_conf[i].macaddr.a[5] += i;
         r->fp_port_conf[i].bootindex = -1;
-        r->fp_port_conf[i].peers = XXX; // XXX
+        //r->fp_port_conf[i].peers = XXX; // XXX
     }
 }
 
@@ -182,10 +177,10 @@ static void rocker_reset(DeviceState *dev)
 }
 
 static Property rocker_properties[] = {
-    DEFINE_PROP_UINT16(front_panel_ports, struct rocker,
-                       fp_ports, 16);
-    DEFINE_PROP_MACADDR(start_mac_addr, struct rocker,
-                        fp_start_mac_addr);
+    DEFINE_PROP_UINT16("front_panel_ports", struct rocker,
+                       fp_ports, 16),
+    DEFINE_PROP_MACADDR("start_mac_addr", struct rocker,
+                        fp_start_macaddr),
     DEFINE_PROP_END_OF_LIST(),
 };
 
