@@ -30,29 +30,46 @@
 #define ROCKER_PCI_BAR0_SIZE		0x1000
 
 /*
- * Rocker IRQ register offsets
+ * Rocker test registers
  */
-#define ROCKER_IRQ_MASK	0x0010
-#define ROCKER_IRQ_STAT	0x0014
+#define ROCKER_TEST_REG			0x0010
+#define ROCKER_TEST_REG64		0x0018	/* 8-byte */
+#define ROCKER_TEST_IRQ			0x0020
+#define ROCKER_TEST_DMA_ADDR		0x0028	/* 8-byte */
+#define ROCKER_TEST_DMA_SIZE		0x0030
+#define ROCKER_TEST_DMA_CTRL		0x0034
+
+/*
+ * Rocker test register ctrl
+ */
+#define TEST_DMA_CTRL_CLEAR		(1 << 0)
+#define TEST_DMA_CTRL_FILL		(1 << 1)
+#define TEST_DMA_CTRL_INVERT		(1 << 2)
+
+/*
+ * Rocker IRQ registers
+ */
+#define ROCKER_IRQ_MASK			0x0200
+#define ROCKER_IRQ_STAT			0x0204
 
 /*
  * Rocker IRQ status bits
  */
-#define IRQ_LINK		(1 << 0)
-#define IRQ_TX_DMA_DONE		(1 << 1)
-#define IRQ_RX_DMA_DONE		(1 << 2)
-#define IRQ_CMD_DMA_DONe	(1 << 3)
-#define IRQ_EVENT_DMA_DONE	(1 << 5)
+#define IRQ_LINK			(1 << 0)
+#define IRQ_TX_DMA_DONE			(1 << 1)
+#define IRQ_RX_DMA_DONE			(1 << 2)
+#define IRQ_CMD_DMA_DONE		(1 << 3)
+#define IRQ_EVENT_DMA_DONE		(1 << 4)
 
 /*
  * Rocker DMA ring register offsets
  */
-#define DMA_DESC_ADDR(x)		(0x0100 + (x) * 16)
-#define DMA_COMP_ADDR(x)		(0x0108 + (x) * 16)
-#define DMA_DESC_SIZE(x)		(0x0110 + (x) * 16)
-#define DMA_DESC_HEAD(x)		(0x0114 + (x) * 16)
-#define DMA_DESC_TAIL(x)		(0x0118 + (x) * 16)
-#define DMA_DESC_CTRL(x)		(0x011c + (x) * 16)
+#define DMA_DESC_ADDR(x)		(0x0100 + (x) * 32)	/* 8-byte */
+#define DMA_COMP_ADDR(x)		(0x0108 + (x) * 32)	/* 8-byte */
+#define DMA_DESC_SIZE(x)		(0x0110 + (x) * 32)
+#define DMA_DESC_HEAD(x)		(0x0114 + (x) * 32)
+#define DMA_DESC_TAIL(x)		(0x0118 + (x) * 32)
+#define DMA_DESC_CTRL(x)		(0x011c + (x) * 32)
 
 #define ROCKER_DMA_RING_REG_SET(name, index) \
 enum {\
@@ -90,5 +107,13 @@ struct rocker_comp_desc {
 	uint16_t comp_written;
 	uint16_t comp_status;
 } __attribute__((packed, aligned(8)));
+
+/*
+ * Rocker general purpose registers
+ */
+#define ROCKER_ENDIANESS_SEL		0x0300
+#define ROCKER_PORT_PHYS_COUNT		0x0304
+#define ROCKER_PORT_PHYS_MODE		0x0308	/* 8-byte */
+#define ROCKER_PORT_PHYS_LINK_STATUS	0x0310	/* 8-byte */
 
 #endif /* _ROCKER_HW_ */
