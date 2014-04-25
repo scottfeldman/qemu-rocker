@@ -24,6 +24,7 @@
 #include "qemu/iov.h"
 
 #include "rocker_hw.h"
+#include "tlv_parse.h"
 
 #define ROCKER "rocker"
 #define ROCKER_FP_PORTS_MAX 62
