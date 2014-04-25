@@ -98,12 +98,12 @@ struct rocker_dma_desc {
 	uint64_t buf_addr;
 	uint64_t cookie;
 	uint16_t buf_size;
+	uint16_t tlv_size;
 } __attribute__((packed, aligned (8)));
 
 struct rocker_comp_desc {
-	struct rocker_dma_desc desc;
 	uint64_t cookie_gen;
-	uint16_t comp_written;
+	uint16_t tlv_size;
 	uint16_t comp_status;
 } __attribute__((packed, aligned(8)));
 
