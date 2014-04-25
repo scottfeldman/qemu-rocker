@@ -92,7 +92,6 @@ ROCKER_DMA_RING_REG_SET(EVENT, 3);
 struct rocker_dma_tlv {
 	uint32_t type;
 	uint16_t len;
-	uint8_t val[0] __attribute__((aligned(8)));
 } __attribute__((packed, aligned (8)));
 
 struct rocker_dma_desc {
