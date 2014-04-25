@@ -187,6 +187,9 @@ All descriptor types share some common fields:
 	DMA_DESC_COOKIE		8	Desc cookie for completion matching,
 					upper-most bit is reserved
 	DMA_DESC_BUF_SIZE	2	Desc payload size in bytes
+	DMA_DESC_TLV_SIZE	2	Desc payload total size in bytes
+					used for TLVs.  Must be <=
+					DMA_DESC_BUF_SIZE.
 
 All completion types share some common fields: 
 
@@ -195,13 +198,14 @@ All completion types share some common fields:
 	DMA_COMP_COOKIE_GEN	8	Cookie/generation bit.  Generation
 					bit is upper-most bit.  The remaining
 					bits is the desc cookie.
-	DMA_COMP_SIZE_WRITTEN	2	Bytes written back to desc payload,
-					if any.
+	DMA_COMP_TLV_SIZE	2	Desc payload total size in bytes
+					used for TLVs.  Must be <=
+					DMA_DESC_BUF_SIZE.
 	DMA_COMP_STATUS		2	Completion results, see errno
 
 To support forward- and backward-compatibility, descriptor and completion
 payloads are specified in TLV format.  Fields are packed with Type=field name,
-Length=field width, and Value=field value.  Software will ignore unknown fields
+Length=field length, and Value=field value.  Software will ignore unknown fields
 filled in by the switch.  Likewise, the switch will ignore unknown fields
 filled in by software.
 
@@ -211,13 +215,43 @@ value within a TLV is also 8-byte aligned.  The (packed, 8 byte) TLV header is:
 	field	width	description
 	-----------------------------
 	type	4	TLV type
-	len	2	TLV length
+	len	2	TLV value length
+	pad	2	Reserved
 
 The alignment requirements for descriptors and TLVs are to avoid unaligned
-access exceptions in software.  Note that the payload for each TLV must also be
+access exceptions in software.  Note that the payload for each TLV is also
 8 byte aligned.
 
-TLVs can be nested within other TVLs using NEST type.
+Figure 1 shows an example descriptor buffer with two TLVs.
+
+                  <------- 8 bytes ------->                                      
+                                                                                 
+  8-byte  +––––+  +–––––––––––+–––––+–––––+                     +–+              
+  align           |   type    | len | pad |    TLV#1 hdr          |              
+                  +–––––––––––+–––––+–––––+    (len=22)           |              
+                  |                       |                       |              
+                  |  value                |    TVL#1 value        |              
+                  |                       |    (padded to 8-byte  |              
+                  |                 +–––––+     alignment)        |              
+                  |                 |/////|                       |              
+   8-byte +––––+  +–––––––––––+–––––––––––+                       |              
+   align          |   type    | len | pad |    TLV#2 hdr    DESC_BUF_SIZE
+                  +–––––+–––––+–––––+–––––+    (len=2)            |              
+                  |value|/////////////////|    TLV#2 value        |              
+                  +–––––+/////////////////|                       |              
+                  |///////////////////////|                       |              
+                  |///////////////////////|                       |              
+                  |///////////////////////|                       |              
+                  |////////unused/////////|                       |              
+                  |////////space//////////|                       |              
+                  |///////////////////////|                       |              
+                  |///////////////////////|                       |              
+                  |///////////////////////|                       |              
+                  +–––––––––––––––––––––––+                     +–+              
+
+				fig. 1
+
+TLVs can be nested within the NEST TLV type.
 
 Endianess
 ---------
@@ -240,8 +274,8 @@ about current byte-swapping mode, an endian-neutral value.
 SECTION 5: Test Registers
 =========================
 
-Rocker switch supports several test registers to support troubleshooting
-register access, interrupt generation, and DMA operations:
+Rocker switch has several test registers to support troubleshooting register
+access, interrupt generation, and DMA operations:
 
 	TEST_REG, offset 0x0010, 32-bit (R/W)
 	TEST_REG64, offset 0x0018, 64-bit (R/W)
@@ -284,11 +318,11 @@ PORT_PHYS_COUNT returns the actual number of physical ports available:
 
 	PORT_PHYS_COUNT, offset 0x0304, 32-bit, (R)
 
-In addition to physical ports, the switch supports virtual ports representing
-higher-level constructs such as LAG, tunnels, or L2 bridges.
+In addition to front-panel ports, the switch supports virtual ports
+representing higher-level constructs such as trunks, tunnels, or L2 bridges.
 
-The switch maps logical ports to physical and virtual ports.  A special CPU
-port is assigned logical port 0.  The physical ports are mapped to logical
+The switch maps logical ports to front-pacnel and virtual ports.  A special CPU
+port is assigned logical port 0.  The front-panel ports are mapped to logical
 ports 1-62.  A special loopback port is assigned logical port 63.  Virtual
 ports are assigned logical ports 64-511.  The switch only uses logical port
 references.  To summarize the mapping:
@@ -377,7 +411,7 @@ wire (network).  Once packet processing is complete, hardware will writeback
 status to completion descriptor(s) to signal to software that Tx is complete
 and software resources (e.g. skb) backing packet can be released.
 
-Figure 1 shows an example 3-fragment packet queued with one Tx descriptor.  A
+Figure 2 shows an example 3-fragment packet queued with one Tx descriptor.  A
 TLV is used for each packet buffer fragment.
 
 	                                           pkt frag 1        
@@ -406,7 +440,7 @@ TLV is used for each packet buffer fragment.
 	      |         |                                           
 	      +–––––––––+                                             
 
-				fig 1.
+				fig 2.
 
 The TLVs for Tx descriptor buffer are:
 
@@ -629,10 +663,10 @@ SECTION 9: L2/L3 Mode
 Trunking
 --------
 
-Trunking is a method by which physical ports can be bundled together to form a
-trunk, a new virtual port.  The switch supports commands to add, modify, and
-delete trunks and trunk members.  Trunk commands are issued using the DMA CMD
-descriptor ring.
+Trunking is a method by which front-panel ports (members) can be bundled
+together to form a trunk, a new virtual port.  The switch supports commands to
+add, modify, and delete trunks and trunk members.  Trunk commands are issued
+using the DMA CMD descriptor ring.
 
 TLVs for CMD_ADD and CMD_MOD are:
 
