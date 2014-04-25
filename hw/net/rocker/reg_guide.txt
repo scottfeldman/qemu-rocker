@@ -418,7 +418,7 @@ The TLVs for Tx descriptor buffer are:
 				  IP csum calc: (1 << 1)
 				  TSO: (1 << 2)
 	TX_L3_CSUM_OFF	2	L3 protocol csum offset
-	TX_FRAGS	1	Packet fragment count
+	TX_FRAG_CNT	1	Packet fragment count
 	TX_FRAG		10	Packet fragment
 				  Fragment address: 8
 				  Fragment length: 2
@@ -468,16 +468,16 @@ There are commands to add, modify, delete, and get stats of flow table entries.
 The commands are issued using the DMA CMD descriptor ring.  The following
 commands are defined:
 
-	CMD_FLOW_ADD:		add an entry to flow table
-	CMD_FLOW_MOD:		modify an entry in flow table
-	CMD_FLOW_DEL:		delete an entry from flow table
-	CMD_FLOW_GET_STATS:	get stats for flow entry
+	CMD_ADD:		add an entry to flow table
+	CMD_MOD:		modify an entry in flow table
+	CMD_DEL:		delete an entry from flow table
+	CMD_GET_STATS:	get stats for flow entry
 
 TLVs for add and modify commands are:
 
 	field		width	description
 	--------------------------------------------------
-	CMD		2	CMD_FLOW_[ADD|MOD]
+	CMD		2	CMD_[ADD|MOD]
 	FLOW_TBL	2	Flow table ID
 				  0: ingress port
 				  10: vlan
@@ -634,11 +634,11 @@ trunk, a new virtual port.  The switch supports commands to add, modify, and
 delete trunks and trunk members.  Trunk commands are issued using the DMA CMD
 descriptor ring.
 
-TLVs for CMD_TRUNK_ADD and CMD_TRUNK_MOD are:
+TLVs for CMD_ADD and CMD_MOD are:
 
 	field		width	description
 	---------------------------------------------------
-	CMD		2	CMD_TRUNK_[ADD|MOD]
+	CMD		2	CMD_[ADD|MOD]
 	TRUNK_LPORT	2	(MOD command only) Existing trunk logical
 				port number
 	TRUNK_HASH	2	Trunk egress hashing algorithm:
@@ -661,18 +661,18 @@ TLVs for CMD_TRUNK_ADD and CMD_TRUNK_MOD are:
 				members will still be able to send
 				and receive control protocol packets.
 	
-On completion of CMD_TRUNK_ADD comamnd, the descriptor buffer is written back
+On completion of CMD_ADD comamnd, the descriptor buffer is written back
 with the logical port number of the new trunk:
 
 	field		width	description
 	---------------------------------------------------
 	TRUNK_LPORT	2	Trunk logical port
 
-TLVs for CMD_TRUNK_DEL are:
+TLVs for CMD_DEL are:
 
 	field		width	description
 	---------------------------------------------------
-	CMD		2	CMD_TRUNK_DEL
+	CMD		2	CMD_DEL
 	TRUNK_LPORT	2	Existing trunk logical port number
 
 Possible status return codes in completion descriptor are:
@@ -697,11 +697,11 @@ front-panel ports.  The switch supports command to add, modify, and delete
 bridges and bridge members.  Bridge commands are issued using DMA CMD
 descriptor ring.
 
-TLVs for CMD_BRIDGE_ADD and CMD_BRIDGE_MOD are:
+TLVs for CMD_ADD and CMD_MOD are:
 
 	field		width	description
 	---------------------------------------------------
-	CMD		2	CMD_BRIDGE_[ADD|MOD]
+	CMD		2	CMD_[ADD|MOD]
 	BRIDGE_LPORT	2	(MOD command only) Existing bridge logical
 				port number
 	BRIDGE_MEMBER	8	Bridge member lport bitmap;
