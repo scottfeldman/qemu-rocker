@@ -36,8 +36,8 @@ Each switch instance registers as a PCI device with PCI configuration space:
 
 	offset	width	description		value
 	---------------------------------------------
-	0x0	2	Vendor ID		0x0666*
-	0x2	2	Device ID		0x0001
+	0x0	2	Vendor ID		0x1b36
+	0x2	2	Device ID		0x0006
 	0x4	4	Command/Status
 	0x8	1	Revision ID		0x01
 	0x9	3	Class code		0x2800
@@ -58,8 +58,6 @@ Each switch instance registers as a PCI device with PCI configuration space:
 	0x40	1	TRDY timeout
 	0x41	1	Retry count
 	0x42	2	Reserved
-
-* Not registered with PCI SIG (fictitious vendor)
 
 
 SECTION 3: Memory-Mapped Register Space
