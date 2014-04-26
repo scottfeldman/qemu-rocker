@@ -29,20 +29,33 @@
 #define ROCKER "rocker"
 #define ROCKER_FP_PORTS_MAX 62
 
+enum backend_mode {
+    BACKEND_NONE,
+    BACKEND_TAP,
+};
+
 struct rocker {
     /* private */
     PCIDevice parent_obj;
     /* public */
 
     MemoryRegion mmio;
+    enum backend_mode backend;
 
     /* switch configuration */
+    char *name;                  /* switch name */
+    char *backend_name;          /* backend method */
+    char *script;                /* script to run for tap backends */
+    char *downscript;            /* downscript to run for tap backends */
     uint16_t fp_ports;           /* front-panel port count */
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
 
     /* each front-panel port is a qemu nic, with private configuration */
-    NICState *fp_port[ROCKER_FP_PORTS_MAX];
-    NICConf fp_port_conf[ROCKER_FP_PORTS_MAX];
+    struct fp_port {
+        struct rocker *bp;
+        NICState *state;
+        NICConf conf;
+    } fp_port[ROCKER_FP_PORTS_MAX];
 };
 
 #define to_rocker(obj) \
@@ -134,11 +147,28 @@ static void rocker_set_fp_port_conf(struct rocker *r)
     }
 
     for (i = 0; i < r->fp_ports; i++) {
-        memcpy(&r->fp_port_conf[i].macaddr, &r->fp_start_macaddr,
-               sizeof(r->fp_port_conf[i].macaddr));
-        r->fp_port_conf[i].macaddr.a[5] += i;
-        r->fp_port_conf[i].bootindex = -1;
-        //r->fp_port_conf[i].peers = XXX; // XXX
+        memcpy(&r->fp_port[i].conf.macaddr, &r->fp_start_macaddr,
+               sizeof(r->fp_port[i].conf.macaddr));
+        r->fp_port[i].conf.macaddr.a[5] += i;
+        r->fp_port[i].conf.bootindex = -1;
+
+        // TODO: for each fp_port, need to create backend linkage.
+        // TODO: conf.peer needs to be set as if user typed:
+        // TODO:    -net nic,netdev=<name>.<i>
+        // TODO: then, the backend for each port needs to be
+        // TODO: created.  FOr tap backend, for example, it
+        // TODO: would be the equivalent to the user typing:
+        // TODO:    -netdev tap,id=<name>.<i>,ifname=<name>.<i>,
+        // TODO:            script=<script>,downscript=<downscript>
+
+        // TODO: each fp_port would have a host tap interface.
+        // TODO: the tap script can create a netns and put in
+        // TODO: fp_port tap interface.  Now the fp_port is
+        // TODO: isolated on the host from the other fp_ports,
+        // TODO: and each netns is effectively a unqiue link
+        // TODO: partner for the switch port.
+
+        //r->fp_port[i].conf.peers = XXX; // XXX
     }
 }
 
@@ -157,6 +187,12 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     pci_register_bar(pci_dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &r->mmio);
 
     /* validate switch properties */
+
+    if (!r->name)
+        r->name = g_strdup(ROCKER);
+
+    if (!r->backend_name || memcmp(r->backend_name, "tap", sizeof("tap") == 0))
+        r->backend = BACKEND_TAP;
 
     if (r->fp_ports > ROCKER_FP_PORTS_MAX)
         r->fp_ports = ROCKER_FP_PORTS_MAX;
@@ -178,9 +214,13 @@ static void rocker_reset(DeviceState *dev)
 }
 
 static Property rocker_properties[] = {
-    DEFINE_PROP_UINT16("front_panel_ports", struct rocker,
+    DEFINE_PROP_STRING("name", struct rocker, name),
+    DEFINE_PROP_STRING("backend", struct rocker, backend_name),
+    DEFINE_PROP_STRING("script", struct rocker, script),
+    DEFINE_PROP_STRING("downscript", struct rocker, downscript),
+    DEFINE_PROP_UINT16("fp_ports", struct rocker,
                        fp_ports, 16),
-    DEFINE_PROP_MACADDR("start_mac_addr", struct rocker,
+    DEFINE_PROP_MACADDR("fp_start_macaddr", struct rocker,
                         fp_start_macaddr),
     DEFINE_PROP_END_OF_LIST(),
 };
