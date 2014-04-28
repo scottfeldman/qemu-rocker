@@ -55,6 +55,8 @@ struct rocker {
     /* register backings */
     uint32_t test_reg;
     uint64_t test_reg64;
+    dma_addr_t test_dma_addr;
+    uint32_t test_dma_size;
     uint32_t irq_status;
     uint32_t irq_mask;
 };
@@ -73,6 +75,40 @@ static void rocker_update_irq(struct rocker *r)
     pci_set_irq(d, (isr != 0));
 }
 
+static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
+{
+    PCIDevice *d = PCI_DEVICE(r);
+    char *buf;
+    int i;
+
+    buf = malloc(r->test_dma_size);
+
+    if (!buf) {
+        DPRINTF("test dma buffer alloc failed");
+        return;
+    }
+
+    switch (val) {
+    case ROCKER_TEST_DMA_CTRL_CLEAR:
+        memset(buf, 0, r->test_dma_size);
+        break;
+    case ROCKER_TEST_DMA_CTRL_FILL:
+        memset(buf, 0x96, r->test_dma_size);
+        break;
+    case ROCKER_TEST_DMA_CTRL_INVERT:
+        pci_dma_read(d, r->test_dma_addr, buf, r->test_dma_size);
+        for (i = 0; i < r->test_dma_size; i++)
+            buf[i] = ~buf[i];
+        break;
+    default:
+        DPRINTF("not test dma control val=0x%08x\n", val);
+        return;
+    }
+    pci_dma_write(d, r->test_dma_addr, buf, r->test_dma_size);
+    r->irq_status |= ROCKER_IRQ_TEST_DMA_DONE;
+    rocker_update_irq(r);
+}
+
 static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
 {
     struct rocker *r = opaque;
@@ -89,6 +125,12 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
         r->irq_mask = val;
         rocker_update_irq(r);
         break;
+    case ROCKER_TEST_DMA_SIZE:
+        r->test_dma_size = val;
+        break;
+    case ROCKER_TEST_DMA_CTRL:
+        rocker_test_dma_ctrl(r, val);
+        break;
     default:
         DPRINTF("not implemented write(l) addr=0x%lx val=0x%08x\n", addr, val);
         break;
@@ -102,6 +144,9 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
     switch (addr) {
     case ROCKER_TEST_REG64:
         r->test_reg64 = val;
+        break;
+    case ROCKER_TEST_DMA_ADDR:
+        r->test_dma_addr = val;
         break;
     default:
         DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
@@ -141,6 +186,9 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     case ROCKER_IRQ_MASK:
         ret = r->irq_mask;
         break;
+    case ROCKER_TEST_DMA_SIZE:
+        ret = r->test_dma_size;
+        break;
     default:
         DPRINTF("not implemented read(l) addr=0x%lx\n", addr);
         ret = 0;
@@ -157,6 +205,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     switch (addr) {
     case ROCKER_TEST_REG64:
         ret = r->test_reg64 * 2;
+        break;
+    case ROCKER_TEST_DMA_ADDR:
+        ret = r->test_dma_addr;
         break;
     default:
         DPRINTF("not implemented read(q) addr=0x%lx\n", addr);

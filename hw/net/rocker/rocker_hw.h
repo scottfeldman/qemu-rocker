@@ -53,6 +53,7 @@
 #define ROCKER_IRQ_RX_DMA_DONE		(1 << 2)
 #define ROCKER_IRQ_CMD_DMA_DONE		(1 << 3)
 #define ROCKER_IRQ_EVENT_DMA_DONE	(1 << 4)
+#define ROCKER_IRQ_TEST_DMA_DONE	(1 << 5)
 
 /*
  * Rocker DMA ring register offsets
