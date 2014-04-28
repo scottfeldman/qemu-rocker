@@ -35,9 +35,9 @@
 /*
  * Rocker test register ctrl
  */
-#define TEST_DMA_CTRL_CLEAR		(1 << 0)
-#define TEST_DMA_CTRL_FILL		(1 << 1)
-#define TEST_DMA_CTRL_INVERT		(1 << 2)
+#define ROCKER_TEST_DMA_CTRL_CLEAR	(1 << 0)
+#define ROCKER_TEST_DMA_CTRL_FILL	(1 << 1)
+#define ROCKER_TEST_DMA_CTRL_INVERT	(1 << 2)
 
 /*
  * Rocker IRQ registers
@@ -48,30 +48,30 @@
 /*
  * Rocker IRQ status bits
  */
-#define IRQ_LINK			(1 << 0)
-#define IRQ_TX_DMA_DONE			(1 << 1)
-#define IRQ_RX_DMA_DONE			(1 << 2)
-#define IRQ_CMD_DMA_DONE		(1 << 3)
-#define IRQ_EVENT_DMA_DONE		(1 << 4)
+#define ROCKER_IRQ_LINK			(1 << 0)
+#define ROCKER_IRQ_TX_DMA_DONE		(1 << 1)
+#define ROCKER_IRQ_RX_DMA_DONE		(1 << 2)
+#define ROCKER_IRQ_CMD_DMA_DONE		(1 << 3)
+#define ROCKER_IRQ_EVENT_DMA_DONE	(1 << 4)
 
 /*
  * Rocker DMA ring register offsets
  */
-#define DMA_DESC_ADDR(x)		(0x0100 + (x) * 32)	/* 8-byte */
-#define DMA_COMP_ADDR(x)		(0x0108 + (x) * 32)	/* 8-byte */
-#define DMA_DESC_SIZE(x)		(0x0110 + (x) * 32)
-#define DMA_DESC_HEAD(x)		(0x0114 + (x) * 32)
-#define DMA_DESC_TAIL(x)		(0x0118 + (x) * 32)
-#define DMA_DESC_CTRL(x)		(0x011c + (x) * 32)
+#define __ROCKER_DMA_DESC_ADDR(x)	(0x0100 + (x) * 32)	/* 8-byte */
+#define __ROCKER_DMA_COMP_ADDR(x)	(0x0108 + (x) * 32)	/* 8-byte */
+#define __ROCKER_DMA_DESC_SIZE(x)	(0x0110 + (x) * 32)
+#define __ROCKER_DMA_DESC_HEAD(x)	(0x0114 + (x) * 32)
+#define __ROCKER_DMA_DESC_TAIL(x)	(0x0118 + (x) * 32)
+#define __ROCKER_DMA_DESC_CTRL(x)	(0x011c + (x) * 32)
 
-#define ROCKER_DMA_RING_REG_SET(name, index) \
-enum {\
-	name ## _DMA_DESC_ADDR = DMA_DESC_ADDR(index),\
-	name ## _DMA_COMP_ADDR = DMA_COMP_ADDR(index),\
-	name ## _DMA_DESC_SIZE = DMA_DESC_SIZE(index),\
-	name ## _DMA_DESC_HEAD = DMA_DESC_HEAD(index),\
-	name ## _DMA_DESC_TAIL = DMA_DESC_TAIL(index),\
-	name ## _DMA_DESC_CTRL = DMA_DESC_CTRL(index),\
+#define ROCKER_DMA_RING_REG_SET(name, index)					\
+enum {										\
+	ROCKER_ ## name ## _DMA_DESC_ADDR = __ROCKER_DMA_DESC_ADDR(index),	\
+	ROCKER_ ## name ## _DMA_COMP_ADDR = __ROCKER_DMA_COMP_ADDR(index),	\
+	ROCKER_ ## name ## _DMA_DESC_SIZE = __ROCKER_DMA_DESC_SIZE(index),	\
+	ROCKER_ ## name ## _DMA_DESC_HEAD = __ROCKER_DMA_DESC_HEAD(index),	\
+	ROCKER_ ## name ## _DMA_DESC_TAIL = __ROCKER_DMA_DESC_TAIL(index),	\
+	ROCKER_ ## name ## _DMA_DESC_CTRL = __ROCKER_DMA_DESC_CTRL(index),	\
 }
 
 ROCKER_DMA_RING_REG_SET(TX, 0);
