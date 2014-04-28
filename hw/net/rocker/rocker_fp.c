@@ -1,0 +1,166 @@
+/*
+ * QEMU rocker switch emulation - front-panel ports
+ *
+ * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+#include "qemu/iov.h"
+#include "rocker_fp.h"
+
+/*
+ * A nic is created for the front panel port and is peered
+ * with a netdev with the id=port->name.  The port netdev
+ * can be created from cmd line using:
+ *
+ *     -netdev <type>,id=<port_name>
+ *
+ * example:
+ *
+ *     -netdev tap,id=sw1.1
+ *
+ * Alternative, rocker can automatically create the netdevs
+ * for all ports using cmd line:
+ *
+ *     -device rocker,name=<switch_name>,backend=<type>
+ *
+ * example:
+ *
+ *     -device rocker,name=sw1,backend=tap,fp_ports=4
+ *
+ * Would create 4 host tap interfaces with names sw1.[1-4].
+ * The rocker nics would be peered with each netdev.
+ */
+
+static int fp_port_can_receive(NetClientState *nc)
+{
+    return 0;
+}
+
+static ssize_t fp_port_receive_iov(NetClientState *nc, const struct iovec *iov,
+                                   int iovcnt)
+{
+    size_t size = iov_size(iov, iovcnt);
+
+    return size;
+}
+
+static ssize_t fp_port_receive(NetClientState *nc, const uint8_t *buf,
+                               size_t size)
+{
+    const struct iovec iov = {
+        .iov_base = (uint8_t *)buf,
+        .iov_len = size
+    };
+
+    return fp_port_receive_iov(nc, &iov, 1);
+}
+
+static void fp_port_cleanup(NetClientState *nc)
+{
+}
+
+static void fp_port_set_link_status(NetClientState *nc)
+{
+}
+
+static NetClientInfo fp_port_info = {
+    .type = NET_CLIENT_OPTIONS_KIND_NIC,
+    .size = sizeof(NICState),
+    .can_receive = fp_port_can_receive,
+    .receive = fp_port_receive,
+    .receive_iov = fp_port_receive_iov,
+    .cleanup = fp_port_cleanup,
+    .link_status_changed = fp_port_set_link_status,
+};
+
+void fp_port_set_conf(struct fp_port *port, char *sw_name,
+                      MACAddr *start_mac, void *parent, uint index)
+{
+    port->parent = parent;
+    port->index = index;
+
+    /* front-panel switch port names are 1-based */
+    port->name = g_strdup_printf("%s.%d", sw_name, index + 1);
+
+    memcpy(port->conf.macaddr.a, start_mac, sizeof(port->conf.macaddr.a));
+    port->conf.macaddr.a[5] += index;
+    port->conf.bootindex = -1;
+}
+
+void fp_port_clear_conf(struct fp_port *port)
+{
+    g_free(port->name);
+}
+
+static int fp_port_set_tap_netdev(struct fp_port *port, char *script,
+                                  char *downscript)
+{
+    NetdevTapOptions nctap = {
+        .has_ifname = true,
+        .ifname = port->name,
+        .has_script = script ? true : false,
+        .script = script,
+        .has_downscript = downscript ? true : false,
+        .downscript = downscript,
+    };
+    struct NetClientOptions ncopts = {
+        .kind = NET_CLIENT_OPTIONS_KIND_TAP,
+        .tap = &nctap,
+    };
+
+    return net_init_tap(&ncopts, port->name, NULL);
+}
+
+int fp_port_set_netdev(struct fp_port *port,
+                       enum fp_port_backend backend,
+                       char *script, char *downscript)
+{
+    port->backend = backend;
+
+    switch (backend) {
+    case FP_BACKEND_NONE:
+        return 0;
+    case FP_BACKEND_TAP:
+        return fp_port_set_tap_netdev(port, script, downscript);
+    default:
+        return -1;
+    }
+}
+
+void fp_port_clear_netdev(struct fp_port *port)
+{
+    // TODO delete tap
+}
+
+int fp_port_set_nic(struct fp_port *port, const char *type)
+{
+    /* find the netdev to peer with, if any, my matching
+     * id=port->name
+     */
+
+    port->conf.peers.ncs[0] = qemu_find_netdev(port->name);
+
+    port->nic = qemu_new_nic(&fp_port_info, &port->conf,
+                             type, NULL, port);
+    qemu_format_nic_info_str(qemu_get_queue(port->nic),
+                             port->conf.macaddr.a);
+
+    return 0;
+}
+
+void fp_port_clear_nic(struct fp_port *port)
+{
+    // TODO delete nic
+}
+
+
