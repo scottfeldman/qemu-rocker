@@ -21,6 +21,16 @@
 #include "rocker_fp.h"
 #include "tlv_parse.h"
 
+#if defined (DEBUG_ROCKER)
+#  define DPRINTF(fmt, ...) \
+    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
+#else
+static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
+{
+    return 0;
+}
+#endif
+
 #define ROCKER "rocker"
 #define ROCKER_FP_PORTS_MAX 62
 
@@ -41,28 +51,146 @@ struct rocker {
 
     /* front-panel ports */
     struct fp_port fp_port[ROCKER_FP_PORTS_MAX];
+
+    /* register backings */
+    uint32_t test_reg;
+    uint64_t test_reg64;
+    uint32_t irq_status;
+    uint32_t irq_mask;
 };
 
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
 
+static void rocker_update_irq(struct rocker *r)
+{
+    PCIDevice *d = PCI_DEVICE(r);
+    uint32_t isr = r->irq_status & r->irq_mask;
+
+    DPRINTF("Set IRQ to %d (%04x %04x)\n", isr ? 1 : 0,
+            r->irq_status, r->irq_mask);
+
+    pci_set_irq(d, (isr != 0));
+}
+
+static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
+{
+    struct rocker *r = opaque;
+
+    switch (addr) {
+    case ROCKER_TEST_REG:
+        r->test_reg = val;
+        break;
+    case ROCKER_TEST_IRQ:
+        r->irq_status = val;
+        rocker_update_irq(r);
+        break;
+    case ROCKER_IRQ_MASK:
+        r->irq_mask = val;
+        rocker_update_irq(r);
+        break;
+    default:
+        DPRINTF("not implemented write(l) addr=0x%lx val=0x%08x\n", addr, val);
+        break;
+    }
+}
+
+static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
+{
+    struct rocker *r = opaque;
+
+    switch (addr) {
+    case ROCKER_TEST_REG64:
+        r->test_reg64 = val;
+        break;
+    default:
+        DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
+        break;
+    }
+}
+
 static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
                               unsigned size)
 {
+    DPRINTF("Write addr %lx, size %u, val %lx\n", addr, size, val);
+
+    switch (size) {
+    case 4:
+        rocker_io_writel(opaque, addr, val);
+        break;
+    case 8:
+        rocker_io_writeq(opaque, addr, val);
+        break;
+    }
+}
+
+static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
+{
+    struct rocker *r = opaque;
+    uint32_t ret;
+
+    switch (addr) {
+    case ROCKER_TEST_REG:
+        ret = r->test_reg * 2;
+        break;
+    case ROCKER_IRQ_STAT:
+        ret = r->irq_status;
+        r->irq_status = 0;
+        rocker_update_irq(r);
+        break;
+    case ROCKER_IRQ_MASK:
+        ret = r->irq_mask;
+        break;
+    default:
+        DPRINTF("not implemented read(l) addr=0x%lx\n", addr);
+        ret = 0;
+        break;
+    }
+    return ret;
+}
+
+static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
+{
+    struct rocker *r = opaque;
+    uint64_t ret;
+
+    switch (addr) {
+    case ROCKER_TEST_REG64:
+        ret = r->test_reg64 * 2;
+        break;
+    default:
+        DPRINTF("not implemented read(q) addr=0x%lx\n", addr);
+        ret = 0;
+        break;
+    }
+    return ret;
 }
 
 static uint64_t rocker_mmio_read(void *opaque, hwaddr addr, unsigned size)
 {
-    return 0;
+    DPRINTF("Read addr %lx, size %u\n", addr, size);
+
+    switch (size) {
+    case 4:
+        return rocker_io_readl(opaque, addr);
+    case 8:
+        return rocker_io_readq(opaque, addr);
+    }
+
+    return -1;
 }
 
 static const MemoryRegionOps rocker_mmio_ops = {
     .read = rocker_mmio_read,
     .write = rocker_mmio_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
+    .valid = {
+        .min_access_size = 4,
+        .max_access_size = 8,
+    },
     .impl = {
         .min_access_size = 4,
-        .max_access_size = 4,
+        .max_access_size = 8,
     },
 };
 
