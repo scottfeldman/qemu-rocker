@@ -102,12 +102,21 @@ struct rocker_comp_desc {
 enum {
     /* Nest type */
     TLV_NEST = 1,
-    /* TX TLV's */
     TLV_LPORT,
-    TLV_TX_OFFLOADS,
-    TLV_L3_CSUM_OFF,
+
+    /* TX TLV's */
+    TLV_TX_OFFLOAD,
+    TLV_TX_L3_CSUM_OFF,
+    TLV_TX_TSO_MSS,
+    TLV_TX_TSO_HDR_LEN,
     TLV_TX_FRAG_CNT,
     TLV_TX_FRAG,
+
+    /* RX TLV's */
+    TLV_RX_FLAGS,
+    TLV_RX_CSUM,
+    TLV_RX_PACKET_LEN,
+    TLV_RX_PACKET,
 
     /* Flow Table TLV's */
     TLV_FLOW_CMD,
@@ -162,10 +171,33 @@ enum {
 /*
  * Command TLV value definitions
  */
-#define CMD_ADD         0
-#define CMD_DEL         1
-#define CMD_MOD         2
-#define CMD_GET_STATS   3
+#define CMD_ADD                         0
+#define CMD_DEL                         1
+#define CMD_MOD                         2
+#define CMD_GET_STATS                   3
+
+/*
+ * Tx offload modes
+ */
+
+#define TX_OFFLOAD_NONE                 0
+#define TX_OFFLOAD_IP_CSUM              1
+#define TX_OFFLOAD_TCP_UDP_CSUM         2
+#define TX_OFFLOAD_L3_CSUM              3
+#define TX_OFFLOAD_TSO                  4
+
+/*
+ * Rx parsing flags
+ */
+
+#define RX_FLAGS_IPV4                   (1 << 0)
+#define RX_FLAGS_IPV6                   (1 << 1)
+#define RX_FLAGS_CSUM_CALC              (1 << 2)
+#define RX_FLAGS_IPV4_CSUM_GOOD         (1 << 3)
+#define RX_FLAGS_IP_FRAG                (1 << 4)
+#define RX_FLAGS_TCP                    (1 << 5)
+#define RX_FLAGS_UDP                    (1 << 6)
+#define RX_FLAGS_TCP_UDP_CSUM_GOOD      (1 << 7)
 
 /*
  * Rocker general purpose registers
