@@ -124,7 +124,8 @@ IRQ_MASK and IRQ_STAT and share the following bit definitions:
 	2	IRQ_RX_DMA_DONE		Receive DMA operation complete
 	3	IRQ_CMD_DMA_DONE	Command DMA operation complete
 	4	IRQ_EVENT_DMA_DONE	Async event DMA operation complete
-	[5:31]	Reserved
+	5	IRQ_TEST_DMA_DONE	Test DMA operation complete
+	[6:31]	Reserved
 
 DMA Operations
 --------------
