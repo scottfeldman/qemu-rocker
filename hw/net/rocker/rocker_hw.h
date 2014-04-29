@@ -102,6 +102,8 @@ struct rocker_comp_desc {
 enum {
     /* Nest type */
     TLV_NEST = 1,
+
+    /* Logical port number */
     TLV_LPORT,
 
     /* TX TLV's */
@@ -121,51 +123,60 @@ enum {
     /* Flow Table TLV's */
     TLV_FLOW_CMD,
     TLV_FLOW_TBL,
-    TLV_FLOW_PRIO,
-    TLV_FLOW_HARDT,
-    TLV_FLOW_IDLET,
+    TLV_FLOW_PRIORITY,
+    TLV_FLOW_HARDTIME,
+    TLV_FLOW_IDLETIME,
     TLV_FLOW_COOKIE,
-    TLV_FLOW_IN_PORT,
+    TLV_FLOW_IG_PORT,               /* nest */
+    TLV_FLOW_IN_PORT,               /* lport */
+    TLV_FLOW_IN_PORT_MASK,
+    TLV_FLOW_VLAN,                  /* nest */
     TLV_FLOW_VLAN_ID,
-    TLV_FLOW_VLAN_IS_MASK,
+    TLV_FLOW_VLAN_ID_MASK,
     TLV_FLOW_NEW_VLAN_ID,
-    TLV_FLOW_TUNNEL_ID,
+    TLV_FLOW_TERM_MAC,              /* nest */
+    TLV_FLOW_ETHERTYPE,
+    TLV_FLOW_SRC_MAC,
     TLV_FLOW_DST_MAC,
     TLV_FLOW_DST_MAC_MASK,
+    TLV_FLOW_BRIDGING,              /* nest */
+    TLV_FLOW_TUNNEL_ID,
     TLV_FLOW_GROUP_ID,
-    TLV_FLOW_TUN_LOG_PORT,
-    TLV_FLOW_OUT_PORT,
-    TLV_FLOW_ETHTYPE,
+    TLV_FLOW_TUN_LOG_PORT,          /* lport */
+    TLV_FLOW_OUT_PORT,              /* lport */
+    TLV_FLOW_UNICAST_ROUTING,       /* nest */
     TLV_FLOW_DST_IP,
     TLV_FLOW_DST_IP_MASK,
     TLV_FLOW_DST_IPV6,
     TLV_FLOW_DST_IPV6_MASK,
+    TLV_FLOW_MULTICAST_ROUTING,     /* nest */
     TLV_FLOW_SRC_IP,
     TLV_FLOW_SRC_IP_MASK,
     TLV_FLOW_SRC_IPV6,
     TLV_FLOW_SRC_IPV6_MASK,
+    TLV_FLOW_L2_PORT,               /* lport */
+    TLV_FLOW_INDEX,
+    TLV_OVERLAY_TYPE,
     TLV_FLOW_STAT_DURATION,
+    TLV_FLOW_STAT_REF_COUNT,
+    TLV_FLOW_STAT_BUCKET_COUNT,
     TLV_FLOW_STAT_RX_PKT,
     TLV_FLOW_STAT_TX_PKT,
+    TLV_FLOW_GROUP_CMD,
+    TLV_FLOW_GROUP_TYPE,
+    TLV_FLOW_GROUP_ACTION,          /* nest */
 
     /* Trunking TLV's */
     TLV_TRUNK_CMD,
-    TLV_TRUNK_LPORT,
+    TLV_TRUNK_LPORT,                /* lport */
     TLV_TRUNK_HASH,
-    TLV_TRUNK_MEMBER,
+    TLV_TRUNK_MEMBER,               /* lport */
     TLV_TRUNK_ACTIVE,
 
     /* Bridging TLV's */
     TLV_BRIDGE_CMD,
-    TLV_BRIDGE_LPORT,
-    TLV_BRIDGE_MEMBER,
-
-    /* Nested TLVs */
-    TLV_FLOW_IG_PORT    = TLV_NEST,
-    TLV_FLOW_VLAN       = TLV_NEST,
-    TLV_FLOW_BRIDGNIG   = TLV_NEST,
-    TLV_FLOW_UCAST_RT   = TLV_NEST,
-    TLV_FLOW_MCAST_RT   = TLV_NEST,
+    TLV_BRIDGE_LPORT,               /* lport */
+    TLV_BRIDGE_MEMBER,              /* lport */
 };
 
 /*
@@ -198,6 +209,30 @@ enum {
 #define RX_FLAGS_TCP                    (1 << 5)
 #define RX_FLAGS_UDP                    (1 << 6)
 #define RX_FLAGS_TCP_UDP_CSUM_GOOD      (1 << 7)
+
+/*
+ * Flow group types
+ */
+
+#define FLOW_GROUP_TYPE_L2_INTERFACE    0
+#define FLOW_GROUP_TYPE_L2_REWRITE      1
+#define FLOW_GROUP_TYPE_L3_UNICAST      2
+#define FLOW_GROUP_TYPE_L2_MULTICAST    3
+#define FLOW_GROUP_TYPE_L2_FLOOD        4
+#define FLOW_GROUP_TYPE_L3_INTERFACE    5
+#define FLOW_GROUP_TYPE_L3_MULTICAST    6
+#define FLOW_GROUP_TYPE_L3_ECMP         7
+#define FLOW_GROUP_TYPE_L2_OVERLAY      8
+
+/*
+ * Flow overlay types
+ */
+
+#define FLOW_OVERLAY_TYPE_FLOOD_UNICAST_TUNNEL          0
+#define FLOW_OVERLAY_TYPE_FLOOD_MULTICAST_TUNNEL        1
+#define FLOW_OVERLAY_TYPE_MULTICAST_UNICAST_TUNNEL      2
+#define FLOW_OVERLAY_TYPE_MULTICAST_MULTICAST_TUNNEL    3
+
 
 /*
  * Rocker general purpose registers

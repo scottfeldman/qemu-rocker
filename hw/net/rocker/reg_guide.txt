@@ -568,13 +568,13 @@ commands are defined:
 	CMD_ADD:		add an entry to flow table
 	CMD_MOD:		modify an entry in flow table
 	CMD_DEL:		delete an entry from flow table
-	CMD_GET_STATS:	get stats for flow entry
+	CMD_GET_STATS:		get stats for flow entry
 
 TLVs for add and modify commands are:
 
 	field		width	description
 	--------------------------------------------------
-	CMD		2	CMD_[ADD|MOD]
+	FLOW_CMD	2	CMD_[ADD|MOD]
 	FLOW_TBL	2	Flow table ID
 				  0: ingress port
 				  10: vlan
@@ -587,9 +587,9 @@ TLVs for add and modify commands are:
 	FLOW_HARDTIME	4	Hard timeout for flow
 	FLOW_IDLETIME	4	Idle timeout for flow
 	FLOW_COOKIE	8	Cookie
-	FLOW_FLOW_xxx	<var>	Nested flow entry TLVs.
+	FLOW_xxx	<var>	Nested flow entry TLVs.
 
-FLOW_FLOW_xxx nested TLVs are defined below:
+FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
@@ -608,7 +608,7 @@ FLOW_FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
-	FLOW_TERM_MAC		nest
+	FLOW_TERM_MAC			nest
 	  FLOW_IN_PORT		4	ingress port number
 	  FLOW_IN_PORT_MASK	4	ingress port number mask
 	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
@@ -624,7 +624,7 @@ FLOW_FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
-	FLOW_BRIDGING		nest
+	FLOW_BRIDGING			nest
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_TUNNEL_ID	2	tunnel ID
 	  FLOW_DST_MAC		6	destination MAC
@@ -644,7 +644,7 @@ FLOW_FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
-	FLOW_UNICAST_ROUNTING	nest
+	FLOW_UNICAST_ROUTING		nest
 	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
 	  FLOW_DST_IP		4	destination IPv4 address
 					stored in host byte order.
@@ -662,7 +662,7 @@ FLOW_FLOW_xxx nested TLVs are defined below:
 
 	field			width	description
 	----------------------------------------------------
-	FLOW_MULTICAST_ROUNTING	nest
+	FLOW_MULTICAST_ROUTING		nest
 	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_SRC_IP		4	source IPv4 address stored
@@ -691,7 +691,7 @@ TLVs for flow delete and get stats command are:
 
 	field		width	description
 	---------------------------------------------------
-	CMD		2	CMD_FLOW_FLOW_[DEL|GET_STATS]
+	FLOW_CMD	2	CMD_[DEL|GET_STATS]
 	FLOW_COOKIE	8	Cookie
 
 On completion of get stats command, the descriptor buffer is written back with
@@ -711,6 +711,11 @@ Possible status return codes in completion descriptor are:
 	0		all			OK
 	EFAULT		all			head or tail index outside
 						of ring
+	ENXIO		all			address or data read err on
+						desc buf
+	ENOSPC		GET_STATS		cmd descriptor buffer wasn't
+						big enough to contain write-back
+						TLVs
 	EINVAL		ADD|MOD			invalid parameters passed in
 	EEXIST		ADD			entry already exists
 	ENOSPC		ADD			no space left in flow table
@@ -719,7 +724,82 @@ Possible status return codes in completion descriptor are:
 Group Table Interface
 ---------------------
 
-xxx
+There are commands to add, modify, delete, and get stats of group table
+entries.  The commands are issued using the DMA CMD descriptor ring.  The
+following commands are defined:
+
+	CMD_ADD:		add an entry to group table
+	CMD_MOD:		modify an entry in group table
+	CMD_DEL:		delete an entry from group table
+	CMD_GET_STATS:		get stats for group entry
+
+TLVs for add and modify commands are:
+
+	field			width	description
+	-----------------------------------------------------------
+	FLOW_GROUP_CMD		2	CMD_[ADD|MOD]
+	FLOW_GROUP_ID		2	Flow group ID
+	FLOW_GROUP_TYPE		1	Group type:
+					  0: L2 interface
+					  1: L2 rewrite
+					  2: L3 unicast
+					  3: L2 multicast
+					  4: L2 flood
+					  5: L3 interface
+					  6: L3 multicast
+					  7: L3 ECMP
+					  8: L2 overlay
+	FLOW_VLAN_ID		2	Vlan ID (types 0, 3, 4, 6)
+	FLOW_L2_PORT		2	Port (types 0)
+	FLOW_INDEX		4	Index (all types but 0)
+	FLOW_OVERLAY_TYPE	1	Overlay sub-type (type 8):
+					  0: Flood unicast tunnel
+					  1: Flood multicast tunnel
+					  2: Multicast unicast tunnel
+					  3: Multicast multicast tunnel
+	FLOW_GROUP_ACTION		nest
+	  FLOW_GROUP_ID		2	next group ID in chain (all
+					types except 0)
+	  FLOW_OUT_PORT		2	egress port (types 0, 8)
+	  FLOW_POP_VLAN_TAG	1	strip outer VLAN tag (type 1
+					only)
+	  FLOW_VLAN_ID		2	(types 1, 5)
+	  FLOW_SRC_MAC		6	(types 1, 2, 5) 
+	  FLOW_DST_MAC		6	(types 1, 2) 
+
+TLVs for flow delete and get stats command are:
+
+	field			width	description
+	-----------------------------------------------------------
+	FLOW_GROUP_CMD		2	CMD_[DEL|GET_STATS]
+	FLOW_GROUP_ID		2	Flow group ID
+
+On completion of get stats command, the descriptor buffer is written back with
+the following TLVs:
+
+	field			width	description
+	---------------------------------------------------
+	FLOW_GROUP_ID		2	Flow group ID
+	FLOW_STAT_DURATION	4	Flow duration
+	FLOW_STAT_REF_COUNT	4	Flow reference count
+	FLOW_STAT_BUCKET_COUNT	4	Flow bucket acount 
+
+Possible status return codes in completion descriptor are:
+
+	DMA_COMP_STATUS	command			reason
+	--------------------------------------------------------------------
+	0		all			OK
+	EFAULT		all			head or tail index outside
+						of ring
+	ENXIO		all			address or data read err on
+						desc buf
+	ENOSPC		GET_STATS		cmd descriptor buffer wasn't
+						big enough to contain write-back
+						TLVs
+	EINVAL		ADD|MOD			invalid parameters passed in
+	EEXIST		ADD			entry already exists
+	ENOSPC		ADD			no space left in flow table
+	ENOENT		MOD|DEL|GET_STATS	group ID invalid
 
 
 SECTION 9: L2/L3 Mode
