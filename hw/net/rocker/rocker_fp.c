@@ -84,9 +84,9 @@ static NetClientInfo fp_port_info = {
 };
 
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
-                      MACAddr *start_mac, void *parent, uint index)
+                      MACAddr *start_mac, struct rocker *r, uint index)
 {
-    port->parent = parent;
+    port->r = r;
     port->index = index;
 
     /* front-panel switch port names are 1-based */
