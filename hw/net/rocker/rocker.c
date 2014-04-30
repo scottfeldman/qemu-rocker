@@ -190,6 +190,9 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     case ROCKER_TEST_DMA_SIZE:
         ret = r->test_dma_size;
         break;
+    case ROCKER_PORT_PHYS_COUNT:
+        ret = r->fp_ports;
+        break;
     default:
         DPRINTF("not implemented read(l) addr=0x%lx\n", addr);
         ret = 0;
