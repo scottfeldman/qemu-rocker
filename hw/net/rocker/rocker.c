@@ -17,9 +17,11 @@
 
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
+#include "net/net.h"
 
 #include "rocker_hw.h"
 #include "rocker_fp.h"
+#include "rocker_flow.h"
 #include "tlv_parse.h"
 
 #if defined (DEBUG_ROCKER)
@@ -51,7 +53,7 @@ struct rocker {
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
 
     /* front-panel ports */
-    struct fp_port fp_port[ROCKER_FP_PORTS_MAX];
+    struct fp_port *fp_port[ROCKER_FP_PORTS_MAX];
 
     /* register backings */
     uint32_t test_reg;
@@ -60,6 +62,8 @@ struct rocker {
     uint32_t test_dma_size;
     uint32_t irq_status;
     uint32_t irq_mask;
+
+    struct flow_world *fw;
 };
 
 #define to_rocker(obj) \
@@ -255,14 +259,17 @@ static void pci_rocker_uninit(PCIDevice *dev)
     int i;
 
     for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = &r->fp_port[i];
+        struct fp_port *port = r->fp_port[i];
 
         fp_port_clear_nic(port);
         fp_port_clear_netdev(port);
         fp_port_clear_conf(port);
+        fp_port_free(port);
+        r->fp_port[i] = NULL;
     }
 
     memory_region_destroy(&r->mmio);
+    flow_world_free(r->fw);
 }
 
 static int pci_rocker_init(PCIDevice *pci_dev)
@@ -274,6 +281,22 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     static int sw_index = 0;
     enum fp_port_backend backend;
     int i, err;
+
+    /* allocate worlds */
+
+    r->fw = flow_world_alloc();
+    if (!r->fw)
+        return -ENOMEM;
+
+#if 0
+    r->lw = l2_l3_world_alloc();
+    if (!r->lw) {
+        err = -ENOMEM;
+        goto err_l2_l3_world_alloc;
+    }
+#endif
+
+    /* setup PCI device */
 
     pci_conf[PCI_INTERRUPT_PIN] = ROCKER_PCI_INTERRUPT_PIN;
 
@@ -303,7 +326,12 @@ static int pci_rocker_init(PCIDevice *pci_dev)
         r->fp_ports = ROCKER_FP_PORTS_MAX;
 
     for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = &r->fp_port[i];
+        struct fp_port *port = fp_port_alloc();
+
+        if (!port)
+            goto err_port_alloc;
+
+        r->fp_port[i] = port;
 
         fp_port_set_conf(port, r->name, &r->fp_start_macaddr, r, i);
         err = fp_port_set_netdev(port, backend,
@@ -318,14 +346,18 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     return 0;
 
 err_set_nic:
-    fp_port_clear_netdev(&r->fp_port[i]);
+    fp_port_clear_netdev(r->fp_port[i]);
 err_set_netdev:
+    fp_port_free(r->fp_port[i]);
+err_port_alloc:
     for (--i; i >= 0; i--) {
-        struct fp_port *port = &r->fp_port[i];
+        struct fp_port *port = r->fp_port[i];
         fp_port_clear_nic(port);
         fp_port_clear_netdev(port);
         fp_port_clear_conf(port);
+        fp_port_free(port);
     }
+    flow_world_free(r->fw);
 
     return -1;
 }

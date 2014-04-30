@@ -1,7 +1,30 @@
+/*
+ * QEMU rocker switch emulation - front-panel ports
+ *
+ * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
 #ifndef _ROCKER_FP_H_
 #define _ROCKER_FP_H_
 
-#include "net/clients.h"
+#include "net/net.h"
+#include "qemu/iov.h"
+
+enum fp_port_mode {
+    FP_MODE_UNASSIGNED = 1,
+    FP_MODE_FLOW,
+    FP_MODE_L2_L3,
+};
 
 enum fp_port_backend {
     FP_BACKEND_NONE = 1,
@@ -9,16 +32,10 @@ enum fp_port_backend {
 };
 
 struct rocker;
+struct fp_port;
 
-/* each front-panel port is a qemu nic, with private configuration */
-struct fp_port {
-    struct rocker *r;
-    uint index;
-    char *name;
-    enum fp_port_backend backend;
-    NICState *nic;
-    NICConf conf;
-};
+typedef int (fp_port_ig)(struct fp_port *port, const struct iovec *iov,
+                         int iovcnt);
 
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
                       MACAddr *start_mac, struct rocker *r, uint index);
@@ -29,5 +46,10 @@ int fp_port_set_netdev(struct fp_port *port,
 void fp_port_clear_netdev(struct fp_port *port);
 int fp_port_set_nic(struct fp_port *port, const char *type);
 void fp_port_clear_nic(struct fp_port *port);
+void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
+                      fp_port_ig *ig);
+
+struct fp_port *fp_port_alloc(void);
+void fp_port_free(struct fp_port *port);
 
 #endif /* _ROCKER_FP_H_ */
