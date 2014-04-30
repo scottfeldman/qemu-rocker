@@ -36,4 +36,4 @@ obj-y += vhost_net.o
 obj-$(CONFIG_ETSEC) += fsl_etsec/etsec.o fsl_etsec/registers.o \
 			fsl_etsec/rings.o fsl_etsec/miim.o
 
-obj-$(CONFIG_ROCKER) += rocker/rocker.o rocker/rocker_fp.o
+obj-$(CONFIG_ROCKER) += rocker/rocker.o rocker/rocker_fp.o rocker/rocker_flow.o

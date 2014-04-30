@@ -14,7 +14,8 @@
  * GNU General Public License for more details.
  */
 
-#include "qemu/iov.h"
+#include "net/clients.h"
+
 #include "rocker_fp.h"
 
 /*
@@ -41,6 +42,34 @@
  * The rocker nics would be peered with each netdev.
  */
 
+#if defined (DEBUG_ROCKER)
+#  define DPRINTF(fmt, ...) \
+    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
+#else
+static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
+{
+    return 0;
+}
+#endif
+
+struct fp_port {
+    struct rocker *rocker;
+    uint index;
+    char *name;
+    enum fp_port_backend backend;
+    enum fp_port_mode mode;
+    NICState *nic;
+    NICConf conf;
+    fp_port_ig *ig;
+};
+
+static int fp_port_ig_drop(struct fp_port *port, const struct iovec *iov,
+                           int iovcnt)
+{
+    /* silently drop ingress pkt */
+    return iov_size(iov, iovcnt);
+}
+
 static int fp_port_can_receive(NetClientState *nc)
 {
     return 0;
@@ -49,9 +78,13 @@ static int fp_port_can_receive(NetClientState *nc)
 static ssize_t fp_port_receive_iov(NetClientState *nc, const struct iovec *iov,
                                    int iovcnt)
 {
-    size_t size = iov_size(iov, iovcnt);
+    struct fp_port *port = qemu_get_nic_opaque(nc);
 
-    return size;
+    if (port->ig)
+        return port->ig(port, iov, iovcnt);
+
+    DPRINTF("Port receive handler not set; dropping packet\n");
+    return iov_size(iov, iovcnt);
 }
 
 static ssize_t fp_port_receive(NetClientState *nc, const uint8_t *buf,
@@ -84,9 +117,10 @@ static NetClientInfo fp_port_info = {
 };
 
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
-                      MACAddr *start_mac, struct rocker *r, uint index)
+                      MACAddr *start_mac, struct rocker *r,
+                      uint index)
 {
-    port->r = r;
+    port->rocker = r;
     port->index = index;
 
     /* front-panel switch port names are 1-based */
@@ -133,18 +167,18 @@ int fp_port_set_netdev(struct fp_port *port,
     case FP_BACKEND_TAP:
         return fp_port_set_tap_netdev(port, script, downscript);
     default:
+        DPRINTF("Invalid backend mode %d\n", backend);
         return -1;
     }
 }
 
 void fp_port_clear_netdev(struct fp_port *port)
 {
-    // TODO delete tap
 }
 
 int fp_port_set_nic(struct fp_port *port, const char *type)
 {
-    /* find the netdev to peer with, if any, my matching
+    /* find the netdev to peer with, if any, by matching
      * id=port->name
      */
 
@@ -160,7 +194,39 @@ int fp_port_set_nic(struct fp_port *port, const char *type)
 
 void fp_port_clear_nic(struct fp_port *port)
 {
-    // TODO delete nic
+    qemu_del_nic(port->nic);
+    port->nic = NULL;
 }
 
+void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
+                      fp_port_ig *ig)
+{
+    switch (mode) {
+    case FP_MODE_UNASSIGNED:
+    case FP_MODE_FLOW:
+    case FP_MODE_L2_L3:
+        port->mode = mode;
+        port->ig = ig;
+        if (!ig)
+            DPRINTF("WARNING port mode set (%d) but no ingress handler installed\n",
+                    mode);
+        break;
+    default:
+        DPRINTF("Invalid port mode %d\n", mode);
+    }
+}
 
+struct fp_port *fp_port_alloc(void)
+{
+    struct fp_port *port = g_malloc0(sizeof(struct fp_port));
+
+    if (port)
+        fp_port_set_mode(port, FP_MODE_UNASSIGNED, fp_port_ig_drop);
+
+    return port;
+}
+
+void fp_port_free(struct fp_port *port)
+{
+    g_free(port);
+}

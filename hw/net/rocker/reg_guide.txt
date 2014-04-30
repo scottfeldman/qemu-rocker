@@ -801,7 +801,8 @@ Possible status return codes in completion descriptor are:
 	EEXIST		ADD			entry already exists
 	ENOSPC		ADD			no space left in flow table
 	ENOENT		MOD|DEL|GET_STATS	group ID invalid
-
+	EBUSY		DEL			group reference count non-zero
+	ENODEV		ADD			next group ID doesn't exist
 
 SECTION 9: L2/L3 Mode
 ============================
