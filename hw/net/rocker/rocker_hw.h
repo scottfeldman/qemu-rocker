@@ -2,6 +2,7 @@
  * Rocker switch hardware register and descriptor definitions.
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
+ * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
  *
  */
 
