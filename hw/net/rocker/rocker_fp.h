@@ -8,9 +8,11 @@ enum fp_port_backend {
     FP_BACKEND_TAP,
 };
 
+struct rocker;
+
 /* each front-panel port is a qemu nic, with private configuration */
 struct fp_port {
-    void *parent;  /* back pointer to parent */
+    struct rocker *r;
     uint index;
     char *name;
     enum fp_port_backend backend;
@@ -19,7 +21,7 @@ struct fp_port {
 };
 
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
-                      MACAddr *start_mac, void *parent, uint index);
+                      MACAddr *start_mac, struct rocker *r, uint index);
 void fp_port_clear_conf(struct fp_port *port);
 int fp_port_set_netdev(struct fp_port *port,
                        enum fp_port_backend backend,
