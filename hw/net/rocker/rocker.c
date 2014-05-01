@@ -19,6 +19,7 @@
 #include "hw/pci/pci.h"
 #include "net/net.h"
 
+#include "rocker.h"
 #include "rocker_hw.h"
 #include "rocker_fp.h"
 #include "rocker_flow.h"
@@ -57,16 +58,6 @@ struct rocker {
 
     struct flow_world *fw;
 };
-
-#if defined (DEBUG_ROCKER)
-#  define DPRINTF(fmt, ...) \
-    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
-#else
-static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
-{
-    return 0;
-}
-#endif
 
 #define ROCKER "rocker"
 
