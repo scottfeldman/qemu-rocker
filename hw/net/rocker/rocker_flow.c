@@ -54,6 +54,63 @@ enum flow_tbl_id {
     FLOW_TABLE_ACL_POLICY = 60,
 };
 
+/* flow_key stolen from OVS */
+
+struct flow_key {
+    struct {
+        uint32_t priority;           /* flow priority */
+        uint16_t in_port;            /* ingress port */
+    } phy;
+    struct {
+        MACAddr src;                 /* ethernet source address */
+        MACAddr dst;                 /* ethernet destination address */
+        uint16_t tci;                /* 0 if no VLAN */
+        uint16_t type;               /* ethernet frame type */
+    } eth;
+    struct {
+        uint8_t proto;               /* IP protocol or ARP opcode */
+        uint8_t tos;                 /* IP ToS */
+        uint8_t ttl;                 /* IP TTL/hop limit */
+        uint8_t frag;                /* one of FRAG_TYPE_* */
+    } ip;
+    union {
+        struct {
+            struct {
+                uint32_t src;        /* IP source address */
+                uint32_t dst;        /* IP destination address */
+            } addr;
+            union {
+                struct {
+                    uint16_t src;    /* TCP/UDP/SCTP source port */
+                    uint16_t dst;    /* TCP/UDP/SCTP destination port */
+                    uint16_t flags;  /* TCP flags */
+                } tp;
+                struct {
+                    MACAddr sha;     /* ARP source hardware address */
+                    MACAddr tha;     /* ARP target hardware address */
+                } arp;
+            };
+        } ipv4;
+        struct {
+            struct {
+                uint64_t src[2];     /* IPv6 source address */
+                uint64_t dst[2];     /* IPv6 destination address */
+            } addr;
+            uint32_t label;          /* IPv6 flow label */
+            struct {
+                uint16_t src;        /* TCP/UDP/SCTP source port */
+                uint16_t dst;        /* TCP/UDP/SCTP destination port */
+                uint16_t flags;      /* TCP flags */
+            } tp;
+            struct {
+                uint64_t target[2];  /* ND target address */
+                MACAddr sll;         /* ND source link layer address */
+                MACAddr tll;         /* ND target link layer address */
+            } nd;
+        } ipv6;
+    };
+} __attribute__((packed, aligned (8)));
+
 static struct flow_tbl {
     int max_size;
     enum hash_tbl_id hash_tbl_id;

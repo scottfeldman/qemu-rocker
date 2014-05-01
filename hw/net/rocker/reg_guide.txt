@@ -593,13 +593,13 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_IG_PORT			nest
-	  FLOW_IN_PORT		4	ingress port number
+	  FLOW_IN_PORT		2	ingress port number
 	  FLOW_TBL		2	goto table ID; zero to drop
 
 	field			width	description
 	----------------------------------------------------
 	FLOW_VLAN			nest
-	  FLOW_IN_PORT		4	ingress port number
+	  FLOW_IN_PORT		2	ingress port number
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
 	  FLOW_TBL		2	goto table ID; zero to drop
@@ -608,8 +608,8 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_TERM_MAC			nest
-	  FLOW_IN_PORT		4	ingress port number
-	  FLOW_IN_PORT_MASK	4	ingress port number mask
+	  FLOW_IN_PORT		2	ingress port number
+	  FLOW_IN_PORT_MASK	2	ingress port number mask
 	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
 	  FLOW_DST_MAC		6	destination MAC
 	  FLOW_DST_MAC_MASK	6	destination MAC mask
@@ -618,7 +618,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_TBL		2	only acceptable values are
 					unicast or multicast routing
 					table IDs
-	  FLOW_OUT_PORT		4	if specified, must be controller,
+	  FLOW_OUT_PORT		2	if specified, must be controller,
 					set zero otherwise
 
 	field			width	description
@@ -637,7 +637,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_TUN_LOG_PORT	4	unicast Tenant Bridging
 					flows specify a tunnel
 					logical port ID
-	  FLOW_OUT_PORT		4	data for OUTPUT action,
+	  FLOW_OUT_PORT		2	data for OUTPUT action,
 					restricted to CONTROLLER,
 					set to 0 otherwise
 
@@ -689,8 +689,8 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_ACL			nest
-	  FLOW_IN_PORT		4	ingress port number
-	  FLOW_IN_PORT_MASK	4	ingress port number mask
+	  FLOW_IN_PORT		2	ingress port number
+	  FLOW_IN_PORT_MASK	2	ingress port number mask
 	  FLOW_ETHERTYPE	2	ethertype
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
@@ -733,12 +733,12 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_DSCP_MASK	2	DSCP mask
 	  FLOW_ECN		2	ECN
 	  FLOW_ECN_MASK		2	ECN mask
-	  FLOW_L4_SRC_PORT	4	L4 source port, only for
+	  FLOW_L4_SRC_PORT	2	L4 source port, only for
 					TCP, UDP, or SCTP
-	  FLOW_L4_SRC_PORT_MASK	4	L4 source port mask
-	  FLOW_L4_DST_PORT	4	L4 source port, only for
+	  FLOW_L4_SRC_PORT_MASK	2	L4 source port mask
+	  FLOW_L4_DST_PORT	2	L4 source port, only for
 					TCP, UDP, or SCTP
-	  FLOW_L4_DST_PORT_MASK	4	L4 source port mask
+	  FLOW_L4_DST_PORT_MASK	2	L4 source port mask
 	  FLOW_ICMP_TYPE	1	ICMP type, only if IP protocol is 1
 	  FLOW_ICMP_TYPE_MASK	1	ICMP type mask
 	  FLOW_ICMP_CODE	1	ICMP code
@@ -755,7 +755,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_TUN_LOG_PORT	4	restrct to valid tunnel
 					logical port, set to 0
 					otherwise.
-	  FLOW_OUT_PORT		4	data for OUTPUT action,
+	  FLOW_OUT_PORT		2	data for OUTPUT action,
 					restricted to CONTROLLER,
 					set to 0 otherwise
 	  FLOW_CLEAR_ACTIONS	4	if 1 packets matching flow are
