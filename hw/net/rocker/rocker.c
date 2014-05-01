@@ -23,18 +23,8 @@
 #include "rocker_fp.h"
 #include "rocker_flow.h"
 #include "tlv_parse.h"
+#include "rocker_dma.h"
 
-#if defined (DEBUG_ROCKER)
-#  define DPRINTF(fmt, ...) \
-    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
-#else
-static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
-{
-    return 0;
-}
-#endif
-
-#define ROCKER "rocker"
 #define ROCKER_FP_PORTS_MAX 62
 
 struct rocker {
@@ -63,9 +53,22 @@ struct rocker {
     uint32_t irq_status;
     uint32_t irq_mask;
     uint64_t fp_enabled;
+    struct rocker_dma_ring rings[4];
 
     struct flow_world *fw;
 };
+
+#if defined (DEBUG_ROCKER)
+#  define DPRINTF(fmt, ...) \
+    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
+#else
+static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
+{
+    return 0;
+}
+#endif
+
+#define ROCKER "rocker"
 
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
@@ -118,6 +121,7 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
 static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
 {
     struct rocker *r = opaque;
+    int index = ROCKER_RING_INDEX(addr);
 
     switch (addr) {
     case ROCKER_TEST_REG:
@@ -136,6 +140,24 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
         break;
     case ROCKER_TEST_DMA_CTRL:
         rocker_test_dma_ctrl(r, val);
+        break;
+    case ROCKER_TX_DMA_DESC_SIZE:
+    case ROCKER_RX_DMA_DESC_SIZE:
+    case ROCKER_CMD_DMA_DESC_SIZE:
+    case ROCKER_EVENT_DMA_DESC_SIZE:
+        r->rings[index].size = val;
+        break;
+    case ROCKER_TX_DMA_DESC_HEAD:
+    case ROCKER_RX_DMA_DESC_HEAD:
+    case ROCKER_CMD_DMA_DESC_HEAD:
+    case ROCKER_EVENT_DMA_DESC_HEAD:
+        r->rings[index].head = val;
+        break;
+    case ROCKER_TX_DMA_DESC_CTRL:
+    case ROCKER_RX_DMA_DESC_CTRL:
+    case ROCKER_CMD_DMA_DESC_CTRL:
+    case ROCKER_EVENT_DMA_DESC_CTRL:
+        r->rings[index].ctrl = val;
         break;
     default:
         DPRINTF("not implemented write(l) addr=0x%lx val=0x%08x\n", addr, val);
@@ -160,6 +182,7 @@ static void rocker_fp_ports_enable(struct rocker *r, uint64_t new)
 static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
 {
     struct rocker *r = opaque;
+    int index;
 
     switch (addr) {
     case ROCKER_TEST_REG64:
@@ -170,6 +193,13 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
         break;
     case ROCKER_PORT_PHYS_ENABLE:
         rocker_fp_ports_enable(r, val);
+        break;
+    case ROCKER_TX_DMA_DESC_ADDR:
+    case ROCKER_RX_DMA_DESC_ADDR:
+    case ROCKER_CMD_DMA_DESC_ADDR:
+    case ROCKER_EVENT_DMA_DESC_ADDR:
+        index = ROCKER_RING_INDEX(addr);
+        r->rings[index].base_addr = val;
         break;
     default:
         DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
@@ -196,6 +226,7 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
 {
     struct rocker *r = opaque;
     uint32_t ret;
+    int index = ROCKER_RING_INDEX(addr);
 
     switch (addr) {
     case ROCKER_TEST_REG:
@@ -214,6 +245,29 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
         break;
     case ROCKER_PORT_PHYS_COUNT:
         ret = r->fp_ports;
+    case ROCKER_TX_DMA_DESC_SIZE:
+    case ROCKER_RX_DMA_DESC_SIZE:
+    case ROCKER_CMD_DMA_DESC_SIZE:
+    case ROCKER_EVENT_DMA_DESC_SIZE:
+        ret = r->rings[index].size;
+        break;
+    case ROCKER_TX_DMA_DESC_HEAD:
+    case ROCKER_RX_DMA_DESC_HEAD:
+    case ROCKER_CMD_DMA_DESC_HEAD:
+    case ROCKER_EVENT_DMA_DESC_HEAD:
+        ret = r->rings[index].head;
+        break;
+    case ROCKER_TX_DMA_DESC_TAIL:
+    case ROCKER_RX_DMA_DESC_TAIL:
+    case ROCKER_CMD_DMA_DESC_TAIL:
+    case ROCKER_EVENT_DMA_DESC_TAIL:
+        ret = r->rings[index].tail;
+        break;
+    case ROCKER_TX_DMA_DESC_CTRL:
+    case ROCKER_RX_DMA_DESC_CTRL:
+    case ROCKER_CMD_DMA_DESC_CTRL:
+    case ROCKER_EVENT_DMA_DESC_CTRL:
+        ret = r->rings[index].ctrl;
         break;
     default:
         DPRINTF("not implemented read(l) addr=0x%lx\n", addr);
@@ -237,6 +291,18 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
         break;
     case ROCKER_PORT_PHYS_ENABLE:
         ret = r->fp_enabled;
+        break;
+    case ROCKER_TX_DMA_DESC_ADDR:
+        ret = r->rings[ROCKER_TX_INDEX].base_addr;
+        break;
+    case ROCKER_RX_DMA_DESC_ADDR:
+        ret = r->rings[ROCKER_RX_INDEX].base_addr;
+        break;
+    case ROCKER_CMD_DMA_DESC_ADDR:
+        ret = r->rings[ROCKER_CMD_INDEX].base_addr;
+        break;
+    case ROCKER_EVENT_DMA_DESC_ADDR:
+        ret = r->rings[ROCKER_EVENT_INDEX].base_addr;
         break;
     default:
         DPRINTF("not implemented read(q) addr=0x%lx\n", addr);

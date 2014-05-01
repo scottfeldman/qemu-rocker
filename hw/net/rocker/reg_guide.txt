@@ -1,5 +1,6 @@
 Rocker Network Switch Register Programming Guide
 Scott Feldman <sfeldma@cumulusnetworks.com>
+Neil Horman <nhorman@tuxdriver.com>
 Version 0.1, 4/21/2014
 
 
@@ -133,39 +134,35 @@ DMA Operations
 DMA operations are used for packet DMA to/from the CPU, command and event
 processing.  Command processing includes statistical counters and table dumps,
 table insertion/deletion, and more.  Event processing provides an async
-notification method for device-originating events.  Each DMA operation has a
-set of control registers to manage a descriptor and completion ring pair.  The
-descriptor and completion rings are allocated from contiguous host DMA-able
-memory and registers specify the rings base address as well as current head and
-tail indices.  For descriptor rings, software writes and hardware reads.  For
-completion rings, hardware writes and software reads.  Spliting processing
-between the ring pair minimizes cache contention with any descriptor having a
-single writer.
+notification method for device-originating events.  Each DMA operation has a set
+of control registers to manage a descriptor ring.  The descriptor rings are
+allocated from contiguous host DMA-able memory and registers specify the rings
+base address as well as current head and tail indices.  Software always writes
+the head, and hardware always writes the tail.
 
-A generation bit in each completion descriptor marks hardware's progression
+A generation bit in each descriptors comp_status field marks hardware's progression
 through the descriptor ring.  Each time the ring wraps, the generation bit is
 toggled.  The generation bit allows software to know which descriptors are DMA
 complete.  Software must also toggle its sense of the generation bit each pass
 through the ring to remain synchronized with hardware.  Hardware will write '1'
 to generation bit on first pass through ring, so software should zero-set
-completion ring memory to be syncronized with hardware.  Next pass hardware
-writes '0', and so on.  When updating the completion, hardware writes the
+descriptor ring memory to be syncronized with hardware.  Next pass hardware
+writes '1', and so on.  When updating the comp_status, hardware writes the
 generation bit last, after all other fields are written.  This ensures software
 reads correct field values after reading a generation bit change.
 
-Descriptor/completion ring sizes must be a power of 2 and range from 2 to 64K
-entries.  Descriptor and completion rings' base address must be 8-byte aligned.
-Descriptors and completions must be packed within ring.  Descriptor and
-completion ring sizes must be the same for a given DMA operation.  Each
-descriptor in each ring must also be aligned on an 8 byte boundary.  Each
-descriptor ring will have these registers:
+Descriptor ring sizes must be a power of 2 and range from 2 to 64K entries.
+Descriptor rings' base address must be 8-byte aligned.  Descriptors must be
+packed within ring.  Each descriptor in each ring must also be aligned on an 8
+byte boundary.  Each descriptor ring will have these registers:
 
 	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 32), 64-bit, (R/W)
-	DMA_COMP_xxx_BASE_ADDR, offset 0x0108 + (x * 32), 64-bit, (R/W)
-	DMA_DESC_xxx_SIZE, offset 0x0110 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_HEAD, offset 0x0114 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_TAIL, offset 0x0118 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_CTRL, offset 0x011c + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_SIZE, offset 0x0108 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_HEAD, offset 0x010c + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_TAIL, offset 0x0110 + (x * 32), 32-bit, (R)
+	DMA_DESC_xxx_CTRL, offset 0x0114 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_RES1, offset 0x0118 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_RES2, offset 0x011c + (x * 32), 32-bit, (R/W)
 
 Where x is descriptor ring index:
 
@@ -189,18 +186,10 @@ All descriptor types share some common fields:
 	DMA_DESC_TLV_SIZE	2	Desc payload total size in bytes
 					used for TLVs.  Must be <=
 					DMA_DESC_BUF_SIZE.
-
-All completion types share some common fields: 
-
-	field			width	description
-	-------------------------------------------------------------------
-	DMA_COMP_COOKIE_GEN	8	Cookie/generation bit.  Generation
-					bit is upper-most bit.  The remaining
-					bits is the desc cookie.
-	DMA_COMP_TLV_SIZE	2	Desc payload total size in bytes
-					used for TLVs.  Must be <=
-					DMA_DESC_BUF_SIZE.
-	DMA_COMP_STATUS		2	Completion results, see errno
+	DMA_DESC_COMP_STATUS	2	Completion status of associated
+					desc payload high order bit is
+					clear on new descs, toggled by
+					hw for completed items.
 
 To support forward- and backward-compatibility, descriptor and completion
 payloads are specified in TLV format.  Fields are packed with Type=field name,
@@ -359,8 +348,7 @@ Links status for all front-panel ports is available via PORT_PHYS_LINK_STATUS:
 	Value is logical port bitmap.  Bits 0 and 63 always read 0.  Bits 1-62
 	read 1 for link UP and 0 for link DOWN for respective front-panel ports.
 
-Other properties for ports are available via DMA CMD descriptors and
-completions:
+Other properties for ports are available via DMA CMD descriptors:
 
 	CMD_GET_PORT_SETTINGS descriptor:
 
@@ -417,9 +405,9 @@ payload checksum offload).  Software then bumps the descriptor head to signal
 hardware of new Tx work.  In response, hardware will DMA read Tx descriptors up
 to head, DMA read descriptor buffer and packet data, perform offloading
 functions, and finally frame packet on wire (network).  Once packet processing
-is complete, hardware will writeback status to completion descriptor(s) to
-signal to software that Tx is complete and software resources (e.g. skb)
-backing packet can be released.
+is complete, hardware will writeback status to descriptor(s) to signal to
+software that Tx is complete and software resources (e.g. skb) backing packet
+can be released.
 
 Figure 2 shows an example 3-fragment packet queued with one Tx descriptor.  A
 TLV is used for each packet fragment.
@@ -482,7 +470,7 @@ The TLVs for Tx descriptor buffer are:
 				  Fragment address: 8
 				  Fragment length: 2
 
-Possible status return codes in completion descriptor are:
+Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	reason
 	--------------------------------------------------------------------
@@ -526,7 +514,7 @@ The TLVs for Rx descriptor buffer are:
 	RX_PACKET_LEN	2	Packet data length
 	RX_PACKET	<var>	Packet data
 
-Possible status return codes in completion descriptor are:
+Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	reason
 	--------------------------------------------------------------------
@@ -791,7 +779,7 @@ the following TLVs:
 	FLOW_STAT_RX_PKTS	8	Received packets
 	FLOW_STAT_TX_PKTS	8	Transmit packets
 
-Possible status return codes in completion descriptor are:
+Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	command			reason
 	--------------------------------------------------------------------
@@ -871,7 +859,7 @@ the following TLVs:
 	FLOW_STAT_REF_COUNT	4	Flow reference count
 	FLOW_STAT_BUCKET_COUNT	4	Flow bucket acount 
 
-Possible status return codes in completion descriptor are:
+Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	command			reason
 	--------------------------------------------------------------------
@@ -942,7 +930,7 @@ TLVs for CMD_DEL are:
 	CMD		2	CMD_DEL
 	TRUNK_LPORT	2	Existing trunk logical port number
 
-Possible status return codes in completion descriptor are:
+Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	command			reason
 	--------------------------------------------------------------------
