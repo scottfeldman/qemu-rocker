@@ -274,5 +274,6 @@ enum flow_overlay_type {
 #define ROCKER_PORT_PHYS_COUNT          0x0304
 #define ROCKER_PORT_PHYS_MODE           0x0308 /* 8-byte */
 #define ROCKER_PORT_PHYS_LINK_STATUS    0x0310 /* 8-byte */
+#define ROCKER_PORT_PHYS_ENABLE         0x0318 /* 8-byte */
 
 #endif /* _ROCKER_HW_ */

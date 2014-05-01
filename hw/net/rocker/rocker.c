@@ -62,6 +62,7 @@ struct rocker {
     uint32_t test_dma_size;
     uint32_t irq_status;
     uint32_t irq_mask;
+    uint64_t fp_enabled;
 
     struct flow_world *fw;
 };
@@ -142,6 +143,20 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     }
 }
 
+static void rocker_fp_ports_enable(struct rocker *r, uint64_t new)
+{
+    int i;
+    uint64_t enabled = new, changed = new ^ r->fp_enabled;
+
+    for (i = 0; new>>=1, changed>>=1, i < r->fp_ports; i++)
+        if (changed & new & 1)
+            fp_port_enable(r->fp_port[i]);
+        else if (changed & 1)
+            fp_port_disable(r->fp_port[i]);
+
+    r->fp_enabled = enabled;
+}
+
 static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
 {
     struct rocker *r = opaque;
@@ -152,6 +167,9 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
         break;
     case ROCKER_TEST_DMA_ADDR:
         r->test_dma_addr = val;
+        break;
+    case ROCKER_PORT_PHYS_ENABLE:
+        rocker_fp_ports_enable(r, val);
         break;
     default:
         DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
@@ -216,6 +234,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
         break;
     case ROCKER_TEST_DMA_ADDR:
         ret = r->test_dma_addr;
+        break;
+    case ROCKER_PORT_PHYS_ENABLE:
+        ret = r->fp_enabled;
         break;
     default:
         DPRINTF("not implemented read(q) addr=0x%lx\n", addr);

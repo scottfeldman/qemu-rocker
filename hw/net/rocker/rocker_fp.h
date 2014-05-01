@@ -48,6 +48,8 @@ int fp_port_set_nic(struct fp_port *port, const char *type);
 void fp_port_clear_nic(struct fp_port *port);
 void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
                       fp_port_ig *ig);
+void fp_port_enable(struct fp_port *port);
+void fp_port_disable(struct fp_port *port);
 
 struct fp_port *fp_port_alloc(void);
 void fp_port_free(struct fp_port *port);
