@@ -16,6 +16,7 @@
 
 #include "net/clients.h"
 
+#include "rocker.h"
 #include "rocker_fp.h"
 
 /*
@@ -41,16 +42,6 @@
  * Would create 4 host tap interfaces with names sw1.[1-4].
  * The rocker nics would be peered with each netdev.
  */
-
-#if defined (DEBUG_ROCKER)
-#  define DPRINTF(fmt, ...) \
-    do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
-#else
-static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
-{
-    return 0;
-}
-#endif
 
 struct fp_port {
     struct rocker *rocker;
