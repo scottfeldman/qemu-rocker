@@ -15,7 +15,8 @@
  */
 
 
-
+#ifndef _TLV_PARSE_H_
+#define _TLV_PARSE_H_
 
 /*
  * Top level parsing macro definitions
@@ -29,10 +30,11 @@
 #define TLV_LENGTH(len) ((len) + TLV_HDRLEN)
 #define TLV_SPACE(len) TLV_ALIGN(TLV_LENGTH(len))
 #define TLV_DATA(tlv)  ((void*)(((char*)tlv) + TLV_LENGTH(0)))
-#define TLV_NEXT(tlv,len)      ((len) -= TLV_ALIGN((tlv)->len), \
-                                  (struct rocker_dma_tlv*)(((char*)(tlv)) + \
+#define TLV_NEXT(tlv)     (struct rocker_dma_tlv*)(((char*)(tlv)) + \
 				TLVDATA_ALIGN((tlv)->len)))
 #define TLV_OK(tlv,len) ((len) >= (int)sizeof(struct rocker_dma_tlv) && \
                            (tlv)->len >= sizeof(struct rocker_dma_tlv) && \
                            (tlv)->len <= (len))
 #define TLV_PAYLOAD(nlh,len) ((tlv)->len - TLV_SPACE((len)))
+
+#endif

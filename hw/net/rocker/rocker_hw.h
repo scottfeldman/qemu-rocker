@@ -54,26 +54,38 @@
  * Rocker DMA ring register offsets
  */
 #define __ROCKER_DMA_DESC_ADDR(x)       (0x0100 + (x) * 32)     /* 8-byte */
-#define __ROCKER_DMA_COMP_ADDR(x)       (0x0108 + (x) * 32)     /* 8-byte */
-#define __ROCKER_DMA_DESC_SIZE(x)       (0x0110 + (x) * 32)
-#define __ROCKER_DMA_DESC_HEAD(x)       (0x0114 + (x) * 32)
-#define __ROCKER_DMA_DESC_TAIL(x)       (0x0118 + (x) * 32)
-#define __ROCKER_DMA_DESC_CTRL(x)       (0x011c + (x) * 32)
+#define __ROCKER_DMA_DESC_SIZE(x)       (0x0108 + (x) * 32)
+#define __ROCKER_DMA_DESC_HEAD(x)       (0x010c + (x) * 32)
+#define __ROCKER_DMA_DESC_TAIL(x)       (0x0110 + (x) * 32)
+#define __ROCKER_DMA_DESC_CTRL(x)       (0x0114 + (x) * 32)
+#define __ROCKER_DMA_DESC_RES1(x)       (0x0118 + (x) * 32)
+#define __ROCKER_DMA_DESC_RES2(x)       (0x011c + (x) * 32)
 
 #define ROCKER_DMA_RING_REG_SET(name, index)                                    \
 enum {                                                                          \
         ROCKER_ ## name ## _DMA_DESC_ADDR = __ROCKER_DMA_DESC_ADDR(index),      \
-        ROCKER_ ## name ## _DMA_COMP_ADDR = __ROCKER_DMA_COMP_ADDR(index),      \
         ROCKER_ ## name ## _DMA_DESC_SIZE = __ROCKER_DMA_DESC_SIZE(index),      \
         ROCKER_ ## name ## _DMA_DESC_HEAD = __ROCKER_DMA_DESC_HEAD(index),      \
         ROCKER_ ## name ## _DMA_DESC_TAIL = __ROCKER_DMA_DESC_TAIL(index),      \
         ROCKER_ ## name ## _DMA_DESC_CTRL = __ROCKER_DMA_DESC_CTRL(index),      \
+        ROCKER_ ## name ## _DMA_DESC_RES1 = __ROCKER_DMA_DESC_RES1(index),      \
+        ROCKER_ ## name ## _DMA_DESC_RES2 = __ROCKER_DMA_DESC_RES2(index),      \
+};\
+enum {\
+        ROCKER_ ## name ## _INDEX = index,  \
 }
 
 ROCKER_DMA_RING_REG_SET(TX, 0);
 ROCKER_DMA_RING_REG_SET(RX, 1);
 ROCKER_DMA_RING_REG_SET(CMD, 2);
 ROCKER_DMA_RING_REG_SET(EVENT, 3);
+
+/*
+ * Helper macro to do convert a dma ring register 
+ * to its index.  Based on the fact that the register
+ * group stride is 32 bytes.
+ */
+#define ROCKER_RING_INDEX(reg) ((reg >> 8) & 0xf)
 
 /*
  * Rocker DMA Descriptor and completion structs
@@ -88,13 +100,8 @@ struct rocker_dma_desc {
     uint64_t cookie;
     uint16_t buf_size;
     uint16_t tlv_size;
-} __attribute__((packed, aligned (8)));
-
-struct rocker_comp_desc {
-    uint64_t cookie_gen;
-    uint16_t tlv_size;
     uint16_t comp_status;
-} __attribute__((packed, aligned(8)));
+} __attribute__((packed, aligned (8)));
 
 /*
  * Rocker TLV type fields
