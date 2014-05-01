@@ -56,6 +56,7 @@ struct fp_port {
     struct rocker *rocker;
     uint index;
     char *name;
+    bool enabled;
     enum fp_port_backend backend;
     enum fp_port_mode mode;
     NICState *nic;
@@ -79,6 +80,9 @@ static ssize_t fp_port_receive_iov(NetClientState *nc, const struct iovec *iov,
                                    int iovcnt)
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
+
+    if (!port->enabled)
+        return iov_size(iov, iovcnt);
 
     if (port->ig)
         return port->ig(port, iov, iovcnt);
@@ -214,6 +218,16 @@ void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
     default:
         DPRINTF("Invalid port mode %d\n", mode);
     }
+}
+
+void fp_port_enable(struct fp_port *port)
+{
+    port->enabled = true;
+}
+
+void fp_port_disable(struct fp_port *port)
+{
+    port->enabled = false;
 }
 
 struct fp_port *fp_port_alloc(void)

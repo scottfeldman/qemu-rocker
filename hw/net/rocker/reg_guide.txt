@@ -388,6 +388,16 @@ completions:
 		DUPLEX		1	1 = Full, 0 = Half
 		MAC_ADDR	6	Port MAC address
 
+Port Enable
+-----------
+
+Front-panel ports are initially disabled, which means port ingress and egress
+packets will be dropped.  To enable or disable a port, use PORT_PHYS_ENABLE:
+
+	PORT_PHYS_ENABLE: offset 0x0318, 64-bit, (R/W)
+
+	Value is logical port bitmap.
+
 
 SECTION 7: CPU Packet Processing
 ================================
