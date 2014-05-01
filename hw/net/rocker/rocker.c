@@ -236,6 +236,7 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
         break;
     case ROCKER_PORT_PHYS_COUNT:
         ret = r->fp_ports;
+        break;
     case ROCKER_TX_DMA_DESC_SIZE:
     case ROCKER_RX_DMA_DESC_SIZE:
     case ROCKER_CMD_DMA_DESC_SIZE:
