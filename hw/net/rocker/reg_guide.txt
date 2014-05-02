@@ -87,7 +87,7 @@ The 0x1000 device register space is organized as follows:
 	0x0300-0x03ff	General purpose registers
 
 Holes in register space are reserved.  Writes to reserved registers do nothing.
-Reads to reserved registers read back as 0xFFFFFFFF.
+Reads to reserved registers read back as 0.
 
 No fancy stuff like write-combining is enabled on any of the reigsters.
 
