@@ -92,12 +92,8 @@ ROCKER_DMA_RING_REG_SET(EVENT, 3);
 #define ROCKER_RING_INDEX(reg) ((reg >> 8) & 0xf)
 
 /*
- * Rocker DMA Descriptor and completion structs
+ * Rocker DMA Descriptor
  */
-struct rocker_dma_tlv {
-    uint32_t type;
-    uint16_t len;
-} __attribute__((packed, aligned (8)));
 
 struct rocker_desc {
     __le64 buf_addr;
@@ -112,6 +108,24 @@ struct rocker_desc {
  * Rocker TLV type fields
  */
 
+struct rocker_tlv {
+    __le32 type;
+    __le16 len;
+    __le16 rsvd;
+    union {
+        __le16 lport;
+        __le16 cmd;
+        __le16 rx_flags;
+        __le16 rx_csum;
+        char rx_packet[0];
+        struct {
+            __le64 addr;
+            __le16 len;
+            __le16 pad[3];
+        } tx_frag[0];
+    } value[0];
+} __attribute__((packed, aligned (8)));
+
 enum {
     /* Nest type */
     TLV_NEST = 1,
@@ -125,12 +139,11 @@ enum {
     TLV_TX_TSO_MSS,
     TLV_TX_TSO_HDR_LEN,
     TLV_TX_FRAG_CNT,
-    TLV_TX_FRAG,
+    TLV_TX_FRAGS,
 
     /* RX TLV's */
     TLV_RX_FLAGS,
     TLV_RX_CSUM,
-    TLV_RX_PACKET_LEN,
     TLV_RX_PACKET,
 
     /* Flow Table TLV's */

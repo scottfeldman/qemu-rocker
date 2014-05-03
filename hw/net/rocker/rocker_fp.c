@@ -55,6 +55,24 @@ struct fp_port {
     fp_port_ig *ig;
 };
 
+bool fp_port_from_lport(uint16_t lport, uint16_t *port)
+{
+    if (lport < 1 || lport > ROCKER_FP_PORTS_MAX)
+        return false;
+    *port = lport - 1;
+    return true;
+}
+
+int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt)
+{
+    NetClientState *nc = qemu_get_queue(port->nic);
+
+    if (port->enabled)
+        qemu_sendv_packet(nc, iov, iovcnt);
+
+    return 0;
+}
+
 static int fp_port_ig_drop(struct fp_port *port, const struct iovec *iov,
                            int iovcnt)
 {
@@ -64,16 +82,15 @@ static int fp_port_ig_drop(struct fp_port *port, const struct iovec *iov,
 
 static int fp_port_can_receive(NetClientState *nc)
 {
-    return 0;
+    struct fp_port *port = qemu_get_nic_opaque(nc);
+
+    return port->enabled;
 }
 
 static ssize_t fp_port_receive_iov(NetClientState *nc, const struct iovec *iov,
                                    int iovcnt)
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
-
-    if (!port->enabled)
-        return iov_size(iov, iovcnt);
 
     if (port->ig)
         return port->ig(port, iov, iovcnt);

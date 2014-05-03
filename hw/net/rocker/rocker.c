@@ -26,8 +26,6 @@
 #include "rocker_desc.h"
 #include "tlv_parse.h"
 
-#define ROCKER_FP_PORTS_MAX 62
-
 struct rocker {
     /* private */
     PCIDevice parent_obj;
@@ -66,16 +64,111 @@ struct rocker {
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
 
+#define TX_TLVS_MAX 6  // XXX define elsewheres
+
 static int tx_consume(struct rocker *r, struct rocker_desc *desc)
 {
-    // XXX consume Tx desc
-    return 0;
+    PCIDevice *dev = (PCIDevice *)r;
+    size_t size;
+    char *buf = desc_get_buf(desc, dev, 1, &size);
+    struct rocker_tlv *tlvs[TX_TLVS_MAX + 1] = { 0, }, *tlv;
+    struct iovec iov[16] = { { 0, }, };
+    uint16_t lport = 0, port = 0;
+    int iovcnt = 0, status = 0, i;
+    hwaddr addr;
+
+    if (!buf)
+        return -ENXIO;
+
+    if (!tlv_parse(buf, size, tlvs, TX_TLVS_MAX))
+        return -EINVAL;
+
+    for (tlv = *tlvs; tlv; tlv++) {
+        switch (TLV_TYPE(tlv)) {
+        case TLV_LPORT:
+            lport = le16_to_cpu(tlv->value->lport);
+            if (!fp_port_from_lport(lport, &port)) {
+                status = -EINVAL;
+                goto err_bad_lport;
+            }
+            break;
+        case TLV_TX_OFFLOAD:
+        case TLV_TX_L3_CSUM_OFF:
+        case TLV_TX_TSO_MSS:
+        case TLV_TX_TSO_HDR_LEN:
+            // XXX ignored for now
+            break;
+        case TLV_TX_FRAGS:
+            iovcnt = TLV_SIZE(tlv) / sizeof(tlv->value->tx_frag[0]);
+            if (iovcnt > 16) {
+                status = -EINVAL;
+                goto err_too_many_frags;
+            }
+            for (i = 0; i < iovcnt; i++) {
+                iov[i].iov_len = le16_to_cpu(tlv->value->tx_frag[i].len);
+                iov[i].iov_base = g_malloc(iov[i].iov_len);
+                if (!iov[i].iov_base) {
+                    status = -ENOMEM;
+                    goto err_no_mem;
+                }
+                addr = le64_to_cpu(tlv->value->tx_frag[i].addr);
+                if (pci_dma_read(dev, addr, iov[i].iov_base, iov[i].iov_len)) {
+                    status = -ENXIO;
+                    goto err_bad_io;
+                }
+            }
+            break;
+        }
+    }
+
+    if (iovcnt) {
+        ; // XXX perform Tx offloads
+    }
+
+    status = fp_port_eg(r->fp_port[port], iov, iovcnt);
+
+err_bad_lport:
+err_no_mem:
+err_bad_io:
+    for (i = 0; i < iovcnt; i++)
+        if (iov[i].iov_base)
+            g_free(iov[i].iov_base);
+
+err_too_many_frags:
+    desc_put_buf(buf);
+
+    return status;
 }
 
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
 {
-    // XXX consume Cmd desc
-    return 0;
+    PCIDevice *dev = (PCIDevice *)r;
+    size_t size;
+    char *buf = desc_get_buf(desc, dev, 1, &size);
+    struct rocker_tlv *tlv;
+    uint16_t cmd;
+    int status = 0;
+
+    // XXX make convention that CMD is first tlv???
+
+    tlv = (struct rocker_tlv *)buf;
+    cmd = le16_to_cpu(tlv->value->cmd);
+
+    switch(cmd) {
+    case TLV_FLOW_CMD:
+        // process Flow cmds
+        break;
+    case TLV_TRUNK_CMD:
+        // process L2/L3 trunk cmds
+        break;
+    case TLV_BRIDGE_CMD:
+        // process L2/L3 bridge cmds
+        break;
+    default:
+        status = -EINVAL;
+    }
+
+    return status;
 }
 
 static void rocker_update_irq(struct rocker *r)
@@ -87,6 +180,63 @@ static void rocker_update_irq(struct rocker *r)
             r->irq_status, r->irq_mask);
 
     pci_set_irq(d, (isr != 0));
+}
+
+int rx_produce(struct rocker *r, uint16_t lport, struct iovec *iov, int iovcnt)
+{
+    PCIDevice *dev = (PCIDevice *)r;
+    struct desc_ring *ring = r->rings[ROCKER_RX_INDEX];
+    struct rocker_desc *desc = desc_ring_fetch_desc(ring);
+    struct rocker_tlv *tlv;
+    size_t size = iov_size(iov, iovcnt);
+    char *buf;
+    uint16_t rx_flags = 0, rx_csum = 0;
+    size_t tlv_size;
+    int status = 0;
+
+    if (!desc)
+        return -ENOBUFS;
+
+    tlv_size = TLV_LENGTH(sizeof(tlv->value->lport))
+             + TLV_LENGTH(sizeof(tlv->value->rx_flags))
+             + TLV_LENGTH(sizeof(tlv->value->rx_csum))
+             + TLV_LENGTH(size)
+             + 0;
+
+    if (tlv_size > desc->buf_size)
+        return -ENOSPC;
+
+    buf = g_malloc(tlv_size);
+    if (!buf)
+        return -ENOMEM;
+
+    tlv = tlv_start(buf, TLV_LPORT, sizeof(tlv->value->lport));
+    tlv->value->lport = cpu_to_le16(lport);
+
+    tlv = tlv_add(tlv, TLV_RX_FLAGS, sizeof(tlv->value->rx_flags));
+    tlv->value->rx_flags = cpu_to_le16(rx_flags);
+
+    tlv = tlv_add(tlv, TLV_RX_CSUM, sizeof(tlv->value->rx_csum));
+    tlv->value->rx_csum = cpu_to_le16(rx_csum);
+
+    tlv = tlv_add(tlv, TLV_RX_PACKET, size);
+
+    iov_to_buf(iov, iovcnt, 0, tlv->value->rx_packet, size);
+
+    if (!desc_set_buf(desc, dev, buf, tlv_size)) {
+        status = -ENXIO;
+        goto err_desc_set_buf;
+    }
+
+    desc_ring_post_desc(ring, desc, status);
+
+    r->irq_status |= ROCKER_IRQ_RX_DMA_DONE;
+    rocker_update_irq(r);
+
+err_desc_set_buf:
+    g_free(buf);
+
+    return status;
 }
 
 static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
@@ -420,10 +570,11 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     if (r->fp_ports > ROCKER_FP_PORTS_MAX)
         r->fp_ports = ROCKER_FP_PORTS_MAX;
 
-    r->rings[0] = desc_ring_alloc(r, 0, pci_dev, tx_consume);
-    r->rings[1] = desc_ring_alloc(r, 1, pci_dev, NULL);
-    r->rings[2] = desc_ring_alloc(r, 2, pci_dev, cmd_consume);
-    r->rings[3] = desc_ring_alloc(r, 3, pci_dev, NULL);
+    r->rings[ROCKER_TX_INDEX] = desc_ring_alloc(r, ROCKER_TX_INDEX, tx_consume);
+    r->rings[ROCKER_RX_INDEX] = desc_ring_alloc(r, ROCKER_RX_INDEX, NULL);
+    r->rings[ROCKER_CMD_INDEX] = desc_ring_alloc(r, ROCKER_CMD_INDEX,
+                                                 cmd_consume);
+    r->rings[ROCKER_EVENT_INDEX] = desc_ring_alloc(r, ROCKER_EVENT_INDEX, NULL);
 
     for (i = 0; i < 4; i++)
         if (!r->rings[i])

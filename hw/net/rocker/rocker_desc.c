@@ -31,11 +31,48 @@ struct desc_ring {
     uint32_t tail;
     uint32_t ctrl;
     struct rocker *rocker;
-    PCIDevice *dev;
     struct rocker_desc *backing;
     int index;
     desc_ring_consume *consume;
 };
+
+char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool tlv_only,
+                   size_t *size)
+{
+    char *buf;
+
+    *size = tlv_only ? le16_to_cpu(desc->tlv_size) :
+                       le16_to_cpu(desc->buf_size);
+    buf = g_malloc(*size);
+
+    if (!buf)
+        return NULL;
+
+    if (pci_dma_read(dev, le64_to_cpu(desc->buf_addr), buf, *size))
+        return NULL;
+
+    return buf;
+}
+
+void desc_put_buf(char *buf)
+{
+    g_free(buf);
+}
+
+int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
+                 size_t tlv_size)
+{
+    if (tlv_size > le16_to_cpu(desc->buf_size)) {
+        DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %d tlv_size %ld\n",
+                le16_to_cpu(desc->buf_size), tlv_size);
+        return false;
+    }
+
+    desc->tlv_size = cpu_to_le16(tlv_size);
+    pci_dma_write(dev, le64_to_cpu(desc->buf_addr), buf, tlv_size);
+
+    return true;
+}
 
 bool desc_ring_empty(struct desc_ring *ring)
 {
@@ -90,20 +127,22 @@ uint32_t desc_ring_get_size(struct desc_ring *ring)
 
 static struct rocker_desc *desc_read(struct desc_ring *ring, uint32_t index)
 {
+    PCIDevice *dev = (PCIDevice *)ring->rocker;
     struct rocker_desc *desc = &ring->backing[index];
     hwaddr addr = (hwaddr)&ring->base.desc[index];
 
-    pci_dma_read(ring->dev, addr, desc, sizeof(*desc));
+    pci_dma_read(dev, addr, desc, sizeof(*desc));
 
     return desc;
 }
 
 static void desc_write(struct desc_ring *ring, uint32_t index)
 {
+    PCIDevice *dev = (PCIDevice *)ring->rocker;
     struct rocker_desc *desc = &ring->backing[index];
     hwaddr addr = (hwaddr)&ring->base.desc[index];
 
-    pci_dma_write(ring->dev, addr, desc, sizeof(*desc));
+    pci_dma_write(dev, addr, desc, sizeof(*desc));
 }
 
 struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring)
@@ -196,8 +235,7 @@ uint32_t desc_ring_get_ctrl(struct desc_ring *ring)
     return ring->ctrl;
 }
 
-struct desc_ring *desc_ring_alloc(struct rocker *r,
-                                  int index, PCIDevice *dev,
+struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
                                   desc_ring_consume *consume)
 {
     struct desc_ring *ring;
@@ -207,7 +245,6 @@ struct desc_ring *desc_ring_alloc(struct rocker *r,
         return NULL;
 
     ring->rocker = r;
-    ring->dev = dev;
     ring->consume = consume;
     ring->index = index;
 

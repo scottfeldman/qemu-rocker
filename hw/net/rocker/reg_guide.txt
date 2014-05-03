@@ -470,17 +470,19 @@ The TLVs for Tx descriptor buffer are:
 				length of ethernet, IP, and
 				TCP/UDP headers, including IP
 				and TCP options.
-	TX_FRAG_CNT	1	Packet fragment count
-	TX_FRAG		10	Packet fragment
-				  Fragment address: 8
-				  Fragment length: 2
+	TX_FRAGS	<array>	Packet fragment references,
+                                packet in array of structures:
+					struct {
+						uint64_t addr;
+						uint16_t len;
+						uint16_t pad2[2];
+					} frag;
 
 Possible status return codes in descriptor on completion are:
 
 	DMA_COMP_STATUS	reason
 	--------------------------------------------------------------------
 	0		OK
-	EFAULT		head or tail index outside of ring
 	ENXIO		address or data read err on desc buf or packet
 			fragment
 	EINVAL		TSO or csum offloading error
@@ -490,7 +492,7 @@ Rx Packet Processing
 
 For packets ingressing on switch ports that are not forwarded by the switch but
 rather directed to the host CPU for further processing are delievered in the
-DMA RX ring.  An Rx descriptor buffer is allocated by software and place on the
+DMA RX ring.  Rx descriptor buffers are allocated by software and placed on the
 ring.  Hardware will fill Rx descriptor buffers with packet data, write the
 completion, and signal to software that a new packet is ready.  Since Rx packet
 size is not known a-priori, the Rx descriptor buffer must be allocated for
@@ -516,7 +518,6 @@ The TLVs for Rx descriptor buffer are:
 				  IPv4: IP payload csum
 				  IPv6: header and payload csum
 				(Only valid is RX_FLAGS:csum calc is set)
-	RX_PACKET_LEN	2	Packet data length
 	RX_PACKET	<var>	Packet data
 
 Possible status return codes in descriptor on completion are:
@@ -524,7 +525,6 @@ Possible status return codes in descriptor on completion are:
 	DMA_COMP_STATUS	reason
 	--------------------------------------------------------------------
 	0		OK
-	EFAULT		head or tail index outside of ring
 	ENXIO		address or data read err on desc buf
 	ENOSPC		Rx descriptor buffer wasn't big enough to contain
 			pactet data TLV and other TLVs.

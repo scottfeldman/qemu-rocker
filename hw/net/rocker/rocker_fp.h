@@ -20,6 +20,8 @@
 #include "net/net.h"
 #include "qemu/iov.h"
 
+#define ROCKER_FP_PORTS_MAX 62
+
 enum fp_port_mode {
     FP_MODE_UNASSIGNED = 1,
     FP_MODE_FLOW,
@@ -36,7 +38,9 @@ struct fp_port;
 
 typedef int (fp_port_ig)(struct fp_port *port, const struct iovec *iov,
                          int iovcnt);
+int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt);
 
+bool fp_port_from_lport(uint16_t lport, uint16_t *port);
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
                       MACAddr *start_mac, struct rocker *r, uint index);
 void fp_port_clear_conf(struct fp_port *port);
