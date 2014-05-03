@@ -25,6 +25,12 @@ struct desc_ring;
 
 typedef int (desc_ring_consume)(struct rocker *r, struct rocker_desc *desc);
 
+char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool tlv_only,
+                   size_t *size);
+void desc_put_buf(char *buf);
+int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
+                 size_t tlv_size);
+
 bool desc_ring_empty(struct desc_ring *ring);
 bool desc_ring_full(struct desc_ring *ring);
 bool desc_ring_set_base_addr(struct desc_ring *ring, uint64_t base_addr);
@@ -41,8 +47,7 @@ struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring);
 void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
                          int status);
 
-struct desc_ring *desc_ring_alloc(struct rocker *r,
-                                  int index, PCIDevice *dev,
+struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
                                   desc_ring_consume *consume);
 void desc_ring_free(struct desc_ring *ring);
 
