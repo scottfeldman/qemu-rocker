@@ -161,8 +161,8 @@ byte boundary.  Each descriptor ring will have these registers:
 	DMA_DESC_xxx_HEAD, offset 0x010c + (x * 32), 32-bit, (R/W)
 	DMA_DESC_xxx_TAIL, offset 0x0110 + (x * 32), 32-bit, (R)
 	DMA_DESC_xxx_CTRL, offset 0x0114 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_RES1, offset 0x0118 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_RES2, offset 0x011c + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_RSVD1, offset 0x0118 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_RSVD2, offset 0x011c + (x * 32), 32-bit, (R/W)
 
 Where x is descriptor ring index:
 
@@ -173,6 +173,11 @@ Where x is descriptor ring index:
 	2		CMD	
 	3		EVENT
 	[4-7]		Reserved
+
+Writing BASE_ADDR or SIZE will reset HEAD and TAIL to zero.  HEAD cannot be
+written passed TAIL.  To do so would wrap the ring.  An empty ring is when HEAD
+== TAIL.  A full ring is when HEAD is one position behind TAIL.  Both HEAD and
+TAIL increment and modulo wrap at the ring size.
 
 All descriptor types share some common fields:
 
