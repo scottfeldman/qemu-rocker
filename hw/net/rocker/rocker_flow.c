@@ -15,10 +15,11 @@
  */
 
 #include "net/net.h"
+#include "qemu/iov.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
-#include "rocker_fp.h"
+#include "rocker_world.h"
 #include "rocker_flow.h"
 
 enum hash_tbl_id {
@@ -261,21 +262,6 @@ struct flow {
         } acl;
     };
 };
-
-int flow_ig(struct fp_port *port, const struct iovec *iov, int iovcnt)
-{
-    size_t size = iov_size(iov, iovcnt);
-    // XXX get flow world from port
-
-    // XXX fun starts here...steps are (roughly):
-    // XXX   1) parse pkt to find all match fields (~12 of them)
-    // XXX   2) start on flow table 0
-    // XXX       a) find table match, if none ???
-    // XXX       b) apply actions/group and or repeat 2) on goto table
-    // XXX       c) if done, egress pkt to CPU, port, or drop
-
-    return size;
-}
 
 static bool flow_tbl_exists(enum flow_tbl_id tbl_id)
 {
@@ -528,35 +514,6 @@ static void group_free(struct group *group)
     g_free(group);
 }
 
-int flow_cmd(struct flow_world *fw, char *cmd_buf, size_t size)
-{
-    struct flow *flow;
-    struct group *group;
-
-    // XXX process DMA CMD desc for TLV_FLOW_CMD and TLV_FLOW_GROUP_CMDs
-
-    // XXX call some of the static func for flows and groups to
-    // XXX silence the compiler
-
-    flow = flow_alloc(fw, FLOW_TABLE_INGRESS_PORT);
-    group = group_alloc(fw);
-
-    flow_add(flow);
-    flow_mod(flow);
-    flow_get_stats(fw, flow->cookie);
-    flow_del(fw, flow->cookie);
-
-    group_add(group);
-    group_mod(group);
-    group_get_stats(fw, group->id);
-    group_del(fw, group->id);
-
-    flow_free(flow);
-    group_free(group);
-
-    return 0;
-}
-
 static struct hash_tbl hash_tbl_dflts[HASH_TABLE_MAX] = {
     [HASH_TBL_FLOW_ALL] = {
         .hash_fn = g_int64_hash,
@@ -596,13 +553,56 @@ static struct hash_tbl hash_tbl_dflts[HASH_TABLE_MAX] = {
     },
 };
 
-struct flow_world *flow_world_alloc(void)
+static ssize_t flow_ig(struct world *world, uint16_t lport,
+                       const struct iovec *iov, int iovcnt)
 {
-    struct flow_world *fw = g_malloc0(sizeof(struct flow_world));
-    int i;
+    size_t size = iov_size(iov, iovcnt);
+    // XXX get flow world from port
 
-    if (!fw)
-        return NULL;
+    // XXX fun starts here...steps are (roughly):
+    // XXX   1) parse pkt to find all match fields (~12 of them)
+    // XXX   2) start on flow table 0
+    // XXX       a) find table match, if none ???
+    // XXX       b) apply actions/group and or repeat 2) on goto table
+    // XXX       c) if done, egress pkt to CPU, port, or drop
+
+    return size;
+}
+
+static int flow_cmd(struct world *world, struct rocker_tlv **tlvs)
+{
+    struct flow_world *fw = world_private(world);
+    struct flow *flow;
+    struct group *group;
+
+    // XXX process DMA CMD desc for TLV_FLOW_CMD and TLV_FLOW_GROUP_CMDs
+
+    // XXX call some of the static func for flows and groups to
+    // XXX silence the compiler
+
+    flow = flow_alloc(fw, FLOW_TABLE_INGRESS_PORT);
+    group = group_alloc(fw);
+
+    flow_add(flow);
+    flow_mod(flow);
+    flow_get_stats(fw, flow->cookie);
+    flow_del(fw, flow->cookie);
+
+    group_add(group);
+    group_mod(group);
+    group_get_stats(fw, group->id);
+    group_del(fw, group->id);
+
+    flow_free(flow);
+    group_free(group);
+
+    return 0;
+}
+
+static int flow_world_init(struct world *world)
+{
+    struct flow_world *fw = world_private(world);
+    int i;
 
     memcpy(fw->hash_tbl, hash_tbl_dflts, sizeof(fw->hash_tbl));
 
@@ -613,20 +613,31 @@ struct flow_world *flow_world_alloc(void)
             goto err_hash_table_new;
     }
 
-    return fw;
+    return 0;
 
 err_hash_table_new:
     for (i--; i >= 0; i--)
         g_hash_table_destroy(fw->hash_tbl[i].tbl);
-    g_free(fw);
-    return NULL;
+    return -ENOMEM;
 }
 
-void flow_world_free(struct flow_world *fw)
+static void flow_world_uninit(struct world *world)
 {
+    struct flow_world *fw = world_private(world);
     int i;
 
     for (i = 0; i < HASH_TABLE_MAX; i++)
         g_hash_table_destroy(fw->hash_tbl[i].tbl);
-    g_free(fw);
+}
+
+static struct world_ops flow_ops = {
+    .init = flow_world_init,
+    .uninit = flow_world_uninit,
+    .ig = flow_ig,
+    .cmd = flow_cmd,
+};
+
+struct world *flow_world_alloc(struct rocker *rocker)
+{
+    return world_alloc(rocker, sizeof(struct flow_world), &flow_ops);
 }

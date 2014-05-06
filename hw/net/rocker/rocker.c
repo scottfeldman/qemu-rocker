@@ -18,13 +18,23 @@
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
 #include "net/net.h"
+#include "qemu/iov.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
 #include "rocker_fp.h"
-#include "rocker_flow.h"
 #include "rocker_desc.h"
+#include "rocker_world.h"
+#include "rocker_flow.h"
+#include "rocker_l2l3.h"
 #include "tlv_parse.h"
+
+enum world_id {
+    WORLD_DEAD = 0,
+    WORLD_FLOW,
+    WORLD_L2L3,
+    WORLD_MAX,
+};
 
 struct rocker {
     /* private */
@@ -38,6 +48,7 @@ struct rocker {
     char *backend_name;          /* backend method */
     char *script;                /* script to run for tap backends */
     char *downscript;            /* downscript to run for tap backends */
+    char *world_dflt;            /* default world for ports */
     uint16_t fp_ports;           /* front-panel port count */
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
 
@@ -56,7 +67,8 @@ struct rocker {
     /* desc rings */
     struct desc_ring *rings[4];
 
-    struct flow_world *fw;
+    /* switch worlds */
+    struct world *worlds[WORLD_MAX];
 };
 
 #define ROCKER "rocker"
@@ -69,8 +81,8 @@ struct rocker {
 static int tx_consume(struct rocker *r, struct rocker_desc *desc)
 {
     PCIDevice *dev = (PCIDevice *)r;
-    size_t size;
-    char *buf = desc_get_buf(desc, dev, 1, &size);
+    size_t tlv_size;
+    char *buf = desc_get_buf(desc, dev, 1, &tlv_size);
     struct rocker_tlv *tlvs[TX_TLVS_MAX + 1] = { 0, }, *tlv;
     struct iovec iov[16] = { { 0, }, };
     uint16_t lport = 0, port = 0;
@@ -80,7 +92,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
     if (!buf)
         return -ENXIO;
 
-    if (!tlv_parse(buf, size, tlvs, TX_TLVS_MAX))
+    if (!tlv_parse(buf, tlv_size, tlvs, TX_TLVS_MAX))
         return -EINVAL;
 
     for (tlv = *tlvs; tlv; tlv++) {
@@ -140,32 +152,32 @@ err_too_many_frags:
     return status;
 }
 
+#define CMD_TLVS_MAX 20
+
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
 {
     PCIDevice *dev = (PCIDevice *)r;
-    size_t size;
-    char *buf = desc_get_buf(desc, dev, 1, &size);
-    struct rocker_tlv *tlv;
-    uint16_t cmd;
-    int status = 0;
+    size_t tlv_size;
+    char *buf = desc_get_buf(desc, dev, 1, &tlv_size);
+    struct rocker_tlv *tlvs[CMD_TLVS_MAX + 1], *tlv;
+    int status = -EINVAL;
 
-    // XXX make convention that CMD is first tlv???
+    if (!buf)
+        return -ENXIO;
 
-    tlv = (struct rocker_tlv *)buf;
-    cmd = le16_to_cpu(tlv->value->cmd);
+    if (!tlv_parse(buf, tlv_size, tlvs, CMD_TLVS_MAX))
+        return -EINVAL;
 
-    switch(cmd) {
-    case TLV_FLOW_CMD:
-        // process Flow cmds
-        break;
-    case TLV_TRUNK_CMD:
-        // process L2/L3 trunk cmds
-        break;
-    case TLV_BRIDGE_CMD:
-        // process L2/L3 bridge cmds
-        break;
-    default:
-        status = -EINVAL;
+    for (tlv = *tlvs; tlv; tlv++) {
+        switch(TLV_TYPE(tlv)) {
+        case TLV_FLOW_CMD:
+            return world_do_cmd(r->worlds[WORLD_FLOW], tlvs);
+        case TLV_TRUNK_CMD:
+        case TLV_BRIDGE_CMD:
+            return world_do_cmd(r->worlds[WORLD_L2L3], tlvs);
+        default:
+            break;
+        }
     }
 
     return status;
@@ -182,8 +194,10 @@ static void rocker_update_irq(struct rocker *r)
     pci_set_irq(d, (isr != 0));
 }
 
-int rx_produce(struct rocker *r, uint16_t lport, struct iovec *iov, int iovcnt)
+int rx_produce(struct world *world, uint16_t lport,
+               const struct iovec *iov, int iovcnt)
 {
+    struct rocker *r = world_rocker(world);
     PCIDevice *dev = (PCIDevice *)r;
     struct desc_ring *ring = r->rings[ROCKER_RX_INDEX];
     struct rocker_desc *desc = desc_ring_fetch_desc(ring);
@@ -499,10 +513,6 @@ static void pci_rocker_uninit(PCIDevice *dev)
     struct rocker *r = to_rocker(dev);
     int i;
 
-    for (i = 0; i < 4; i++)
-        if (r->rings[i])
-             desc_ring_free(r->rings[i]);
-
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
 
@@ -513,9 +523,27 @@ static void pci_rocker_uninit(PCIDevice *dev)
         r->fp_port[i] = NULL;
     }
 
+    for (i = 0; i < 4; i++)
+        if (r->rings[i])
+             desc_ring_free(r->rings[i]);
+
     memory_region_destroy(&r->mmio);
-    flow_world_free(r->fw);
+
+    for (i = 0; i < WORLD_MAX; i++)
+        if (r->worlds[i])
+            world_free(r->worlds[i]);
 }
+
+static ssize_t ig_drop(struct world *world, uint16_t lport,
+                       const struct iovec *iov, int iovcnt)
+{
+    /* silently drop ingress pkt */
+    return iov_size(iov, iovcnt);
+}
+
+static struct world_ops dead_ops = {
+    .ig = ig_drop,
+};
 
 static int pci_rocker_init(PCIDevice *pci_dev)
 {
@@ -523,23 +551,28 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     struct rocker *r = to_rocker(pci_dev);
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
+    struct world *world_dflt;
     static int sw_index = 0;
     enum fp_port_backend backend;
     int i, err;
 
     /* allocate worlds */
 
-    r->fw = flow_world_alloc();
-    if (!r->fw)
-        return -ENOMEM;
+    r->worlds[WORLD_DEAD] = world_alloc(r, 0, &dead_ops);
+    r->worlds[WORLD_FLOW] = flow_world_alloc(r);
+    r->worlds[WORLD_L2L3] = l2l3_world_alloc(r);
 
-#if 0
-    r->lw = l2_l3_world_alloc();
-    if (!r->lw) {
-        err = -ENOMEM;
-        goto err_l2_l3_world_alloc;
+    for (i = 0; i < WORLD_MAX; i++)
+        if (!r->worlds[i])
+            goto err_world_alloc;
+
+    world_dflt = r->worlds[WORLD_DEAD];
+    if (r->world_dflt) {
+        if (strcmp(r->world_dflt, "flow") == 0)
+            world_dflt = r->worlds[WORLD_FLOW];
+        else if (strcmp(r->world_dflt, "l2l3") == 0)
+            world_dflt = r->worlds[WORLD_L2L3];
     }
-#endif
 
     /* setup PCI device */
 
@@ -588,7 +621,8 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
         r->fp_port[i] = port;
 
-        fp_port_set_conf(port, r->name, &r->fp_start_macaddr, r, i);
+        fp_port_set_world(port, world_dflt);
+        fp_port_set_conf(port, r->name, &r->fp_start_macaddr, i);
         err = fp_port_set_netdev(port, backend,
                                  r->script, r->downscript);
         if (err)
@@ -612,11 +646,15 @@ err_port_alloc:
         fp_port_clear_conf(port);
         fp_port_free(port);
     }
-    flow_world_free(r->fw);
 err_ring_alloc:
     for (i = 0; i < 4; i++)
         if (r->rings[i])
              desc_ring_free(r->rings[i]);
+    memory_region_destroy(&r->mmio);
+err_world_alloc:
+    for (i = 0; i < WORLD_MAX; i++)
+        if (r->worlds[i])
+            world_free(r->worlds[i]);
 
     return -1;
 }
@@ -630,6 +668,7 @@ static Property rocker_properties[] = {
     DEFINE_PROP_STRING("backend", struct rocker, backend_name),
     DEFINE_PROP_STRING("script", struct rocker, script),
     DEFINE_PROP_STRING("downscript", struct rocker, downscript),
+    DEFINE_PROP_STRING("world", struct rocker, world_dflt),
     DEFINE_PROP_UINT16("fp_ports", struct rocker,
                        fp_ports, 16),
     DEFINE_PROP_MACADDR("fp_start_macaddr", struct rocker,

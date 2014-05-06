@@ -18,6 +18,7 @@
 
 #include "rocker.h"
 #include "rocker_fp.h"
+#include "rocker_world.h"
 
 /*
  * A nic is created for the front panel port and is peered
@@ -44,15 +45,14 @@
  */
 
 struct fp_port {
-    struct rocker *rocker;
+    struct world *world;
     uint index;
     char *name;
+    uint16_t lport;
     bool enabled;
     enum fp_port_backend backend;
-    enum fp_port_mode mode;
     NICState *nic;
     NICConf conf;
-    fp_port_ig *ig;
 };
 
 bool fp_port_from_lport(uint16_t lport, uint16_t *port)
@@ -73,13 +73,6 @@ int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt)
     return 0;
 }
 
-static int fp_port_ig_drop(struct fp_port *port, const struct iovec *iov,
-                           int iovcnt)
-{
-    /* silently drop ingress pkt */
-    return iov_size(iov, iovcnt);
-}
-
 static int fp_port_can_receive(NetClientState *nc)
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
@@ -92,11 +85,7 @@ static ssize_t fp_port_receive_iov(NetClientState *nc, const struct iovec *iov,
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
 
-    if (port->ig)
-        return port->ig(port, iov, iovcnt);
-
-    DPRINTF("Port receive handler not set; dropping packet\n");
-    return iov_size(iov, iovcnt);
+    return world_ingress(port->world, port->lport, iov, iovcnt);
 }
 
 static ssize_t fp_port_receive(NetClientState *nc, const uint8_t *buf,
@@ -129,11 +118,10 @@ static NetClientInfo fp_port_info = {
 };
 
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
-                      MACAddr *start_mac, struct rocker *r,
-                      uint index)
+                      MACAddr *start_mac, uint index)
 {
-    port->rocker = r;
     port->index = index;
+    port->lport = index + 1;
 
     /* front-panel switch port names are 1-based */
     port->name = g_strdup_printf("%s.%d", sw_name, index + 1);
@@ -210,22 +198,9 @@ void fp_port_clear_nic(struct fp_port *port)
     port->nic = NULL;
 }
 
-void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
-                      fp_port_ig *ig)
+void fp_port_set_world(struct fp_port *port, struct world *world)
 {
-    switch (mode) {
-    case FP_MODE_UNASSIGNED:
-    case FP_MODE_FLOW:
-    case FP_MODE_L2_L3:
-        port->mode = mode;
-        port->ig = ig;
-        if (!ig)
-            DPRINTF("WARNING port mode set (%d) but no ingress handler installed\n",
-                    mode);
-        break;
-    default:
-        DPRINTF("Invalid port mode %d\n", mode);
-    }
+    port->world = world;
 }
 
 void fp_port_enable(struct fp_port *port)
@@ -240,12 +215,7 @@ void fp_port_disable(struct fp_port *port)
 
 struct fp_port *fp_port_alloc(void)
 {
-    struct fp_port *port = g_malloc0(sizeof(struct fp_port));
-
-    if (port)
-        fp_port_set_mode(port, FP_MODE_UNASSIGNED, fp_port_ig_drop);
-
-    return port;
+    return g_malloc0(sizeof(struct fp_port));
 }
 
 void fp_port_free(struct fp_port *port)

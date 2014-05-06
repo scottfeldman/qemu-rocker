@@ -28,8 +28,9 @@ static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
 }
 #endif
 
-struct rocker;
+struct world;
 
-int rx_produce(struct rocker *r, uint16_t lport, struct iovec *iov, int iovcnt);
+int rx_produce(struct world *world, uint16_t lport,
+               const struct iovec *iov, int iovcnt);
 
 #endif /* _ROCKER_H_ */
