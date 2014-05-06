@@ -22,12 +22,6 @@
 
 #define ROCKER_FP_PORTS_MAX 62
 
-enum fp_port_mode {
-    FP_MODE_UNASSIGNED = 1,
-    FP_MODE_FLOW,
-    FP_MODE_L2_L3,
-};
-
 enum fp_port_backend {
     FP_BACKEND_NONE = 1,
     FP_BACKEND_TAP,
@@ -35,14 +29,13 @@ enum fp_port_backend {
 
 struct rocker;
 struct fp_port;
+struct world;
 
-typedef int (fp_port_ig)(struct fp_port *port, const struct iovec *iov,
-                         int iovcnt);
 int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt);
 
 bool fp_port_from_lport(uint16_t lport, uint16_t *port);
 void fp_port_set_conf(struct fp_port *port, char *sw_name,
-                      MACAddr *start_mac, struct rocker *r, uint index);
+                      MACAddr *start_mac, uint index);
 void fp_port_clear_conf(struct fp_port *port);
 int fp_port_set_netdev(struct fp_port *port,
                        enum fp_port_backend backend,
@@ -50,8 +43,7 @@ int fp_port_set_netdev(struct fp_port *port,
 void fp_port_clear_netdev(struct fp_port *port);
 int fp_port_set_nic(struct fp_port *port, const char *type);
 void fp_port_clear_nic(struct fp_port *port);
-void fp_port_set_mode(struct fp_port *port, enum fp_port_mode mode,
-                      fp_port_ig *ig);
+void fp_port_set_world(struct fp_port *port, struct world *world);
 void fp_port_enable(struct fp_port *port);
 void fp_port_disable(struct fp_port *port);
 

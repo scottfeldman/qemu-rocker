@@ -37,4 +37,5 @@ obj-$(CONFIG_ETSEC) += fsl_etsec/etsec.o fsl_etsec/registers.o \
 			fsl_etsec/rings.o fsl_etsec/miim.o
 
 obj-$(CONFIG_ROCKER) += rocker/rocker.o rocker/rocker_fp.o rocker/rocker_flow.o \
-                        rocker/rocker_desc.o
+                        rocker/rocker_desc.o rocker/rocker_world.o \
+                        rocker/rocker_l2l3.o

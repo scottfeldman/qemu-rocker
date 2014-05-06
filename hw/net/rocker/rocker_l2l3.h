@@ -1,5 +1,5 @@
 /*
- * QEMU rocker switch emulation - flow processing support
+ * QEMU rocker switch emulation - traditional L2/L3 processing support
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
  *
@@ -14,12 +14,12 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _ROCKER_FLOW_H_
-#define _ROCKER_FLOW_H_
+#ifndef _ROCKER_L2L3_H_
+#define _ROCKER_L2L3_H_
 
 struct rocker;
 struct world;
 
-struct world *flow_world_alloc(struct rocker *rocker);
+struct world *l2l3_world_alloc(struct rocker *rocker);
 
-#endif /* _ROCKER_FLOW_H_ */
+#endif /* _ROCKER_L2L3_H_ */
