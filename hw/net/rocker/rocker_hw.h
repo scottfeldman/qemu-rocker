@@ -9,6 +9,10 @@
 #ifndef _ROCKER_HW_
 #define _ROCKER_HW_
 
+#define __le16 uint16_t
+#define __le32 uint32_t
+#define __le64 uint64_t
+
 /*
  * PCI configuration space
  */
@@ -58,8 +62,8 @@
 #define __ROCKER_DMA_DESC_HEAD(x)       (0x010c + (x) * 32)
 #define __ROCKER_DMA_DESC_TAIL(x)       (0x0110 + (x) * 32)
 #define __ROCKER_DMA_DESC_CTRL(x)       (0x0114 + (x) * 32)
-#define __ROCKER_DMA_DESC_RES1(x)       (0x0118 + (x) * 32)
-#define __ROCKER_DMA_DESC_RES2(x)       (0x011c + (x) * 32)
+#define __ROCKER_DMA_DESC_RSVD1(x)      (0x0118 + (x) * 32)
+#define __ROCKER_DMA_DESC_RSVD2(x)      (0x011c + (x) * 32)
 
 #define ROCKER_DMA_RING_REG_SET(name, index)                                    \
 enum {                                                                          \
@@ -68,8 +72,8 @@ enum {                                                                          
         ROCKER_ ## name ## _DMA_DESC_HEAD = __ROCKER_DMA_DESC_HEAD(index),      \
         ROCKER_ ## name ## _DMA_DESC_TAIL = __ROCKER_DMA_DESC_TAIL(index),      \
         ROCKER_ ## name ## _DMA_DESC_CTRL = __ROCKER_DMA_DESC_CTRL(index),      \
-        ROCKER_ ## name ## _DMA_DESC_RES1 = __ROCKER_DMA_DESC_RES1(index),      \
-        ROCKER_ ## name ## _DMA_DESC_RES2 = __ROCKER_DMA_DESC_RES2(index),      \
+        ROCKER_ ## name ## _DMA_DESC_RSVD1 = __ROCKER_DMA_DESC_RSVD1(index),    \
+        ROCKER_ ## name ## _DMA_DESC_RSVD2 = __ROCKER_DMA_DESC_RSVD2(index),    \
 };\
 enum {\
         ROCKER_ ## name ## _INDEX = index,  \
@@ -95,12 +99,13 @@ struct rocker_dma_tlv {
     uint16_t len;
 } __attribute__((packed, aligned (8)));
 
-struct rocker_dma_desc {
-    uint64_t buf_addr;
+struct rocker_desc {
+    __le64 buf_addr;
     uint64_t cookie;
-    uint16_t buf_size;
-    uint16_t tlv_size;
-    uint16_t comp_status;
+    __le16 buf_size;
+    __le16 tlv_size;
+    __le16 resv[5];   /* pad to 32 bytes */
+    __le16 comp_status;
 } __attribute__((packed, aligned (8)));
 
 /*
