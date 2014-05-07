@@ -246,22 +246,17 @@ Figure 1 shows an example descriptor buffer with two TLVs.
 
 TLVs can be nested within the NEST TLV type.
 
-Endianess
----------
+Control
+-------
 
-Switch can be enabled for big- or little-endian mode to avoid byte swapping by
-host CPU of multi-byte fields within registers, DMA descriptors, and non-packet
-DMA buffers.  Packet buffers and PCI configuration space registers are excluded
-from swapping.  Packet buffers are always in network-order (big-endian).
+This register is used for low level control of the switch.
 
-Switch default is little-endian.  Software can set endianess mode at switch
-initialization time by writing to ENDIANESS_SEL register, without worrying
-about current byte-swapping mode, an endian-neutral value.
+	CONTROL, offset 0x0300, 32-bit, (W)
 
-	ENDIANESS_SEL, offset 0x0300, 32-bit, (R/W)
-
-	0x00000000	little-endian mode
-	0x01000001	big-endian mode
+	bit	name			description
+	------------------------------------------------------------------------
+    0   CONTROL_RESET    If set, device will perform reset (same as pci reset)
+	[1:31]	Reserved
 
 
 SECTION 5: Test Registers
