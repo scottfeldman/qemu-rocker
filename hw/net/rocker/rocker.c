@@ -19,6 +19,7 @@
 #include "hw/pci/pci.h"
 #include "net/net.h"
 #include "qemu/iov.h"
+#include "qemu/bitops.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -286,7 +287,7 @@ static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
     return status;
 }
 
-static void rocker_update_irq(struct rocker *r)
+void rocker_update_irq(struct rocker *r)
 {
     PCIDevice *d = PCI_DEVICE(r);
     uint32_t isr = r->irq_status & r->irq_mask;
@@ -297,7 +298,7 @@ static void rocker_update_irq(struct rocker *r)
     pci_set_irq(d, (isr != 0));
 }
 
-static void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
+void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
 {
     r->irq_status |= irq_status;
 }
@@ -554,6 +555,20 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     return ret;
 }
 
+static uint64_t rocker_port_phys_link_status(struct rocker *r)
+{
+    int i;
+    uint64_t status = 0;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        struct fp_port *port = r->fp_port[i];
+
+        if (fp_port_get_link_up(port))
+            status |= 1 << (i + 1);
+    }
+    return status;
+}
+
 static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
 {
     struct rocker *r = opaque;
@@ -575,6 +590,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     case ROCKER_CMD_DMA_DESC_ADDR:
     case ROCKER_EVENT_DMA_DESC_ADDR:
         ret = desc_ring_get_base_addr(r->rings[index]);
+        break;
+    case ROCKER_PORT_PHYS_LINK_STATUS:
+        ret = rocker_port_phys_link_status(r);
         break;
     default:
         DPRINTF("not implemented read(q) addr=0x%lx\n", addr);
@@ -726,7 +744,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
         r->fp_port[i] = port;
 
         fp_port_set_world(port, world_dflt);
-        fp_port_set_conf(port, r->name, &r->fp_start_macaddr, i);
+        fp_port_set_conf(port, r, r->name, &r->fp_start_macaddr, i);
         err = fp_port_set_netdev(port, backend,
                                  r->script, r->downscript);
         if (err)

@@ -33,6 +33,7 @@ struct world;
 
 int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt);
 
+bool fp_port_get_link_up(struct fp_port *port);
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
                          uint8_t *duplex, uint8_t *autoneg,
                          MACAddr macaddr);
@@ -40,7 +41,7 @@ int fp_port_set_settings(struct fp_port *port, uint32_t speed,
                          uint8_t duplex, uint8_t autoneg,
                          MACAddr macaddr);
 bool fp_port_from_lport(uint16_t lport, uint16_t *port);
-void fp_port_set_conf(struct fp_port *port, char *sw_name,
+void fp_port_set_conf(struct fp_port *port, struct rocker *r, char *sw_name,
                       MACAddr *start_mac, uint index);
 void fp_port_clear_conf(struct fp_port *port);
 int fp_port_set_netdev(struct fp_port *port,
