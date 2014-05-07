@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  */
 
+#include "net/net.h"
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
 
@@ -36,19 +37,18 @@ struct desc_ring {
     desc_ring_consume *consume;
 };
 
-char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool tlv_only,
-                   size_t *size)
+char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool read_only)
 {
     char *buf;
+    size_t size = read_only ? le16_to_cpu(desc->tlv_size) :
+                              le16_to_cpu(desc->buf_size);
 
-    *size = tlv_only ? le16_to_cpu(desc->tlv_size) :
-                       le16_to_cpu(desc->buf_size);
-    buf = g_malloc(*size);
+    buf = g_malloc(size);
 
     if (!buf)
         return NULL;
 
-    if (pci_dma_read(dev, le64_to_cpu(desc->buf_addr), buf, *size))
+    if (pci_dma_read(dev, le64_to_cpu(desc->buf_addr), buf, size))
         return NULL;
 
     return buf;
@@ -65,13 +65,13 @@ int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
     if (tlv_size > le16_to_cpu(desc->buf_size)) {
         DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %d tlv_size %ld\n",
                 le16_to_cpu(desc->buf_size), tlv_size);
-        return false;
+        return -ENOMEM;
     }
 
     desc->tlv_size = cpu_to_le16(tlv_size);
     pci_dma_write(dev, le64_to_cpu(desc->buf_addr), buf, tlv_size);
 
-    return true;
+    return 0;
 }
 
 bool desc_ring_empty(struct desc_ring *ring)

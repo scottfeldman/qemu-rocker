@@ -355,31 +355,33 @@ Links status for all front-panel ports is available via PORT_PHYS_LINK_STATUS:
 
 Other properties for ports are available via DMA CMD descriptors:
 
-	CMD_GET_PORT_SETTINGS descriptor:
+	Get PORT_SETTINGS descriptor:
 
 		field		width	description
 		----------------------------------------------
-		CMD		2	CMD_GET_PORT_SETTINGS
+		PORT_SETTINGS	2	CMD_GET
 		LPORT		2	Logical port #
 
-	CMD_GET_PORT_SETTINGS completion:	
+	Get PORT_SETTINGS completion:	
 
 		field		width	description
 		----------------------------------------------
-		MAX_SPEED	4	Max port interface speed, in Mbps
+		LPORT		2	Logical port #
 		SPEED		4	Current port interface speed, in Mbps
 		DUPLEX		1	1 = Full, 0 = Half
-		MAC_ADDR	6	Port MAC address
+		AUTONEG		1	1 = enabled, 0 = disabled
+		MACADDR		6	Port MAC address
 
-	CMD_SET_PORT_SETTINGS descriptor:
+	Set PORT_SETTINGS descriptor:
 
 		field		width	description
 		----------------------------------------------
-		CMD		2	CMD_SET_PORT_SETTINGS
+		PORT_SETTINGS	2	CMD_SET
 		LPORT		2	Logical port #
 		SPEED		4	Port interface speed, in Mbps
 		DUPLEX		1	1 = Full, 0 = Half
-		MAC_ADDR	6	Port MAC address
+		AUTONEG		1	1 = enabled, 0 = disabled
+		MACADDR		6	Port MAC address
 
 Port Enable
 -----------

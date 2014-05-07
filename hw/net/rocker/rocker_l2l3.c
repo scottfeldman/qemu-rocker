@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  */
 
+#include "net/net.h"
 #include "qemu/iov.h"
 
 #include "rocker.h"
