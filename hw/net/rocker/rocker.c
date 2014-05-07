@@ -474,15 +474,15 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
     case ROCKER_TEST_DMA_ADDR:
         r->test_dma_addr = val;
         break;
-    case ROCKER_PORT_PHYS_ENABLE:
-        rocker_port_phys_enable_write(r, val);
-        break;
     case ROCKER_TX_DMA_DESC_ADDR:
     case ROCKER_RX_DMA_DESC_ADDR:
     case ROCKER_CMD_DMA_DESC_ADDR:
     case ROCKER_EVENT_DMA_DESC_ADDR:
         index = ROCKER_RING_INDEX(addr);
         desc_ring_set_base_addr(r->rings[index], val);
+        break;
+    case ROCKER_PORT_PHYS_ENABLE:
+        rocker_port_phys_enable_write(r, val);
         break;
     default:
         DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
@@ -567,20 +567,6 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     return ret;
 }
 
-static uint64_t rocker_port_phys_enable_read(struct rocker *r)
-{
-    int i;
-    uint64_t ret = 0;
-
-    for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = r->fp_port[i];
-
-        if (fp_port_enabled(port))
-            ret |= 1 << (i + 1);
-    }
-    return ret;
-}
-
 static uint64_t rocker_port_phys_link_status(struct rocker *r)
 {
     int i;
@@ -593,6 +579,20 @@ static uint64_t rocker_port_phys_link_status(struct rocker *r)
             status |= 1 << (i + 1);
     }
     return status;
+}
+
+static uint64_t rocker_port_phys_enable_read(struct rocker *r)
+{
+    int i;
+    uint64_t ret = 0;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        struct fp_port *port = r->fp_port[i];
+
+        if (fp_port_enabled(port))
+            ret |= 1 << (i + 1);
+    }
+    return ret;
 }
 
 static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
@@ -612,9 +612,6 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     case ROCKER_TEST_DMA_ADDR:
         ret = r->test_dma_addr;
         break;
-    case ROCKER_PORT_PHYS_ENABLE:
-        ret = rocker_port_phys_enable_read(r);
-        break;
     case ROCKER_TX_DMA_DESC_ADDR:
     case ROCKER_RX_DMA_DESC_ADDR:
     case ROCKER_CMD_DMA_DESC_ADDR:
@@ -623,6 +620,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
         break;
     case ROCKER_PORT_PHYS_LINK_STATUS:
         ret = rocker_port_phys_link_status(r);
+        break;
+    case ROCKER_PORT_PHYS_ENABLE:
+        ret = rocker_port_phys_enable_read(r);
         break;
     case ROCKER_SWITCH_ID:
         ret = r->switch_id;
