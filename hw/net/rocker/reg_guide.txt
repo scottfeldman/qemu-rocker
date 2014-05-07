@@ -390,7 +390,23 @@ packets will be dropped.  To enable or disable a port, use PORT_PHYS_ENABLE:
 	and always read as 0.  Write 1 to enable port; write 0 to disable it.
 	Default is 0.
 
-SECTION 7: CPU Packet Processing
+SECTION 7: Switch Control
+=========================
+
+This section covers switch-wide register settings.
+
+Switch ID
+---------
+
+The switch has a SWITCH_ID to be used by software to uniquely identify the
+switch:
+
+	SWITCH_ID: offset 0x0320, 64-bit, (R)
+
+	Value is opaque to switch software and no special encoding is implied.
+
+
+SECTION 8: CPU Packet Processing
 ================================
 
 For packets ingressing on switch ports that are not forwarded by the switch but
@@ -528,7 +544,7 @@ Possible status return codes in descriptor on completion are:
 			pactet data TLV and other TLVs.
 
 
-SECTION 8: Flow Mode
+SECTION 9: Flow Mode
 ========================
 
 Flow mode allows the switch to offload Flow packet processing functions to
@@ -881,7 +897,7 @@ Possible status return codes in descriptor on completion are:
 	EBUSY		DEL			group reference count non-zero
 	ENODEV		ADD			next group ID doesn't exist
 
-SECTION 9: L2/L3 Mode
+SECTION 10: L2/L3 Mode
 ============================
 
 Trunking
