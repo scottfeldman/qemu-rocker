@@ -31,7 +31,7 @@ typedef int (world_init)(struct world *world);
 typedef void (world_uninit)(struct world *world);
 typedef ssize_t (world_ig)(struct world *world, uint16_t lport,
                            const struct iovec *iov, int iovcnt);
-typedef int (world_cmd)(struct world *world, struct rocker_tlv **tlvs);
+typedef int (world_cmd)(struct world *world, struct rocker_tlv *cmd_info_tlv);
 
 struct world_ops {
     world_init *init;
