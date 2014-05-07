@@ -25,8 +25,17 @@ struct desc_ring;
 
 typedef int (desc_ring_consume)(struct rocker *r, struct rocker_desc *desc);
 
-char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool tlv_only,
-                   size_t *size);
+static inline uint16_t desc_buf_size(struct rocker_desc *desc)
+{
+    return le16_to_cpu(desc->buf_size);
+}
+
+static inline uint16_t desc_tlv_size(struct rocker_desc *desc)
+{
+    return le16_to_cpu(desc->tlv_size);
+}
+
+char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool read_only);
 void desc_put_buf(char *buf);
 int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
                  size_t tlv_size);

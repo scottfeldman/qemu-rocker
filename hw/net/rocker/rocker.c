@@ -81,8 +81,7 @@ struct rocker {
 static int tx_consume(struct rocker *r, struct rocker_desc *desc)
 {
     PCIDevice *dev = (PCIDevice *)r;
-    size_t tlv_size;
-    char *buf = desc_get_buf(desc, dev, 1, &tlv_size);
+    char *buf = desc_get_buf(desc, dev, true);
     struct rocker_tlv *tlvs[TX_TLVS_MAX + 1], *tlv;
     struct iovec iov[16] = { { 0, }, };
     uint16_t lport = 0, port = 0;
@@ -92,7 +91,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
     if (!buf)
         return -ENXIO;
 
-    if (!tlv_parse(buf, tlv_size, tlvs, TX_TLVS_MAX))
+    if (!tlv_parse(buf, desc_tlv_size(desc), tlvs, TX_TLVS_MAX))
         return -EINVAL;
 
     for (tlv = *tlvs; tlv; tlv++) {
@@ -152,33 +151,137 @@ err_too_many_frags:
     return status;
 }
 
+static int port_settings_wb(struct rocker_desc *desc, PCIDevice *dev,
+                            char *buf, uint16_t lport, uint32_t speed,
+                            uint8_t duplex, uint8_t autoneg,
+                            MACAddr macaddr)
+{
+    struct rocker_tlv *tlv;
+    size_t tlv_size;
+
+    tlv_size = TLV_LENGTH(sizeof(tlv->value->lport))
+             + TLV_LENGTH(sizeof(tlv->value->port_speed))
+             + TLV_LENGTH(sizeof(tlv->value->port_duplex))
+             + TLV_LENGTH(sizeof(tlv->value->port_autoneg))
+             + TLV_LENGTH(sizeof(tlv->value->port_macaddr.a))
+             + 0;
+
+    if (tlv_size > desc_buf_size(desc))
+        return -ENOSPC;
+
+    tlv = tlv_start(buf, TLV_LPORT, sizeof(tlv->value->lport));
+    tlv->value->lport = cpu_to_le16(lport);
+
+    tlv = tlv_add(tlv, TLV_PORT_SPEED, sizeof(tlv->value->port_speed));
+    tlv->value->port_speed = cpu_to_le32(speed);
+
+    tlv = tlv_add(tlv, TLV_PORT_DUPLEX, sizeof(tlv->value->port_duplex));
+    tlv->value->port_duplex = duplex;
+
+    tlv = tlv_add(tlv, TLV_PORT_AUTONEG, sizeof(tlv->value->port_autoneg));
+    tlv->value->port_autoneg = autoneg;
+
+    tlv = tlv_add(tlv, TLV_PORT_MACADDR, sizeof(tlv->value->port_macaddr.a));
+    memcpy(tlv->value->port_macaddr.a, macaddr.a, sizeof(macaddr.a));
+
+    return desc_set_buf(desc, dev, buf, tlv_size);
+}
+
+static int port_settings_cmd(struct rocker *rocker, struct rocker_desc *desc,
+                             PCIDevice *dev, char *buf,
+                             struct rocker_tlv **tlvs)
+{
+    struct rocker_tlv *tlv;
+    struct fp_port *fp_port = NULL;
+    uint32_t speed = 0;
+    uint16_t cmd = 0, lport = 0, port;
+    uint8_t duplex = 0, autoneg = 0;
+    MACAddr macaddr = { {0,} };
+    int status = -EINVAL;
+
+    for (tlv = *tlvs; tlv; tlv++) {
+        switch (TLV_TYPE(tlv)) {
+        case TLV_PORT_SETTINGS:
+            cmd = le16_to_cpu(tlv->value->cmd);
+            break;
+        case TLV_LPORT:
+            lport = le16_to_cpu(tlv->value->lport);
+            if (!fp_port_from_lport(lport, &port))
+                goto err_bad_lport;
+            fp_port = rocker->fp_port[port];
+            break;
+        case TLV_PORT_SPEED:
+            speed = le32_to_cpu(tlv->value->port_speed);
+            break;
+        case TLV_PORT_DUPLEX:
+            duplex = tlv->value->port_duplex;
+            break;
+        case TLV_PORT_AUTONEG:
+            duplex = tlv->value->port_autoneg;
+            break;
+        case TLV_PORT_MACADDR:
+            memcpy(macaddr.a, tlv->value->port_macaddr.a, sizeof(macaddr.a));
+            break;
+        }
+    }
+
+    if (!fp_port)
+        goto err_bad_lport;
+
+    switch (cmd) {
+        case CMD_GET:
+            status = fp_port_get_settings(fp_port, &speed, &duplex,
+                                          &autoneg, macaddr);
+            if (status)
+                break;
+            status = port_settings_wb(desc, dev, buf, lport,
+                                      speed, duplex, autoneg, macaddr);
+            break;
+        case CMD_SET:
+            status = fp_port_set_settings(fp_port, speed, duplex,
+                                          autoneg, macaddr);
+            break;
+    }
+
+err_bad_lport:
+    return status;
+}
+
 #define CMD_TLVS_MAX 20
 
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
 {
     PCIDevice *dev = (PCIDevice *)r;
-    size_t tlv_size;
-    char *buf = desc_get_buf(desc, dev, 1, &tlv_size);
+    char *buf = desc_get_buf(desc, dev, false);
     struct rocker_tlv *tlvs[CMD_TLVS_MAX + 1], *tlv;
     int status = -EINVAL;
 
     if (!buf)
         return -ENXIO;
 
-    if (!tlv_parse(buf, tlv_size, tlvs, CMD_TLVS_MAX))
+    if (!tlv_parse(buf, desc_tlv_size(desc), tlvs, CMD_TLVS_MAX))
         return -EINVAL;
 
+    // XXX should cmd always be first tlv?
+
     for (tlv = *tlvs; tlv; tlv++) {
-        switch(TLV_TYPE(tlv)) {
+        switch (TLV_TYPE(tlv)) {
         case TLV_FLOW_CMD:
-            return world_do_cmd(r->worlds[WORLD_FLOW], tlvs);
+            status = world_do_cmd(r->worlds[WORLD_FLOW], tlvs);
+            break;
         case TLV_TRUNK_CMD:
         case TLV_BRIDGE_CMD:
-            return world_do_cmd(r->worlds[WORLD_L2L3], tlvs);
+            status = world_do_cmd(r->worlds[WORLD_L2L3], tlvs);
+            break;
+        case TLV_PORT_SETTINGS:
+            status = port_settings_cmd(r, desc, dev, buf, tlvs);
+            break;
         default:
             break;
         }
     }
+
+    desc_put_buf(buf);
 
     return status;
 }
@@ -217,7 +320,7 @@ int rx_produce(struct world *world, uint16_t lport,
              + TLV_LENGTH(size)
              + 0;
 
-    if (tlv_size > desc->buf_size)
+    if (tlv_size > desc_buf_size(desc))
         return -ENOSPC;
 
     buf = g_malloc(tlv_size);
@@ -237,17 +340,13 @@ int rx_produce(struct world *world, uint16_t lport,
 
     iov_to_buf(iov, iovcnt, 0, tlv->value->rx_packet, size);
 
-    if (!desc_set_buf(desc, dev, buf, tlv_size)) {
-        status = -ENXIO;
-        goto err_desc_set_buf;
-    }
+    status = desc_set_buf(desc, dev, buf, tlv_size);
 
     desc_ring_post_desc(ring, desc, status);
 
     r->irq_status |= ROCKER_IRQ_RX_DMA_DONE;
     rocker_update_irq(r);
 
-err_desc_set_buf:
     g_free(buf);
 
     return status;

@@ -123,6 +123,10 @@ struct rocker_tlv {
             __le16 len;
             __le16 pad[3];
         } tx_frag[0];
+        __le16 port_speed;
+        uint8_t port_duplex;
+        uint8_t port_autoneg;
+        MACAddr port_macaddr;
     } value[0];
 } __attribute__((packed, aligned (8)));
 
@@ -132,6 +136,13 @@ enum {
 
     /* Logical port number */
     TLV_LPORT,
+
+    /* Port settings */
+    TLV_PORT_SETTINGS,
+    TLV_PORT_SPEED,
+    TLV_PORT_DUPLEX,
+    TLV_PORT_AUTONEG,
+    TLV_PORT_MACADDR,
 
     /* TX TLV's */
     TLV_TX_OFFLOAD,
@@ -240,7 +251,9 @@ enum {
 #define CMD_ADD                         0
 #define CMD_DEL                         1
 #define CMD_MOD                         2
-#define CMD_GET_STATS                   3
+#define CMD_GET                         3
+#define CMD_SET                         4
+#define CMD_GET_STATS                   5
 
 /*
  * Tx offload modes

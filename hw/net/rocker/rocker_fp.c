@@ -44,16 +44,50 @@
  * The rocker nics would be peered with each netdev.
  */
 
+enum duplex {
+    DUPLEX_HALF = 0,
+    DUPLEX_FULL
+};
+
 struct fp_port {
     struct world *world;
     uint index;
     char *name;
     uint16_t lport;
     bool enabled;
+    uint32_t speed;
+    uint8_t duplex;
+    uint8_t autoneg;
     enum fp_port_backend backend;
     NICState *nic;
     NICConf conf;
 };
+
+int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
+                         uint8_t *duplex, uint8_t *autoneg,
+                         MACAddr macaddr)
+{
+    *speed = port->speed;
+    *duplex = port->duplex;
+    *autoneg = port->autoneg;
+    memcpy(macaddr.a, port->conf.macaddr.a, sizeof(macaddr.a));
+
+    return 0;
+}
+
+int fp_port_set_settings(struct fp_port *port, uint32_t speed,
+                         uint8_t duplex, uint8_t autoneg,
+                         MACAddr macaddr)
+{
+    // XXX validate inputs
+
+    port->speed = speed;
+    port->duplex = duplex;
+    port->autoneg = autoneg;
+//XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
+
+    return 0;
+}
 
 bool fp_port_from_lport(uint16_t lport, uint16_t *port)
 {
@@ -215,7 +249,15 @@ void fp_port_disable(struct fp_port *port)
 
 struct fp_port *fp_port_alloc(void)
 {
-    return g_malloc0(sizeof(struct fp_port));
+    struct fp_port *fp_port = g_malloc0(sizeof(struct fp_port));
+
+    if (fp_port) {
+        fp_port->speed = 10000;   /* 10Gbps */
+        fp_port->duplex = DUPLEX_FULL;
+        fp_port->autoneg = 0;
+    }
+
+    return fp_port;
 }
 
 void fp_port_free(struct fp_port *port)
