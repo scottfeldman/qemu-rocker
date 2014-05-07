@@ -17,6 +17,7 @@
 #include "net/clients.h"
 
 #include "rocker.h"
+#include "rocker_hw.h"
 #include "rocker_fp.h"
 #include "rocker_world.h"
 
@@ -50,6 +51,7 @@ enum duplex {
 };
 
 struct fp_port {
+    struct rocker *r;
     struct world *world;
     uint index;
     char *name;
@@ -61,7 +63,13 @@ struct fp_port {
     enum fp_port_backend backend;
     NICState *nic;
     NICConf conf;
+    bool link_up;
 };
+
+bool fp_port_get_link_up(struct fp_port *port)
+{
+    return port->link_up;
+}
 
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
                          uint8_t *duplex, uint8_t *autoneg,
@@ -139,6 +147,15 @@ static void fp_port_cleanup(NetClientState *nc)
 
 static void fp_port_set_link_status(NetClientState *nc)
 {
+    struct fp_port *port = qemu_get_nic_opaque(nc);
+    struct rocker *r = port->r;
+
+    if (port->link_up == !nc->link_down)
+        return;
+
+    port->link_up = !nc->link_down;
+    rocker_irq_status_append(r, ROCKER_IRQ_LINK);
+    rocker_update_irq(r);
 }
 
 static NetClientInfo fp_port_info = {
@@ -151,9 +168,10 @@ static NetClientInfo fp_port_info = {
     .link_status_changed = fp_port_set_link_status,
 };
 
-void fp_port_set_conf(struct fp_port *port, char *sw_name,
+void fp_port_set_conf(struct fp_port *port, struct rocker *r, char *sw_name,
                       MACAddr *start_mac, uint index)
 {
+    port->r = r;
     port->index = index;
     port->lport = index + 1;
 
