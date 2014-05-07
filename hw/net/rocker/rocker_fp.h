@@ -58,5 +58,6 @@ void fp_port_disable(struct fp_port *port);
 
 struct fp_port *fp_port_alloc(void);
 void fp_port_free(struct fp_port *port);
+void fp_port_reset(struct fp_port *port);
 
 #endif /* _ROCKER_FP_H_ */

@@ -279,18 +279,24 @@ void fp_port_disable(struct fp_port *port)
 
 struct fp_port *fp_port_alloc(void)
 {
-    struct fp_port *fp_port = g_malloc0(sizeof(struct fp_port));
+    struct fp_port *port = g_malloc0(sizeof(struct fp_port));
 
-    if (fp_port) {
-        fp_port->speed = 10000;   /* 10Gbps */
-        fp_port->duplex = DUPLEX_FULL;
-        fp_port->autoneg = 0;
-    }
+    if (!port)
+        return NULL;
+    fp_port_reset(port);
 
-    return fp_port;
+    return port;
 }
 
 void fp_port_free(struct fp_port *port)
 {
     g_free(port);
+}
+
+void fp_port_reset(struct fp_port *port)
+{
+    fp_port_disable(port);
+    port->speed = 10000;   /* 10Gbps */
+    port->duplex = DUPLEX_FULL;
+    port->autoneg = 0;
 }
