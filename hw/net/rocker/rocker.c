@@ -52,6 +52,7 @@ struct rocker {
     char *world_dflt;            /* default world for ports */
     uint16_t fp_ports;           /* front-panel port count */
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
+    uint64_t switch_id;          /* switch id */
 
     /* front-panel ports */
     struct fp_port *fp_port[ROCKER_FP_PORTS_MAX];
@@ -594,6 +595,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     case ROCKER_PORT_PHYS_LINK_STATUS:
         ret = rocker_port_phys_link_status(r);
         break;
+    case ROCKER_SWITCH_ID:
+        ret = r->switch_id;
+        break;
     default:
         DPRINTF("not implemented read(q) addr=0x%lx\n", addr);
         ret = 0;
@@ -718,6 +722,10 @@ static int pci_rocker_init(PCIDevice *pci_dev)
         r->fp_start_macaddr.a[4] += (sw_index++);
     }
 
+    if (!r->switch_id)
+        memcpy(&r->switch_id, &r->fp_start_macaddr,
+               sizeof(r->fp_start_macaddr));
+
     backend = FP_BACKEND_NONE;
     if (r->backend_name && memcmp(r->backend_name, "tap", sizeof("tap")) == 0)
         backend = FP_BACKEND_TAP;
@@ -795,6 +803,8 @@ static Property rocker_properties[] = {
                        fp_ports, 16),
     DEFINE_PROP_MACADDR("fp_start_macaddr", struct rocker,
                         fp_start_macaddr),
+    DEFINE_PROP_UINT64("switch_id", struct rocker,
+                       switch_id, 0),
     DEFINE_PROP_END_OF_LIST(),
 };
 
