@@ -83,7 +83,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
     PCIDevice *dev = (PCIDevice *)r;
     size_t tlv_size;
     char *buf = desc_get_buf(desc, dev, 1, &tlv_size);
-    struct rocker_tlv *tlvs[TX_TLVS_MAX + 1] = { 0, }, *tlv;
+    struct rocker_tlv *tlvs[TX_TLVS_MAX + 1], *tlv;
     struct iovec iov[16] = { { 0, }, };
     uint16_t lport = 0, port = 0;
     int iovcnt = 0, status = 0, i;

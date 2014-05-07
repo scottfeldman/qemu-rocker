@@ -28,16 +28,10 @@
 #define TLVDATA_ALIGN(len) ( ((len)+TLV_ALIGNTO-1) & ~(TLV_ALIGNTO-1) )
 #define TLV_HDRLEN (sizeof(struct rocker_tlv))
 #define TLV_LENGTH(len) ((len) + TLV_HDRLEN)
-#define TLV_SPACE(len) TLV_ALIGN(TLV_LENGTH(len))
-#define TLV_DATA(tlv)  ((void*)(((char*)tlv) + TLV_LENGTH(0)))
 #define TLV_NEXT(tlv)     (struct rocker_tlv*)(((char*)(tlv)) + \
 				TLVDATA_ALIGN(le16_to_cpu((tlv)->len)))
-#define TLV_OK(tlv,len) ((len) >= (int)sizeof(struct rocker_tlv) && \
-                           (tlv)->len >= sizeof(struct rocker_tlv) && \
-                           (tlv)->len <= (len))
-#define TLV_PAYLOAD(nlh,len) ((tlv)->len - TLV_SPACE((len)))
 #define TLV_TYPE(tlv) (le32_to_cpu((tlv)->type))
-#define TLV_SIZE(tlv) (le16_to_cpu((tlv)->len), TLV_HDRLEN)
+#define TLV_SIZE(tlv) (le16_to_cpu((tlv)->len) - TLV_HDRLEN)
 
 static inline struct rocker_tlv *tlv_start(char *buf, uint32_t type,
                                            size_t size)
@@ -61,10 +55,24 @@ static inline struct rocker_tlv *tlv_add(struct rocker_tlv *prev,
     return tlv;
 }
 
-static inline bool tlv_parse(const char *buf, size_t size,
+static inline bool tlv_parse(const char *buf, size_t tlv_size,
                              struct rocker_tlv **tlvs, int max)
 {
-    // XXX
+    struct rocker_tlv *tlv = (struct rocker_tlv *)buf;
+    int i, cur = 0;
+
+    for (i = 0; i < max; i++) {
+        if (cur == tlv_size)
+            break;
+        *(tlvs++) = tlv;
+        tlv = TLV_NEXT(tlv);
+        cur = (int)((char *)tlv - buf);
+        if (cur > tlv_size)
+            return false;
+    }
+
+    *tlvs = NULL;
+
     return true;
 }
 
