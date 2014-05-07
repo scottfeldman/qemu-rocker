@@ -23,10 +23,7 @@
 #include "rocker_desc.h"
 
 struct desc_ring {
-    union {
-        hwaddr addr;
-        struct rocker_desc desc[0];
-    } base;
+    hwaddr base_addr;
     uint32_t size;
     uint32_t head;
     uint32_t tail;
@@ -92,14 +89,14 @@ bool desc_ring_set_base_addr(struct desc_ring *ring, uint64_t base_addr)
         return false;
     }
 
-    ring->base.addr = base_addr;
+    ring->base_addr = base_addr;
 
     return true;
 }
 
 uint64_t desc_ring_get_base_addr(struct desc_ring *ring)
 {
-    return ring->base.addr;
+    return ring->base_addr;
 }
 
 bool desc_ring_set_size(struct desc_ring *ring, uint32_t size)
@@ -129,7 +126,7 @@ static struct rocker_desc *desc_read(struct desc_ring *ring, uint32_t index)
 {
     PCIDevice *dev = (PCIDevice *)ring->rocker;
     struct rocker_desc *desc = &ring->backing[index];
-    hwaddr addr = (hwaddr)&ring->base.desc[index];
+    hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
     pci_dma_read(dev, addr, desc, sizeof(*desc));
 
@@ -140,7 +137,7 @@ static void desc_write(struct desc_ring *ring, uint32_t index)
 {
     PCIDevice *dev = (PCIDevice *)ring->rocker;
     struct rocker_desc *desc = &ring->backing[index];
-    hwaddr addr = (hwaddr)&ring->base.desc[index];
+    hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
     pci_dma_write(dev, addr, desc, sizeof(*desc));
 }
