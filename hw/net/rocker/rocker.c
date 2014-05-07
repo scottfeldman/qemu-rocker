@@ -435,6 +435,24 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     }
 }
 
+static void rocker_port_phys_mode_write(struct rocker *r, uint64_t new)
+{
+    int i;
+    enum rocker_world_type old_type;
+    enum rocker_world_type new_type;
+    struct fp_port *fp_port;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        fp_port = r->fp_port[i];
+        old_type = world_type(fp_port_get_world(fp_port));
+        new_type = ((new >> (i + 1)) & 0x1) ? ROCKER_WORLD_TYPE_FLOW :
+                                              ROCKER_WORLD_TYPE_L2L3;
+        if (new_type == old_type)
+            continue;
+        fp_port_set_world(fp_port, r->worlds[new_type]);
+    }
+}
+
 static void rocker_port_phys_enable_write(struct rocker *r, uint64_t new)
 {
     int i;
@@ -473,6 +491,9 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
     case ROCKER_EVENT_DMA_DESC_ADDR:
         index = ROCKER_RING_INDEX(addr);
         desc_ring_set_base_addr(r->rings[index], val);
+        break;
+    case ROCKER_PORT_PHYS_MODE:
+        rocker_port_phys_mode_write(r, val);
         break;
     case ROCKER_PORT_PHYS_ENABLE:
         rocker_port_phys_enable_write(r, val);
@@ -560,6 +581,20 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     return ret;
 }
 
+static uint64_t rocker_port_phys_mode_read(struct rocker *r)
+{
+    int i;
+    uint64_t status = 0;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        struct fp_port *port = r->fp_port[i];
+
+        if (world_type(fp_port_get_world(port)) == ROCKER_WORLD_TYPE_FLOW)
+            status |= 1 << (i + 1);
+    }
+    return status;
+}
+
 static uint64_t rocker_port_phys_link_status(struct rocker *r)
 {
     int i;
@@ -610,6 +645,9 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     case ROCKER_CMD_DMA_DESC_ADDR:
     case ROCKER_EVENT_DMA_DESC_ADDR:
         ret = desc_ring_get_base_addr(r->rings[index]);
+        break;
+    case ROCKER_PORT_PHYS_MODE:
+        ret = rocker_port_phys_mode_read(r);
         break;
     case ROCKER_PORT_PHYS_LINK_STATUS:
         ret = rocker_port_phys_link_status(r);
