@@ -21,6 +21,12 @@ struct world;
 struct rocker;
 struct rocker_tlv;
 
+enum rocker_world_type {
+    ROCKER_WORLD_TYPE_FLOW,
+    ROCKER_WORLD_TYPE_L2L3,
+    ROCKER_WORLD_TYPE_MAX,
+};
+
 typedef int (world_init)(struct world *world);
 typedef void (world_uninit)(struct world *world);
 typedef ssize_t (world_ig)(struct world *world, uint16_t lport,
@@ -39,10 +45,12 @@ ssize_t world_ingress(struct world *world, uint16_t lport,
 int world_do_cmd(struct world *world, struct rocker_tlv **tlvs);
 
 struct world *world_alloc(struct rocker *rocker, size_t sizeof_private,
-                          struct world_ops *ops);
+                          enum rocker_world_type type, struct world_ops *ops);
 void world_free(struct world *world);
 
 void *world_private(struct world *world);
 struct rocker *world_rocker(struct world *world);
+
+enum rocker_world_type world_type(struct world *world);
 
 #endif /* _ROCKER_WORLD_H_ */

@@ -23,6 +23,7 @@ struct rocker;
 
 struct world {
     struct rocker *rocker;
+    enum rocker_world_type type;
     struct world_ops *ops;
 };
 
@@ -44,12 +45,13 @@ int world_do_cmd(struct world *world, struct rocker_tlv **tlvs)
 }
 
 struct world *world_alloc(struct rocker *rocker, size_t sizeof_private,
-                          struct world_ops *ops)
+                          enum rocker_world_type type, struct world_ops *ops)
 {
     struct world *w = g_malloc0(sizeof(struct world) + sizeof_private);
 
     if (w) {
         w->rocker = rocker;
+        w->type = type;
         w->ops = ops;
         if (w->ops->init)
             w->ops->init(w);
@@ -72,4 +74,9 @@ void *world_private(struct world *world)
 struct rocker *world_rocker(struct world *world)
 {
     return world->rocker;
+}
+
+enum rocker_world_type world_type(struct world *world)
+{
+    return world->type;
 }

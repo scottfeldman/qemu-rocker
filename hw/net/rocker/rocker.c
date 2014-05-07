@@ -30,12 +30,6 @@
 #include "rocker_l2l3.h"
 #include "tlv_parse.h"
 
-enum world_id {
-    WORLD_FLOW,
-    WORLD_L2L3,
-    WORLD_MAX,
-};
-
 struct rocker {
     /* private */
     PCIDevice parent_obj;
@@ -68,7 +62,7 @@ struct rocker {
     struct desc_ring *rings[4];
 
     /* switch worlds */
-    struct world *worlds[WORLD_MAX];
+    struct world *worlds[ROCKER_WORLD_TYPE_MAX];
 };
 
 #define ROCKER "rocker"
@@ -267,11 +261,11 @@ static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
     for (tlv = *tlvs; tlv; tlv++) {
         switch (TLV_TYPE(tlv)) {
         case TLV_FLOW_CMD:
-            status = world_do_cmd(r->worlds[WORLD_FLOW], tlvs);
+            status = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_FLOW], tlvs);
             break;
         case TLV_TRUNK_CMD:
         case TLV_BRIDGE_CMD:
-            status = world_do_cmd(r->worlds[WORLD_L2L3], tlvs);
+            status = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_L2L3], tlvs);
             break;
         case TLV_PORT_SETTINGS:
             status = port_settings_cmd(r, desc, dev, buf, tlvs);
@@ -683,7 +677,7 @@ static void pci_rocker_uninit(PCIDevice *dev)
 
     memory_region_destroy(&r->mmio);
 
-    for (i = 0; i < WORLD_MAX; i++)
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (r->worlds[i])
             world_free(r->worlds[i]);
 }
@@ -701,19 +695,19 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
     /* allocate worlds */
 
-    r->worlds[WORLD_FLOW] = flow_world_alloc(r);
-    r->worlds[WORLD_L2L3] = l2l3_world_alloc(r);
+    r->worlds[ROCKER_WORLD_TYPE_FLOW] = flow_world_alloc(r);
+    r->worlds[ROCKER_WORLD_TYPE_L2L3] = l2l3_world_alloc(r);
 
-    for (i = 0; i < WORLD_MAX; i++)
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (!r->worlds[i])
             goto err_world_alloc;
 
-    world_dflt = r->worlds[WORLD_L2L3];
+    world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
     if (r->world_dflt) {
         if (strcmp(r->world_dflt, "flow") == 0)
-            world_dflt = r->worlds[WORLD_FLOW];
+            world_dflt = r->worlds[ROCKER_WORLD_TYPE_FLOW];
         else if (strcmp(r->world_dflt, "l2l3") == 0)
-            world_dflt = r->worlds[WORLD_L2L3];
+            world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
     }
 
     /* setup PCI device */
@@ -798,7 +792,7 @@ err_ring_alloc:
              desc_ring_free(r->rings[i]);
     memory_region_destroy(&r->mmio);
 err_world_alloc:
-    for (i = 0; i < WORLD_MAX; i++)
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (r->worlds[i])
             world_free(r->worlds[i]);
 
