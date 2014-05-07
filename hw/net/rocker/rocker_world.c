@@ -36,10 +36,10 @@ ssize_t world_ingress(struct world *world, uint16_t lport,
     return iov_size(iov, iovcnt);
 }
 
-int world_do_cmd(struct world *world, struct rocker_tlv **tlvs)
+int world_do_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv)
 {
     if (world->ops->cmd)
-        return world->ops->cmd(world, tlvs);
+        return world->ops->cmd(world, cmd_info_tlv);
 
     return -ENOTSUP;
 }

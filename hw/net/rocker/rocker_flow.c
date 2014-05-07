@@ -569,7 +569,7 @@ static ssize_t flow_ig(struct world *world, uint16_t lport,
     return size;
 }
 
-static int flow_cmd(struct world *world, struct rocker_tlv **tlvs)
+static int flow_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv)
 {
     struct flow_world *fw = world_private(world);
     struct flow *flow;

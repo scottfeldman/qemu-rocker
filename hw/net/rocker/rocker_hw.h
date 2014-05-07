@@ -138,6 +138,42 @@ struct rocker_tlv {
     } value[0];
 } __attribute__((packed, aligned (8)));
 
+/* cmd msg */
+enum {
+    ROCKER_TLV_CMD_UNSPEC,
+    ROCKER_TLV_CMD_TYPE,        /* u16 */
+    ROCKER_TLV_CMD_INFO,        /* nest */
+
+    __ROCKER_TLV_CMD_MAX,
+    ROCKER_TLV_CMD_MAX = __ROCKER_TLV_CMD_MAX - 1,
+};
+
+enum {
+    ROCKER_TLV_CMD_TYPE_UNSPEC,
+    ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS,
+    ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS,
+    ROCKER_TLV_CMD_TYPE_FLOW, /* to be changed to add/del/stat/... */
+    ROCKER_TLV_CMD_TYPE_TRUNK, /* to be changed to ... */
+    ROCKER_TLV_CMD_TYPE_BRIDGE, /* to be changed to ... */
+
+    __ROCKER_TLV_CMD_TYPE_MAX,
+    ROCKER_TLV_CMD_TYPE_MAX = __ROCKER_TLV_CMD_TYPE_MAX - 1,
+};
+
+/* cmd info nested for set/get port settings */
+enum {
+    ROCKER_TLV_CMD_PORT_SETTINGS_UNSPEC,
+    ROCKER_TLV_CMD_PORT_SETTINGS_PORT,          /* u16 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_SPEED,         /* u32 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_MAX_SPEED,     /* u32 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX,        /* u8 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG,       /* u8 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,       /* binary */
+
+    __ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
+    ROCKER_TLV_CMD_PORT_SETTINGS_MAX = __ROCKER_TLV_CMD_PORT_SETTINGS_MAX - 1,
+};
+
 enum {
     /* Nest type */
     TLV_NEST = 1,
