@@ -22,6 +22,14 @@
 #define ROCKER_PCI_BAR0_SIZE            0x1000
 
 /*
+ * Rocker bogus registers
+ */
+#define ROCKER_BOGUS_REG0               0x0000
+#define ROCKER_BOGUS_REG1               0x0004
+#define ROCKER_BOGUS_REG2               0x0008
+#define ROCKER_BOGUS_REG3               0x000c
+
+/*
  * Rocker test registers
  */
 #define ROCKER_TEST_REG                 0x0010
