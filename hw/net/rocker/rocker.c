@@ -297,6 +297,11 @@ static void rocker_update_irq(struct rocker *r)
     pci_set_irq(d, (isr != 0));
 }
 
+static void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
+{
+    r->irq_status |= irq_status;
+}
+
 int rx_produce(struct world *world, uint16_t lport,
                const struct iovec *iov, int iovcnt)
 {
@@ -344,7 +349,7 @@ int rx_produce(struct world *world, uint16_t lport,
 
     desc_ring_post_desc(ring, desc, status);
 
-    r->irq_status |= ROCKER_IRQ_RX_DMA_DONE;
+    rocker_irq_status_append(r, ROCKER_IRQ_RX_DMA_DONE);
     rocker_update_irq(r);
 
     g_free(buf);
@@ -382,7 +387,7 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
         return;
     }
     pci_dma_write(d, r->test_dma_addr, buf, r->test_dma_size);
-    r->irq_status |= ROCKER_IRQ_TEST_DMA_DONE;
+    rocker_irq_status_append(r, ROCKER_IRQ_TEST_DMA_DONE);
     rocker_update_irq(r);
 }
 
@@ -420,7 +425,7 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     case ROCKER_CMD_DMA_DESC_HEAD:
     case ROCKER_EVENT_DMA_DESC_HEAD:
         if (desc_ring_set_head(r->rings[index], val)) {
-            r->irq_status |= (1 << (index + 1));
+            rocker_irq_status_append(r, (1 << (index + 1)));
             rocker_update_irq(r);
         }
         break;
