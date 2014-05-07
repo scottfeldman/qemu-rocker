@@ -257,3 +257,11 @@ void desc_ring_free(struct desc_ring *ring)
         g_free(ring->backing);
     g_free(ring);
 }
+
+void desc_ring_reset(struct desc_ring *ring)
+{
+    ring->size = 0;
+    ring->head = 0;
+    ring->tail = 0;
+    ring->ctrl = 0;
+}

@@ -720,13 +720,26 @@ static void pci_rocker_uninit(PCIDevice *dev)
             world_free(r->worlds[i]);
 }
 
+static struct world *rocker_default_world(struct rocker *r)
+{
+    struct world *world_dflt;
+
+    world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
+    if (r->world_dflt) {
+        if (strcmp(r->world_dflt, "flow") == 0)
+            world_dflt = r->worlds[ROCKER_WORLD_TYPE_FLOW];
+        else if (strcmp(r->world_dflt, "l2l3") == 0)
+            world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
+    }
+    return world_dflt;
+}
+
 static int pci_rocker_init(PCIDevice *pci_dev)
 {
     uint8_t *pci_conf = pci_dev->config;
     struct rocker *r = to_rocker(pci_dev);
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
-    struct world *world_dflt;
     static int sw_index = 0;
     enum fp_port_backend backend;
     int i, err;
@@ -739,14 +752,6 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (!r->worlds[i])
             goto err_world_alloc;
-
-    world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
-    if (r->world_dflt) {
-        if (strcmp(r->world_dflt, "flow") == 0)
-            world_dflt = r->worlds[ROCKER_WORLD_TYPE_FLOW];
-        else if (strcmp(r->world_dflt, "l2l3") == 0)
-            world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
-    }
 
     /* setup PCI device */
 
@@ -799,7 +804,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
         r->fp_port[i] = port;
 
-        fp_port_set_world(port, world_dflt);
+        fp_port_set_world(port, rocker_default_world(r));
         fp_port_set_conf(port, r, r->name, &r->fp_start_macaddr, i);
         err = fp_port_set_netdev(port, backend,
                                  r->script, r->downscript);
@@ -839,6 +844,27 @@ err_world_alloc:
 
 static void rocker_reset(DeviceState *dev)
 {
+    struct rocker *r = to_rocker(dev);
+    int i;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        fp_port_reset(r->fp_port[i]);
+        fp_port_set_world(r->fp_port[i], rocker_default_world(r));
+    }
+
+    r->test_reg = 0;
+    r->test_reg64 = 0;
+    r->test_dma_addr = 0;
+    r->test_dma_size = 0;
+    r->irq_status = 0;
+    r->irq_mask = 0;
+
+    desc_ring_reset(r->rings[ROCKER_TX_INDEX]);
+    desc_ring_reset(r->rings[ROCKER_RX_INDEX]);
+    desc_ring_reset(r->rings[ROCKER_CMD_INDEX]);
+    desc_ring_reset(r->rings[ROCKER_EVENT_INDEX]);
+
+    DPRINTF("Reset done\n");
 }
 
 static Property rocker_properties[] = {

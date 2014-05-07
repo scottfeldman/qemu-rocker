@@ -59,5 +59,6 @@ void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
 struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
                                   desc_ring_consume *consume);
 void desc_ring_free(struct desc_ring *ring);
+void desc_ring_reset(struct desc_ring *ring);
 
 #endif
