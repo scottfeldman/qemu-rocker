@@ -31,7 +31,6 @@
 #include "tlv_parse.h"
 
 enum world_id {
-    WORLD_DEAD = 0,
     WORLD_FLOW,
     WORLD_L2L3,
     WORLD_MAX,
@@ -689,17 +688,6 @@ static void pci_rocker_uninit(PCIDevice *dev)
             world_free(r->worlds[i]);
 }
 
-static ssize_t ig_drop(struct world *world, uint16_t lport,
-                       const struct iovec *iov, int iovcnt)
-{
-    /* silently drop ingress pkt */
-    return iov_size(iov, iovcnt);
-}
-
-static struct world_ops dead_ops = {
-    .ig = ig_drop,
-};
-
 static int pci_rocker_init(PCIDevice *pci_dev)
 {
     uint8_t *pci_conf = pci_dev->config;
@@ -713,7 +701,6 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
     /* allocate worlds */
 
-    r->worlds[WORLD_DEAD] = world_alloc(r, 0, &dead_ops);
     r->worlds[WORLD_FLOW] = flow_world_alloc(r);
     r->worlds[WORLD_L2L3] = l2l3_world_alloc(r);
 
@@ -721,7 +708,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
         if (!r->worlds[i])
             goto err_world_alloc;
 
-    world_dflt = r->worlds[WORLD_DEAD];
+    world_dflt = r->worlds[WORLD_L2L3];
     if (r->world_dflt) {
         if (strcmp(r->world_dflt, "flow") == 0)
             world_dflt = r->worlds[WORLD_FLOW];
