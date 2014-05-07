@@ -64,7 +64,6 @@ struct rocker {
     uint32_t test_dma_size;
     uint32_t irq_status;
     uint32_t irq_mask;
-    uint64_t fp_enabled;
 
     /* desc rings */
     struct desc_ring *rings[4];
@@ -443,18 +442,24 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     }
 }
 
-static void rocker_fp_ports_enable(struct rocker *r, uint64_t new)
+static void rocker_port_phys_enable_write(struct rocker *r, uint64_t new)
 {
     int i;
-    uint64_t enabled = new, changed = new ^ r->fp_enabled;
+    bool old_enabled;
+    bool new_enabled;
+    struct fp_port *fp_port;
 
-    for (i = 0; new>>=1, changed>>=1, i < r->fp_ports; i++)
-        if (changed & new & 1)
+    for (i = 0; i < r->fp_ports; i++) {
+        fp_port = r->fp_port[i];
+        old_enabled = fp_port_enabled(fp_port);
+        new_enabled = (new >> (i + 1)) & 0x1;
+        if (new_enabled == old_enabled)
+            continue;
+        if (new_enabled)
             fp_port_enable(r->fp_port[i]);
-        else if (changed & 1)
+        else
             fp_port_disable(r->fp_port[i]);
-
-    r->fp_enabled = enabled;
+    }
 }
 
 static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
@@ -470,7 +475,7 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
         r->test_dma_addr = val;
         break;
     case ROCKER_PORT_PHYS_ENABLE:
-        rocker_fp_ports_enable(r, val);
+        rocker_port_phys_enable_write(r, val);
         break;
     case ROCKER_TX_DMA_DESC_ADDR:
     case ROCKER_RX_DMA_DESC_ADDR:
@@ -562,6 +567,20 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     return ret;
 }
 
+static uint64_t rocker_port_phys_enable_read(struct rocker *r)
+{
+    int i;
+    uint64_t ret = 0;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        struct fp_port *port = r->fp_port[i];
+
+        if (fp_port_enabled(port))
+            ret |= 1 << (i + 1);
+    }
+    return ret;
+}
+
 static uint64_t rocker_port_phys_link_status(struct rocker *r)
 {
     int i;
@@ -594,7 +613,7 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
         ret = r->test_dma_addr;
         break;
     case ROCKER_PORT_PHYS_ENABLE:
-        ret = r->fp_enabled;
+        ret = rocker_port_phys_enable_read(r);
         break;
     case ROCKER_TX_DMA_DESC_ADDR:
     case ROCKER_RX_DMA_DESC_ADDR:

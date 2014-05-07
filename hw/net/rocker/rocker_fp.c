@@ -255,14 +255,21 @@ void fp_port_set_world(struct fp_port *port, struct world *world)
     port->world = world;
 }
 
+bool fp_port_enabled(struct fp_port *port)
+{
+    return port->enabled;
+}
+
 void fp_port_enable(struct fp_port *port)
 {
     port->enabled = true;
+    DPRINTF("port %d enabled\n", port->index);
 }
 
 void fp_port_disable(struct fp_port *port)
 {
     port->enabled = false;
+    DPRINTF("port %d disabled\n", port->index);
 }
 
 struct fp_port *fp_port_alloc(void)

@@ -51,6 +51,7 @@ void fp_port_clear_netdev(struct fp_port *port);
 int fp_port_set_nic(struct fp_port *port, const char *type);
 void fp_port_clear_nic(struct fp_port *port);
 void fp_port_set_world(struct fp_port *port, struct world *world);
+bool fp_port_enabled(struct fp_port *port);
 void fp_port_enable(struct fp_port *port);
 void fp_port_disable(struct fp_port *port);
 
