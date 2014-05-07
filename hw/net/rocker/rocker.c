@@ -507,6 +507,12 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     int index = ROCKER_RING_INDEX(addr);
 
     switch (addr) {
+    case ROCKER_BOGUS_REG0:
+    case ROCKER_BOGUS_REG1:
+    case ROCKER_BOGUS_REG2:
+    case ROCKER_BOGUS_REG3:
+        ret = 0xDEADBABE;
+        break;
     case ROCKER_TEST_REG:
         ret = r->test_reg * 2;
         break;
@@ -577,6 +583,10 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     uint64_t ret;
 
     switch (addr) {
+    case ROCKER_BOGUS_REG0:
+    case ROCKER_BOGUS_REG2:
+        ret = 0xDEADBABEDEADBABE;
+        break;
     case ROCKER_TEST_REG64:
         ret = r->test_reg64 * 2;
         break;
