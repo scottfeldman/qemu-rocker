@@ -385,6 +385,14 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
     rocker_update_irq(r);
 }
 
+static void rocker_reset(DeviceState *dev);
+
+static void rocker_control(struct rocker *r, uint32_t val)
+{
+    if (val & ROCKER_CONTROL_RESET)
+        rocker_reset(DEVICE(r));
+}
+
 static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
 {
     struct rocker *r = opaque;
@@ -428,6 +436,9 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     case ROCKER_CMD_DMA_DESC_CTRL:
     case ROCKER_EVENT_DMA_DESC_CTRL:
         desc_ring_set_ctrl(r->rings[index], val);
+        break;
+    case ROCKER_CONTROL:
+        rocker_control(r, val);
         break;
     default:
         DPRINTF("not implemented write(l) addr=0x%lx val=0x%08x\n", addr, val);

@@ -316,11 +316,16 @@ enum flow_overlay_type {
 /*
  * Rocker general purpose registers
  */
-#define ROCKER_ENDIANESS_SEL            0x0300
+#define ROCKER_CONTROL                  0x0300
 #define ROCKER_PORT_PHYS_COUNT          0x0304
 #define ROCKER_PORT_PHYS_MODE           0x0308 /* 8-byte */
 #define ROCKER_PORT_PHYS_LINK_STATUS    0x0310 /* 8-byte */
 #define ROCKER_PORT_PHYS_ENABLE         0x0318 /* 8-byte */
 #define ROCKER_SWITCH_ID                0x0320 /* 8-byte */
+
+/*
+ * Rocker control bits
+ */
+#define ROCKER_CONTROL_RESET            (1 << 0)
 
 #endif /* _ROCKER_HW_ */
