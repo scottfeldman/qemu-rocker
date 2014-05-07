@@ -250,6 +250,11 @@ void fp_port_clear_nic(struct fp_port *port)
     port->nic = NULL;
 }
 
+struct world *fp_port_get_world(struct fp_port *port)
+{
+    return port->world;
+}
+
 void fp_port_set_world(struct fp_port *port, struct world *world)
 {
     port->world = world;

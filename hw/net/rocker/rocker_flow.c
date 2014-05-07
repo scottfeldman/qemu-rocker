@@ -639,5 +639,6 @@ static struct world_ops flow_ops = {
 
 struct world *flow_world_alloc(struct rocker *rocker)
 {
-    return world_alloc(rocker, sizeof(struct flow_world), &flow_ops);
+    return world_alloc(rocker, sizeof(struct flow_world),
+                       ROCKER_WORLD_TYPE_FLOW, &flow_ops);
 }
