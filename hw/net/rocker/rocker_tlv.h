@@ -34,7 +34,7 @@
 static inline struct rocker_tlv *rocker_tlv_next(const struct rocker_tlv *tlv,
                                                  int *remaining)
 {
-    int totlen = ROCKER_TLV_ALIGN(tlv->len);
+    int totlen = ROCKER_TLV_ALIGN(le16_to_cpu(tlv->len));
 
     *remaining -= totlen;
     return (struct rocker_tlv *) ((char *) tlv + totlen);
@@ -43,33 +43,33 @@ static inline struct rocker_tlv *rocker_tlv_next(const struct rocker_tlv *tlv,
 static inline int rocker_tlv_ok(const struct rocker_tlv *tlv, int remaining)
 {
     return remaining >= (int) ROCKER_TLV_HDRLEN &&
-           tlv->len >= ROCKER_TLV_HDRLEN &&
-           tlv->len <= remaining;
+           le16_to_cpu(tlv->len) >= ROCKER_TLV_HDRLEN &&
+           le16_to_cpu(tlv->len) <= remaining;
 }
 
-#define rocker_tlv_for_each_attr(pos, head, len, rem) \
+#define rocker_tlv_for_each(pos, head, len, rem) \
     for (pos = head, rem = len; \
          rocker_tlv_ok(pos, rem); \
          pos = rocker_tlv_next(pos, &(rem)))
 
-static inline int rocker_tlv_attr_size(int payload)
+static inline int rocker_tlv_size(int payload)
 {
     return ROCKER_TLV_HDRLEN + payload;
 }
 
 static inline int rocker_tlv_total_size(int payload)
 {
-    return ROCKER_TLV_ALIGN(rocker_tlv_attr_size(payload));
+    return ROCKER_TLV_ALIGN(rocker_tlv_size(payload));
 }
 
 static inline int rocker_tlv_padlen(int payload)
 {
-    return rocker_tlv_total_size(payload) - rocker_tlv_attr_size(payload);
+    return rocker_tlv_total_size(payload) - rocker_tlv_size(payload);
 }
 
 static inline int rocker_tlv_type(const struct rocker_tlv *tlv)
 {
-    return tlv->type;
+    return le32_to_cpu(tlv->type);
 }
 
 static inline void *rocker_tlv_data(const struct rocker_tlv *tlv)
@@ -79,7 +79,7 @@ static inline void *rocker_tlv_data(const struct rocker_tlv *tlv)
 
 static inline int rocker_tlv_len(const struct rocker_tlv *tlv)
 {
-    return tlv->len - ROCKER_TLV_HDRLEN;
+    return le16_to_cpu(tlv->len) - ROCKER_TLV_HDRLEN;
 }
 
 static inline uint8_t rocker_tlv_get_u8(const struct rocker_tlv *tlv)
@@ -89,12 +89,12 @@ static inline uint8_t rocker_tlv_get_u8(const struct rocker_tlv *tlv)
 
 static inline uint16_t rocker_tlv_get_u16(const struct rocker_tlv *tlv)
 {
-    return le16_to_cpu(*(uint16_t *) rocker_tlv_data(tlv));
+    return le16_to_cpup((uint16_t *) rocker_tlv_data(tlv));
 }
 
 static inline uint32_t rocker_tlv_get_u32(const struct rocker_tlv *tlv)
 {
-    return le16_to_cpu(*(uint32_t *) rocker_tlv_data(tlv));
+    return le32_to_cpup((uint32_t *) rocker_tlv_data(tlv));
 }
 
 static inline void rocker_tlv_parse(struct rocker_tlv **tb, int maxtype,
@@ -106,7 +106,7 @@ static inline void rocker_tlv_parse(struct rocker_tlv **tb, int maxtype,
 
     memset(tb, 0, sizeof(struct rocker_tlv *) * (maxtype + 1));
 
-    rocker_tlv_for_each_attr(tlv, head, buf_len, rem) {
+    rocker_tlv_for_each(tlv, head, buf_len, rem) {
         uint32_t type = rocker_tlv_type(tlv);
 
         if (type > 0 && type <= maxtype)
@@ -128,45 +128,45 @@ rocker_tlv_start(char *buf, int buf_pos)
 }
 
 static inline void rocker_tlv_put(char *buf, int *buf_pos,
-                                  int attrtype, int attrlen, const void *data)
+                                  int type, int len, const void *data)
 {
-    int total_size = rocker_tlv_total_size(attrlen);
+    int total_size = rocker_tlv_total_size(len);
     struct rocker_tlv *tlv;
 
     tlv = rocker_tlv_start(buf, *buf_pos);
     *buf_pos += total_size;
-    tlv->type = attrtype;
-    tlv->len = rocker_tlv_attr_size(attrlen);
-    memcpy(rocker_tlv_data(tlv), data, attrlen);
-    memset((char *) tlv + tlv->len, 0, rocker_tlv_padlen(attrlen));
+    tlv->type = cpu_to_le32(type);
+    tlv->len = cpu_to_le16(rocker_tlv_size(len));
+    memcpy(rocker_tlv_data(tlv), data, len);
+    memset((char *) tlv + le16_to_cpu(tlv->len), 0, rocker_tlv_padlen(len));
 }
 
 static inline void rocker_tlv_put_u8(char *buf, int *buf_pos,
-                                     int attrtype, uint8_t value)
+                                     int type, uint8_t value)
 {
-    rocker_tlv_put(buf, buf_pos, attrtype, sizeof(uint8_t), &value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint8_t), &value);
 }
 
 static inline void rocker_tlv_put_u16(char *buf, int *buf_pos,
-                                      int attrtype, uint16_t value)
+                                      int type, uint16_t value)
 {
     value = cpu_to_le16(value);
-    rocker_tlv_put(buf, buf_pos, attrtype, sizeof(uint16_t), &value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint16_t), &value);
 }
 
 static inline void rocker_tlv_put_u32(char *buf, int *buf_pos,
-                                      int attrtype, uint32_t value)
+                                      int type, uint32_t value)
 {
     value = cpu_to_le32(value);
-    rocker_tlv_put(buf, buf_pos, attrtype, sizeof(uint32_t), &value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint32_t), &value);
 }
 
 static inline struct rocker_tlv *rocker_tlv_nest_start(char *buf, int *buf_pos,
-                                                       int attrtype)
+                                                       int type)
 {
     struct rocker_tlv *start = rocker_tlv_start(buf, *buf_pos);
 
-    rocker_tlv_put(buf, buf_pos, attrtype, 0, NULL);
+    rocker_tlv_put(buf, buf_pos, type, 0, NULL);
     return start;
 }
 
