@@ -127,9 +127,11 @@ rocker_tlv_start(char *buf, int buf_pos)
     return (struct rocker_tlv *) (buf + buf_pos);
 }
 
-static inline void rocker_tlv_put(char *buf, int *buf_pos,
-                                  int type, int len, const void *data)
+static inline void rocker_tlv_put_iov(char *buf, int *buf_pos,
+                                      int type, const struct iovec *iov,
+                                      const unsigned int iovcnt)
 {
+    size_t len = iov_size(iov, iovcnt);
     int total_size = rocker_tlv_total_size(len);
     struct rocker_tlv *tlv;
 
@@ -137,8 +139,19 @@ static inline void rocker_tlv_put(char *buf, int *buf_pos,
     *buf_pos += total_size;
     tlv->type = cpu_to_le32(type);
     tlv->len = cpu_to_le16(rocker_tlv_size(len));
-    memcpy(rocker_tlv_data(tlv), data, len);
+    iov_to_buf(iov, iovcnt, 0, rocker_tlv_data(tlv), len);
     memset((char *) tlv + le16_to_cpu(tlv->len), 0, rocker_tlv_padlen(len));
+}
+
+static inline void rocker_tlv_put(char *buf, int *buf_pos,
+                                  int type, int len, void *data)
+{
+    struct iovec iov = {
+        .iov_base = data,
+        .iov_len = len,
+    };
+
+    rocker_tlv_put_iov(buf, buf_pos, type, &iov, 1);
 }
 
 static inline void rocker_tlv_put_u8(char *buf, int *buf_pos,

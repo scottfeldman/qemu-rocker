@@ -62,7 +62,7 @@ int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
     if (tlv_size > le16_to_cpu(desc->buf_size)) {
         DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %d tlv_size %ld\n",
                 le16_to_cpu(desc->buf_size), tlv_size);
-        return -ENOMEM;
+        return -EMSGSIZE;
     }
 
     desc->tlv_size = cpu_to_le16(tlv_size);
@@ -153,7 +153,7 @@ struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring)
 void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
                          int err)
 {
-    uint16_t comp_err = 0x8000 | (uint16_t)err;
+    uint16_t comp_err = 0x8000 | (uint16_t)-err;
 
     if (desc_ring_empty(ring)) {
         DPRINTF("ERROR: ring[%d] trying to post desc to empty ring\n",

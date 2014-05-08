@@ -540,7 +540,8 @@ Possible status return codes in descriptor on completion are:
 	--------------------------------------------------------------------
 	0		OK
 	ENXIO		address or data read err on desc buf
-	ENOSPC		Rx descriptor buffer wasn't big enough to contain
+	ENOMEM		no memory for internal staging desc buf
+	EMSGSIZE	Rx descriptor buffer wasn't big enough to contain
 			pactet data TLV and other TLVs.
 
 

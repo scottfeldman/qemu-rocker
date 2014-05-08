@@ -318,50 +318,50 @@ int rx_produce(struct world *world, uint16_t lport,
     PCIDevice *dev = (PCIDevice *)r;
     struct desc_ring *ring = r->rings[ROCKER_RX_INDEX];
     struct rocker_desc *desc = desc_ring_fetch_desc(ring);
-    struct rocker_tlv *tlv;
     size_t size = iov_size(iov, iovcnt);
     char *buf;
-    uint16_t rx_flags = 0, rx_csum = 0;
+    uint16_t rx_flags = 0;
+    uint16_t rx_csum = 0;
     size_t tlv_size;
-    int err = 0;
+    int pos;
+    int err;
 
     if (!desc)
         return -ENOBUFS;
 
-    tlv_size = TLV_LENGTH(sizeof(tlv->value->lport))
-             + TLV_LENGTH(sizeof(tlv->value->rx_flags))
-             + TLV_LENGTH(sizeof(tlv->value->rx_csum))
-             + TLV_LENGTH(size)
-             + 0;
+    // XXX calc rx flags/csum
 
-    if (tlv_size > desc_buf_size(desc))
-        return -ENOSPC;
+    tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +
+               rocker_tlv_total_size(sizeof(uint16_t));
+               rocker_tlv_total_size(sizeof(uint16_t));
+               rocker_tlv_total_size(size);
+
+    if (tlv_size > desc_buf_size(desc)) {
+        err = -EMSGSIZE;
+        goto err_too_big;
+   }
 
     buf = g_malloc(tlv_size);
-    if (!buf)
-        return -ENOMEM;
+    if (!buf) {
+        err = -ENOMEM;
+        goto err_no_mem;
+    }
 
-    tlv = tlv_start(buf, TLV_LPORT, sizeof(tlv->value->lport));
-    tlv->value->lport = cpu_to_le16(lport);
-
-    tlv = tlv_add(tlv, TLV_RX_FLAGS, sizeof(tlv->value->rx_flags));
-    tlv->value->rx_flags = cpu_to_le16(rx_flags);
-
-    tlv = tlv_add(tlv, TLV_RX_CSUM, sizeof(tlv->value->rx_csum));
-    tlv->value->rx_csum = cpu_to_le16(rx_csum);
-
-    tlv = tlv_add(tlv, TLV_RX_PACKET, size);
-
-    iov_to_buf(iov, iovcnt, 0, tlv->value->rx_packet, size);
+    pos = 0;
+    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
+    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_FLAGS, rx_flags);
+    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
+    rocker_tlv_put_iov(buf, &pos, ROCKER_TLV_RX_PACKET, iov, iovcnt);
 
     err = desc_set_buf(desc, dev, buf, tlv_size);
+    g_free(buf);
 
+err_too_big:
+err_no_mem:
     desc_ring_post_desc(ring, desc, err);
 
     rocker_irq_status_append(r, ROCKER_IRQ_RX_DMA_DONE);
     rocker_update_irq(r);
-
-    g_free(buf);
 
     return err;
 }
