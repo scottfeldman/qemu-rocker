@@ -637,8 +637,8 @@ static struct world_ops flow_ops = {
     .cmd = flow_cmd,
 };
 
-struct world *flow_world_alloc(struct rocker *rocker)
+struct world *flow_world_alloc(struct rocker *r)
 {
-    return world_alloc(rocker, sizeof(struct flow_world),
+    return world_alloc(r, sizeof(struct flow_world),
                        ROCKER_WORLD_TYPE_FLOW, &flow_ops);
 }

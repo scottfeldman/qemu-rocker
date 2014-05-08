@@ -44,7 +44,7 @@ ssize_t world_ingress(struct world *world, uint16_t lport,
                       const struct iovec *iov, int iovcnt);
 int world_do_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv);
 
-struct world *world_alloc(struct rocker *rocker, size_t sizeof_private,
+struct world *world_alloc(struct rocker *r, size_t sizeof_private,
                           enum rocker_world_type type, struct world_ops *ops);
 void world_free(struct world *world);
 
