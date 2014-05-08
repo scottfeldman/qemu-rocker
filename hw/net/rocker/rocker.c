@@ -192,6 +192,7 @@ static int cmd_get_port_settings(struct rocker *r,
     uint8_t duplex;
     uint8_t autoneg;
     MACAddr macaddr;
+    enum rocker_world_type mode;
     size_t tlv_size;
     int pos;
     int err;
@@ -207,15 +208,19 @@ static int cmd_get_port_settings(struct rocker *r,
         return -EINVAL;
     fp_port = r->fp_port[port];
 
-    err = fp_port_get_settings(fp_port, &speed, &duplex, &autoneg, macaddr);
+    err = fp_port_get_settings(fp_port, &speed, &duplex, &autoneg);
     if (err)
         return err;
 
-    tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +
-               rocker_tlv_total_size(sizeof(uint32_t)) +
-               rocker_tlv_total_size(sizeof(uint8_t)) +
-               rocker_tlv_total_size(sizeof(uint8_t)) +
-               rocker_tlv_total_size(sizeof(macaddr.a));
+    fp_port_get_macaddr(fp_port, macaddr);
+    mode = world_type(fp_port_get_world(fp_port));
+
+    tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +  /* lport */
+               rocker_tlv_total_size(sizeof(uint32_t)) +  /* speed */
+               rocker_tlv_total_size(sizeof(uint8_t)) +   /* duplex */
+               rocker_tlv_total_size(sizeof(uint8_t)) +   /* autoneg */
+               rocker_tlv_total_size(sizeof(macaddr.a)) + /* macaddr */
+               rocker_tlv_total_size(sizeof(uint8_t));    /* mode */
 
     if (tlv_size > desc_buf_size(desc))
         return -EMSGSIZE;
@@ -227,6 +232,7 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG, autoneg);
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
                    sizeof(macaddr.a), macaddr.a);
+    rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MODE, mode);
 
     return desc_set_buf(desc, dev, buf, tlv_size);
 }
@@ -243,15 +249,13 @@ static int cmd_set_port_settings(struct rocker *r,
     uint8_t duplex;
     uint8_t autoneg;
     MACAddr macaddr;
+    enum rocker_world_type mode;
+    int err;
 
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
 
-    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT] ||
-        !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED] ||
-        !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX] ||
-        !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG] ||
-        !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR])
+    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
     lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
@@ -259,19 +263,35 @@ static int cmd_set_port_settings(struct rocker *r,
         return -EINVAL;
     fp_port = r->fp_port[port];
 
-    speed = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED]);
-    duplex = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX]);
-    autoneg = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]);
+    if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED] &&
+        tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX] &&
+        tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]) {
 
-    if (rocker_tlv_len(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]) !=
-        sizeof(macaddr.a))
-        return -EINVAL;
+        speed = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED]);
+        duplex = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX]);
+        autoneg = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]);
 
-    memcpy(macaddr.a,
-           rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]),
-           sizeof(macaddr.a));
+        err = fp_port_set_settings(fp_port, speed, duplex, autoneg);
+        if (err)
+            return err;
+    }
 
-    return fp_port_set_settings(fp_port, speed, duplex, autoneg, macaddr);
+    if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]) {
+        if (rocker_tlv_len(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]) !=
+            sizeof(macaddr.a))
+            return -EINVAL;
+        memcpy(macaddr.a,
+               rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]),
+               sizeof(macaddr.a));
+        fp_port_set_macaddr(fp_port, macaddr);
+    }
+
+    if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MODE]) {
+        mode = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MODE]);
+        fp_port_set_world(fp_port, r->worlds[mode]);
+    }
+
+    return 0;
 }
 
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
@@ -494,24 +514,6 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
     }
 }
 
-static void rocker_port_phys_mode_write(struct rocker *r, uint64_t new)
-{
-    int i;
-    enum rocker_world_type old_type;
-    enum rocker_world_type new_type;
-    struct fp_port *fp_port;
-
-    for (i = 0; i < r->fp_ports; i++) {
-        fp_port = r->fp_port[i];
-        old_type = world_type(fp_port_get_world(fp_port));
-        new_type = ((new >> (i + 1)) & 0x1) ? ROCKER_WORLD_TYPE_FLOW :
-                                              ROCKER_WORLD_TYPE_L2L3;
-        if (new_type == old_type)
-            continue;
-        fp_port_set_world(fp_port, r->worlds[new_type]);
-    }
-}
-
 static void rocker_port_phys_enable_write(struct rocker *r, uint64_t new)
 {
     int i;
@@ -550,9 +552,6 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
     case ROCKER_EVENT_DMA_DESC_ADDR:
         index = ROCKER_RING_INDEX(addr);
         desc_ring_set_base_addr(r->rings[index], val);
-        break;
-    case ROCKER_PORT_PHYS_MODE:
-        rocker_port_phys_mode_write(r, val);
         break;
     case ROCKER_PORT_PHYS_ENABLE:
         rocker_port_phys_enable_write(r, val);
@@ -640,20 +639,6 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
     return ret;
 }
 
-static uint64_t rocker_port_phys_mode_read(struct rocker *r)
-{
-    int i;
-    uint64_t mode = 0;
-
-    for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = r->fp_port[i];
-
-        if (world_type(fp_port_get_world(port)) == ROCKER_WORLD_TYPE_FLOW)
-            mode |= 1 << (i + 1);
-    }
-    return mode;
-}
-
 static uint64_t rocker_port_phys_link_status(struct rocker *r)
 {
     int i;
@@ -704,9 +689,6 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
     case ROCKER_CMD_DMA_DESC_ADDR:
     case ROCKER_EVENT_DMA_DESC_ADDR:
         ret = desc_ring_get_base_addr(r->rings[index]);
-        break;
-    case ROCKER_PORT_PHYS_MODE:
-        ret = rocker_port_phys_mode_read(r);
         break;
     case ROCKER_PORT_PHYS_LINK_STATUS:
         ret = rocker_port_phys_link_status(r);

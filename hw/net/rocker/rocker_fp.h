@@ -34,12 +34,12 @@ struct world;
 int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt);
 
 bool fp_port_get_link_up(struct fp_port *port);
+void fp_port_get_macaddr(struct fp_port *port, MACAddr macaddr);
+void fp_port_set_macaddr(struct fp_port *port, MACAddr macaddr);
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
-                         uint8_t *duplex, uint8_t *autoneg,
-                         MACAddr macaddr);
+                         uint8_t *duplex, uint8_t *autoneg);
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,
-                         uint8_t duplex, uint8_t autoneg,
-                         MACAddr macaddr);
+                         uint8_t duplex, uint8_t autoneg);
 bool fp_port_from_lport(uint16_t lport, uint16_t *port);
 void fp_port_set_conf(struct fp_port *port, struct rocker *r, char *sw_name,
                       MACAddr *start_mac, uint index);
