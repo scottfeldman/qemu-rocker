@@ -192,7 +192,7 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX, duplex);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG, autoneg);
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
-                   macaddr.a, sizeof(macaddr.a));
+                   sizeof(macaddr.a), macaddr.a);
 
     return 0;
 }
@@ -209,7 +209,6 @@ static int cmd_set_port_settings(struct rocker *r,
     uint8_t duplex;
     uint8_t autoneg;
     MACAddr macaddr;
-    size_t tlv_size;
 
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
@@ -224,7 +223,7 @@ static int cmd_set_port_settings(struct rocker *r,
     lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_PORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
-    fp_port = rocker->fp_port[port];
+    fp_port = r->fp_port[port];
 
     speed = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED]);
     duplex = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX]);
@@ -235,16 +234,17 @@ static int cmd_set_port_settings(struct rocker *r,
         return -EINVAL;
 
     memcpy(macaddr.a,
-           rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR],
-           sizeof(macaddr.a);
+           rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]),
+           sizeof(macaddr.a));
 
     return fp_port_set_settings(fp_port, speed, duplex, autoneg, macaddr);
 }
 
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
 {
+    PCIDevice *d = (PCIDevice *)r;
     char *buf = desc_get_buf(desc, d, false);
-    struct rocker_tlv *tlvs[ROCKER_TLV_CMD_MAX + 1], *info_tlv;
+    struct rocker_tlv *tlvs[ROCKER_TLV_CMD_MAX + 1];
     int err;
 
     if (!buf)
