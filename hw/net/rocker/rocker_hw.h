@@ -163,7 +163,7 @@ enum {
 /* cmd info nested for set/get port settings */
 enum {
     ROCKER_TLV_CMD_PORT_SETTINGS_UNSPEC,
-    ROCKER_TLV_CMD_PORT_SETTINGS_PORT,          /* u16 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_LPORT,         /* u16 */
     ROCKER_TLV_CMD_PORT_SETTINGS_SPEED,         /* u32 */
     ROCKER_TLV_CMD_PORT_SETTINGS_MAX_SPEED,     /* u32 */
     ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX,        /* u8 */
