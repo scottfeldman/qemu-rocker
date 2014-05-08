@@ -71,28 +71,34 @@ bool fp_port_get_link_up(struct fp_port *port)
     return port->link_up;
 }
 
+void fp_port_get_macaddr(struct fp_port *port, MACAddr macaddr)
+{
+    memcpy(macaddr.a, port->conf.macaddr.a, sizeof(macaddr.a));
+}
+
+void fp_port_set_macaddr(struct fp_port *port, MACAddr macaddr)
+{
+//XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
+}
+
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
-                         uint8_t *duplex, uint8_t *autoneg,
-                         MACAddr macaddr)
+                         uint8_t *duplex, uint8_t *autoneg)
 {
     *speed = port->speed;
     *duplex = port->duplex;
     *autoneg = port->autoneg;
-    memcpy(macaddr.a, port->conf.macaddr.a, sizeof(macaddr.a));
 
     return 0;
 }
 
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,
-                         uint8_t duplex, uint8_t autoneg,
-                         MACAddr macaddr)
+                         uint8_t duplex, uint8_t autoneg)
 {
     // XXX validate inputs
 
     port->speed = speed;
     port->duplex = duplex;
     port->autoneg = autoneg;
-//XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
 
     return 0;
 }

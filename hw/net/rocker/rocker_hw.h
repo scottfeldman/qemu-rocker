@@ -153,6 +153,7 @@ enum {
     ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX,        /* u8 */
     ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG,       /* u8 */
     ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,       /* binary */
+    ROCKER_TLV_CMD_PORT_SETTINGS_MODE,          /* u8 */
 
     __ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
     ROCKER_TLV_CMD_PORT_SETTINGS_MAX = __ROCKER_TLV_CMD_PORT_SETTINGS_MAX - 1,
@@ -246,7 +247,6 @@ enum flow_overlay_type {
  */
 #define ROCKER_CONTROL                  0x0300
 #define ROCKER_PORT_PHYS_COUNT          0x0304
-#define ROCKER_PORT_PHYS_MODE           0x0308 /* 8-byte */
 #define ROCKER_PORT_PHYS_LINK_STATUS    0x0310 /* 8-byte */
 #define ROCKER_PORT_PHYS_ENABLE         0x0318 /* 8-byte */
 #define ROCKER_SWITCH_ID                0x0320 /* 8-byte */

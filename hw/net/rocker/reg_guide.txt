@@ -325,18 +325,9 @@ references.  To summarize the mapping:
 Physical Port Mode
 ------------------
 
-Switch front-panel ports will operate in one of two modes: Flow mode or L2/L3
-mode.  Across the switch, a mix of port modes is allowed for hybrid (Flow and
-L2/L3) operation.  To set the mode for front-panel ports, write to
-PORT_PHYS_MODE:
-
-	PORT_PHYS_MODE, offset 0x0308, 64-bit, (R/W)
-
-	Value is bitmap of first 64 logical ports.  Bits 0 and 63 are ignored
-	and always read as 0.  Write 1 for Flow mode; write 0 for L2/L3 
-	mode.  Default is 0.  Register should be set during switch
-	initialization.  Changing port mode post-initialization will result
-	in undefined behaviour.
+Switch front-panel ports operate in a mode.  Current modes are Flow and L2/L3.
+Across the switch, a mix of port modes is allowed for hybrid operation.  To
+set/get the mode for front-panel ports, see port settings, below.
 
 Port Settings
 -------------
@@ -348,7 +339,7 @@ Links status for all front-panel ports is available via PORT_PHYS_LINK_STATUS:
 	Value is logical port bitmap.  Bits 0 and 63 always read 0.  Bits 1-62
 	read 1 for link UP and 0 for link DOWN for respective front-panel ports.
 
-Other properties for ports are available via DMA CMD descriptors:
+Other properties for front-panel ports are available via DMA CMD descriptors:
 
 	Get PORT_SETTINGS descriptor:
 
@@ -366,6 +357,8 @@ Other properties for ports are available via DMA CMD descriptors:
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
+		MODE		1	0 = Flow
+					1 = L2/L3
 
 	Set PORT_SETTINGS descriptor:
 
@@ -377,6 +370,8 @@ Other properties for ports are available via DMA CMD descriptors:
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
+		MODE		1	0 = Flow
+					1 = L2/L3
 
 Port Enable
 -----------
