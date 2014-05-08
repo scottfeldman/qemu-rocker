@@ -97,6 +97,11 @@ static inline uint32_t rocker_tlv_get_u32(const struct rocker_tlv *tlv)
     return le32_to_cpup((uint32_t *) rocker_tlv_data(tlv));
 }
 
+static inline uint64_t rocker_tlv_get_u64(const struct rocker_tlv *tlv)
+{
+    return le64_to_cpup((uint64_t *) rocker_tlv_data(tlv));
+}
+
 static inline void rocker_tlv_parse(struct rocker_tlv **tb, int maxtype,
                                     const char *buf, int buf_len)
 {
@@ -172,6 +177,13 @@ static inline void rocker_tlv_put_u32(char *buf, int *buf_pos,
 {
     value = cpu_to_le32(value);
     rocker_tlv_put(buf, buf_pos, type, sizeof(uint32_t), &value);
+}
+
+static inline void rocker_tlv_put_u64(char *buf, int *buf_pos,
+                                      int type, uint64_t value)
+{
+    value = cpu_to_le64(value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint64_t), &value);
 }
 
 static inline struct rocker_tlv *rocker_tlv_nest_start(char *buf, int *buf_pos,

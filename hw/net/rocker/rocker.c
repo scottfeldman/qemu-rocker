@@ -71,76 +71,110 @@ struct rocker {
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
 
-#define TX_TLVS_MAX 6  // XXX define elsewheres
-
 static int tx_consume(struct rocker *r, struct rocker_desc *desc)
 {
     PCIDevice *dev = (PCIDevice *)r;
     char *buf = desc_get_buf(desc, dev, true);
-    struct rocker_tlv *tlvs[TX_TLVS_MAX + 1], *tlv;
-    struct iovec iov[16] = { { 0, }, };
-    uint16_t lport = 0, port = 0;
-    int iovcnt = 0, err = 0, i;
-    hwaddr addr;
+    struct rocker_tlv *tlv_frag;
+    struct rocker_tlv *tlv_frags;
+    struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
+    struct iovec iov[TX_FRAGS_MAX] = { { 0, }, };
+    uint16_t lport;
+    uint16_t port;
+    uint16_t tx_offload = TX_OFFLOAD_NONE;
+    uint16_t tx_l3_csum_off = 0;
+    uint16_t tx_tso_mss = 0;
+    uint16_t tx_tso_hdr_len = 0;
+    int iovcnt = 0;
+    int err = 0;
+    int rem;
+    int i;
 
     if (!buf)
         return -ENXIO;
 
-    if (!tlv_parse(buf, desc_tlv_size(desc), tlvs, TX_TLVS_MAX))
+    rocker_tlv_parse(tlvs, ROCKER_TLV_TX_MAX, buf, desc_tlv_size(desc));
+
+    if (!tlvs[ROCKER_TLV_TX_LPORT] ||
+        !tlvs[ROCKER_TLV_TX_FRAGS])
         return -EINVAL;
 
-    for (tlv = *tlvs; tlv; tlv++) {
-        switch (TLV_TYPE(tlv)) {
-        case TLV_LPORT:
-            lport = le16_to_cpu(tlv->value->lport);
-            if (!fp_port_from_lport(lport, &port)) {
-                err = -EINVAL;
-                goto err_bad_lport;
-            }
-            break;
-        case TLV_TX_OFFLOAD:
-        case TLV_TX_L3_CSUM_OFF:
-        case TLV_TX_TSO_MSS:
-        case TLV_TX_TSO_HDR_LEN:
-            // XXX ignored for now
-            break;
-        case TLV_TX_FRAGS:
-            iovcnt = TLV_SIZE(tlv) / sizeof(tlv->value->tx_frag[0]);
-            if (iovcnt > 16) {
-                err = -EINVAL;
-                goto err_too_many_frags;
-            }
-            for (i = 0; i < iovcnt; i++) {
-                iov[i].iov_len = le16_to_cpu(tlv->value->tx_frag[i].len);
-                iov[i].iov_base = g_malloc(iov[i].iov_len);
-                if (!iov[i].iov_base) {
-                    err = -ENOMEM;
-                    goto err_no_mem;
-                }
-                addr = le64_to_cpu(tlv->value->tx_frag[i].addr);
-                if (pci_dma_read(dev, addr, iov[i].iov_base, iov[i].iov_len)) {
-                    err = -ENXIO;
-                    goto err_bad_io;
-                }
-            }
-            break;
+    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_LPORT]);
+    if (!fp_port_from_lport(lport, &port))
+        return -EINVAL;
+
+    if (tlvs[ROCKER_TLV_TX_OFFLOAD])
+        tx_offload = rocker_tlv_get_u8(tlvs[ROCKER_TLV_TX_OFFLOAD]);
+
+    switch (tx_offload) {
+        case TX_OFFLOAD_L3_CSUM:
+        if (!tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
+            return -EINVAL;
+        case TX_OFFLOAD_TSO:
+        if (!tlvs[ROCKER_TLV_TX_TSO_MSS] ||
+            !tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
+            return -EINVAL;
+    }
+
+    if (tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
+        tx_l3_csum_off = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]);
+
+    if (tlvs[ROCKER_TLV_TX_TSO_MSS])
+        tx_tso_mss = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_TSO_MSS]);
+
+    if (tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
+        tx_tso_hdr_len = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]);
+
+    tlv_frags = tlvs[ROCKER_TLV_TX_FRAGS];
+    rocker_tlv_for_each(tlv_frag, rocker_tlv_data(tlv_frags),
+                        rocker_tlv_len(tlv_frags), rem) {
+        hwaddr frag_addr;
+        uint16_t frag_len;
+
+        if (rocker_tlv_type(tlv_frag) != ROCKER_TLV_TX_FRAG)
+            return -EINVAL;
+
+        rocker_tlv_parse_nested(tlvs, ROCKER_TLV_TX_FRAG_ATTR_MAX, tlv_frag);
+        
+        if (!tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR] ||
+            !tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN])
+            return -EINVAL;
+
+        frag_addr = rocker_tlv_get_u64(tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR]);
+        frag_len = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN]);
+
+        iov[iovcnt].iov_len = frag_len;
+        iov[iovcnt].iov_base = g_malloc(frag_len);
+        if (!iov[iovcnt].iov_base) {
+            err = -ENOMEM;
+            goto err_no_mem;
         }
+
+        if (pci_dma_read(dev, frag_addr, iov[iovcnt].iov_base,
+                     iov[iovcnt].iov_len)) {
+            err = -ENXIO;
+            goto err_bad_io;
+        }
+
+        if (++iovcnt > TX_FRAGS_MAX)
+            goto err_too_many_frags;
     }
 
     if (iovcnt) {
-        ; // XXX perform Tx offloads
+        // XXX perform Tx offloads
+        // XXX   silence compiler for now
+        tx_l3_csum_off += tx_tso_mss = tx_tso_hdr_len = 0;
     }
 
     err = fp_port_eg(r->fp_port[port], iov, iovcnt);
 
-err_bad_lport:
 err_no_mem:
 err_bad_io:
+err_too_many_frags:
     for (i = 0; i < iovcnt; i++)
         if (iov[i].iov_base)
             g_free(iov[i].iov_base);
 
-err_too_many_frags:
     desc_put_buf(buf);
 
     return err;
