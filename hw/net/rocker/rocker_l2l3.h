@@ -20,6 +20,6 @@
 struct rocker;
 struct world;
 
-struct world *l2l3_world_alloc(struct rocker *rocker);
+struct world *l2l3_world_alloc(struct rocker *r);
 
 #endif /* _ROCKER_L2L3_H_ */

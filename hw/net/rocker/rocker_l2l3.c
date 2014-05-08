@@ -55,8 +55,8 @@ static struct world_ops l2l3_ops = {
     .cmd = l2l3_cmd,
 };
 
-struct world *l2l3_world_alloc(struct rocker *rocker)
+struct world *l2l3_world_alloc(struct rocker *r)
 {
-    return world_alloc(rocker, sizeof(struct l2l3_world),
+    return world_alloc(r, sizeof(struct l2l3_world),
                        ROCKER_WORLD_TYPE_L2L3, &l2l3_ops);
 }

@@ -28,7 +28,7 @@ struct desc_ring {
     uint32_t head;
     uint32_t tail;
     uint32_t ctrl;
-    struct rocker *rocker;
+    struct rocker *r;
     struct rocker_desc *backing;
     int index;
     desc_ring_consume *consume;
@@ -124,7 +124,7 @@ uint32_t desc_ring_get_size(struct desc_ring *ring)
 
 static struct rocker_desc *desc_read(struct desc_ring *ring, uint32_t index)
 {
-    PCIDevice *dev = (PCIDevice *)ring->rocker;
+    PCIDevice *dev = (PCIDevice *)ring->r;
     struct rocker_desc *desc = &ring->backing[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
@@ -135,7 +135,7 @@ static struct rocker_desc *desc_read(struct desc_ring *ring, uint32_t index)
 
 static void desc_write(struct desc_ring *ring, uint32_t index)
 {
-    PCIDevice *dev = (PCIDevice *)ring->rocker;
+    PCIDevice *dev = (PCIDevice *)ring->r;
     struct rocker_desc *desc = &ring->backing[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
@@ -179,7 +179,7 @@ static int ring_pump(struct desc_ring *ring)
     if (ring->consume) {
         while (ring->head != ring->tail) {
             desc = desc_read(ring, ring->tail);
-            err = ring->consume(ring->rocker, desc);
+            err = ring->consume(ring->r, desc);
             desc_ring_post_desc(ring, desc, err);
             consumed++;
         }
@@ -241,7 +241,7 @@ struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
     if (!ring)
         return NULL;
 
-    ring->rocker = r;
+    ring->r = r;
     ring->consume = consume;
     ring->index = index;
 

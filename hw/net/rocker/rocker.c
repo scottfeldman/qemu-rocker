@@ -242,8 +242,8 @@ static int cmd_set_port_settings(struct rocker *r,
 
 static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
 {
-    PCIDevice *d = (PCIDevice *)r;
-    char *buf = desc_get_buf(desc, d, false);
+    PCIDevice *dev = (PCIDevice *)r;
+    char *buf = desc_get_buf(desc, dev, false);
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_MAX + 1];
     int err;
 
@@ -296,13 +296,13 @@ buf_put:
 
 void rocker_update_irq(struct rocker *r)
 {
-    PCIDevice *d = PCI_DEVICE(r);
+    PCIDevice *dev = PCI_DEVICE(r);
     uint32_t isr = r->irq_status & r->irq_mask;
 
     DPRINTF("Set IRQ to %d (%04x %04x)\n", isr ? 1 : 0,
             r->irq_status, r->irq_mask);
 
-    pci_set_irq(d, (isr != 0));
+    pci_set_irq(dev, (isr != 0));
 }
 
 void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
@@ -367,7 +367,7 @@ int rx_produce(struct world *world, uint16_t lport,
 
 static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
 {
-    PCIDevice *d = PCI_DEVICE(r);
+    PCIDevice *dev = PCI_DEVICE(r);
     char *buf;
     int i;
 
@@ -386,7 +386,7 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
         memset(buf, 0x96, r->test_dma_size);
         break;
     case ROCKER_TEST_DMA_CTRL_INVERT:
-        pci_dma_read(d, r->test_dma_addr, buf, r->test_dma_size);
+        pci_dma_read(dev, r->test_dma_addr, buf, r->test_dma_size);
         for (i = 0; i < r->test_dma_size; i++)
             buf[i] = ~buf[i];
         break;
@@ -394,7 +394,7 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
         DPRINTF("not test dma control val=0x%08x\n", val);
         return;
     }
-    pci_dma_write(d, r->test_dma_addr, buf, r->test_dma_size);
+    pci_dma_write(dev, r->test_dma_addr, buf, r->test_dma_size);
     rocker_irq_status_append(r, ROCKER_IRQ_TEST_DMA_DONE);
     rocker_update_irq(r);
 }
