@@ -767,7 +767,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
     static int sw_index = 0;
     enum fp_port_backend backend;
-    int i, err;
+    int i, err = 0;
 
     /* allocate worlds */
 
@@ -864,7 +864,7 @@ err_world_alloc:
         if (r->worlds[i])
             world_free(r->worlds[i]);
 
-    return -1;
+    return err;
 }
 
 static void rocker_reset(DeviceState *dev)
