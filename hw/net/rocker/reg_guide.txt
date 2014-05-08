@@ -140,14 +140,14 @@ allocated from contiguous host DMA-able memory and registers specify the rings
 base address as well as current head and tail indices.  Software always writes
 the head, and hardware always writes the tail.
 
-A generation bit in each descriptors comp_status field marks hardware's progression
+A generation bit in each descriptors comp_err field marks hardware's progression
 through the descriptor ring.  Each time the ring wraps, the generation bit is
 toggled.  The generation bit allows software to know which descriptors are DMA
 complete.  Software must also toggle its sense of the generation bit each pass
 through the ring to remain synchronized with hardware.  Hardware will write '1'
 to generation bit on first pass through ring, so software should zero-set
 descriptor ring memory to be syncronized with hardware.  Next pass hardware
-writes '1', and so on.  When updating the comp_status, hardware writes the
+writes '1', and so on.  When updating the comp_err, hardware writes the
 generation bit last, after all other fields are written.  This ensures software
 reads correct field values after reading a generation bit change.
 
@@ -191,8 +191,8 @@ All descriptor types share some common fields:
 	DMA_DESC_TLV_SIZE	2	Desc payload total size in bytes
 					used for TLVs.  Must be <=
 					DMA_DESC_BUF_SIZE.
-	DMA_DESC_COMP_STATUS	2	Completion status of associated
-					desc payload high order bit is
+	DMA_DESC_COMP_ERR	2	Completion status of associated
+					desc payload.  High order bit is
 					clear on new descs, toggled by
 					hw for completed items.
 
@@ -494,7 +494,7 @@ The TLVs for Tx descriptor buffer are:
 
 Possible status return codes in descriptor on completion are:
 
-	DMA_COMP_STATUS	reason
+	DESC_COMP_ERR	reason
 	--------------------------------------------------------------------
 	0		OK
 	ENXIO		address or data read err on desc buf or packet
@@ -536,7 +536,7 @@ The TLVs for Rx descriptor buffer are:
 
 Possible status return codes in descriptor on completion are:
 
-	DMA_COMP_STATUS	reason
+	DESC_COMP_ERR	reason
 	--------------------------------------------------------------------
 	0		OK
 	ENXIO		address or data read err on desc buf
@@ -800,7 +800,7 @@ the following TLVs:
 
 Possible status return codes in descriptor on completion are:
 
-	DMA_COMP_STATUS	command			reason
+	DESC_COMP_ERR	command			reason
 	--------------------------------------------------------------------
 	0		all			OK
 	EFAULT		all			head or tail index outside
@@ -880,7 +880,7 @@ the following TLVs:
 
 Possible status return codes in descriptor on completion are:
 
-	DMA_COMP_STATUS	command			reason
+	DESC_COMP_ERR	command			reason
 	--------------------------------------------------------------------
 	0		all			OK
 	EFAULT		all			head or tail index outside
@@ -951,7 +951,7 @@ TLVs for CMD_DEL are:
 
 Possible status return codes in descriptor on completion are:
 
-	DMA_COMP_STATUS	command			reason
+	DESC_COMP_ERR	command			reason
 	--------------------------------------------------------------------
 	0		all			OK
 	EINVAL		ADD|MOD			invalid parameters passed in

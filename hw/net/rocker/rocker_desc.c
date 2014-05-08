@@ -151,9 +151,9 @@ struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring)
 }
 
 void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
-                         int status)
+                         int err)
 {
-    uint16_t comp_status = 0x8000 | (uint16_t)status;
+    uint16_t comp_err = 0x8000 | (uint16_t)err;
 
     if (desc_ring_empty(ring)) {
         DPRINTF("ERROR: ring[%d] trying to post desc to empty ring\n",
@@ -161,7 +161,7 @@ void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
         return;
     }
 
-    desc->comp_status = cpu_to_le16(comp_status);
+    desc->comp_err = cpu_to_le16(comp_err);
     desc_write(ring, ring->tail);
     ring->tail = (ring->tail + 1) % ring->size;
 }
@@ -169,7 +169,7 @@ void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
 static int ring_pump(struct desc_ring *ring)
 {
     struct rocker_desc *desc;
-    int status, consumed = 0;
+    int err, consumed = 0;
 
     /* If the ring has a consumer, call consumer for each
      * desc starting at tail and stopping when tail reaches
@@ -179,8 +179,8 @@ static int ring_pump(struct desc_ring *ring)
     if (ring->consume) {
         while (ring->head != ring->tail) {
             desc = desc_read(ring, ring->tail);
-            status  = ring->consume(ring->rocker, desc);
-            desc_ring_post_desc(ring, desc, status);
+            err = ring->consume(ring->rocker, desc);
+            desc_ring_post_desc(ring, desc, err);
             consumed++;
         }
     }
