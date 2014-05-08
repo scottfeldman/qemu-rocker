@@ -174,6 +174,26 @@ enum {
     ROCKER_TLV_CMD_PORT_SETTINGS_MAX = __ROCKER_TLV_CMD_PORT_SETTINGS_MAX - 1,
 };
 
+/* Rx msg */
+enum {
+    ROCKER_TLV_RX_LPORT,                        /* u16 */
+    ROCKER_TLV_RX_FLAGS,                        /* u16, see RX_FLAGS_ */
+    ROCKER_TLV_RX_CSUM,                         /* u16 */
+    ROCKER_TLV_RX_PACKET,                       /* binary */
+
+    __ROCKER_TLV_RX_MAX,
+    ROCKER_TLV_RX_MAX = __ROCKER_TLV_RX_MAX - 1,
+};
+
+#define RX_FLAGS_IPV4                   (1 << 0)
+#define RX_FLAGS_IPV6                   (1 << 1)
+#define RX_FLAGS_CSUM_CALC              (1 << 2)
+#define RX_FLAGS_IPV4_CSUM_GOOD         (1 << 3)
+#define RX_FLAGS_IP_FRAG                (1 << 4)
+#define RX_FLAGS_TCP                    (1 << 5)
+#define RX_FLAGS_UDP                    (1 << 6)
+#define RX_FLAGS_TCP_UDP_CSUM_GOOD      (1 << 7)
+
 enum {
     /* Nest type */
     TLV_NEST = 1,
@@ -308,19 +328,6 @@ enum {
 #define TX_OFFLOAD_TCP_UDP_CSUM         2
 #define TX_OFFLOAD_L3_CSUM              3
 #define TX_OFFLOAD_TSO                  4
-
-/*
- * Rx parsing flags
- */
-
-#define RX_FLAGS_IPV4                   (1 << 0)
-#define RX_FLAGS_IPV6                   (1 << 1)
-#define RX_FLAGS_CSUM_CALC              (1 << 2)
-#define RX_FLAGS_IPV4_CSUM_GOOD         (1 << 3)
-#define RX_FLAGS_IP_FRAG                (1 << 4)
-#define RX_FLAGS_TCP                    (1 << 5)
-#define RX_FLAGS_UDP                    (1 << 6)
-#define RX_FLAGS_TCP_UDP_CSUM_GOOD      (1 << 7)
 
 /*
  * Flow group types
