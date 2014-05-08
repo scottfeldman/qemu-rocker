@@ -42,7 +42,6 @@ struct rocker {
     char *backend_name;          /* backend method */
     char *script;                /* script to run for tap backends */
     char *downscript;            /* downscript to run for tap backends */
-    char *world_dflt;            /* default world for ports */
     uint16_t fp_ports;           /* front-panel port count */
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
     uint64_t switch_id;          /* switch id */
@@ -63,6 +62,7 @@ struct rocker {
 
     /* switch worlds */
     struct world *worlds[ROCKER_WORLD_TYPE_MAX];
+    struct world *world_dflt;
 };
 
 #define ROCKER "rocker"
@@ -779,20 +779,6 @@ static void pci_rocker_uninit(PCIDevice *dev)
             world_free(r->worlds[i]);
 }
 
-static struct world *rocker_default_world(struct rocker *r)
-{
-    struct world *world_dflt;
-
-    world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
-    if (r->world_dflt) {
-        if (strcmp(r->world_dflt, "flow") == 0)
-            world_dflt = r->worlds[ROCKER_WORLD_TYPE_FLOW];
-        else if (strcmp(r->world_dflt, "l2l3") == 0)
-            world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
-    }
-    return world_dflt;
-}
-
 static int pci_rocker_init(PCIDevice *pci_dev)
 {
     uint8_t *pci_conf = pci_dev->config;
@@ -807,6 +793,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
     r->worlds[ROCKER_WORLD_TYPE_FLOW] = flow_world_alloc(r);
     r->worlds[ROCKER_WORLD_TYPE_L2L3] = l2l3_world_alloc(r);
+    r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
 
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (!r->worlds[i])
@@ -863,7 +850,7 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
         r->fp_port[i] = port;
 
-        fp_port_set_world(port, rocker_default_world(r));
+        fp_port_set_world(port, r->world_dflt);
         fp_port_set_conf(port, r, r->name, &r->fp_start_macaddr, i);
         err = fp_port_set_netdev(port, backend,
                                  r->script, r->downscript);
@@ -908,7 +895,7 @@ static void rocker_reset(DeviceState *dev)
 
     for (i = 0; i < r->fp_ports; i++) {
         fp_port_reset(r->fp_port[i]);
-        fp_port_set_world(r->fp_port[i], rocker_default_world(r));
+        fp_port_set_world(r->fp_port[i], r->world_dflt);
     }
 
     r->test_reg = 0;
@@ -931,7 +918,6 @@ static Property rocker_properties[] = {
     DEFINE_PROP_STRING("backend", struct rocker, backend_name),
     DEFINE_PROP_STRING("script", struct rocker, script),
     DEFINE_PROP_STRING("downscript", struct rocker, downscript),
-    DEFINE_PROP_STRING("world", struct rocker, world_dflt),
     DEFINE_PROP_UINT16("fp_ports", struct rocker,
                        fp_ports, 16),
     DEFINE_PROP_MACADDR("fp_start_macaddr", struct rocker,
