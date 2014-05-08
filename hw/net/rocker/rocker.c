@@ -150,6 +150,7 @@ static int cmd_get_port_settings(struct rocker *r,
                                  struct rocker_desc *desc, char *buf,
                                  struct rocker_tlv *cmd_info_tlv)
 {
+    PCIDevice *dev = (PCIDevice *)r;
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
     struct fp_port *fp_port;
     uint16_t lport;
@@ -165,10 +166,10 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
 
-    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_PORT])
+    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_PORT]);
+    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
@@ -187,14 +188,14 @@ static int cmd_get_port_settings(struct rocker *r,
         return -EMSGSIZE;
 
     pos = 0;
-    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_PORT, lport);
+    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
     rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_SPEED, speed);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX, duplex);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG, autoneg);
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
                    sizeof(macaddr.a), macaddr.a);
 
-    return 0;
+    return desc_set_buf(desc, dev, buf, tlv_size);
 }
 
 static int cmd_set_port_settings(struct rocker *r,
@@ -213,14 +214,14 @@ static int cmd_set_port_settings(struct rocker *r,
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
 
-    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_PORT] ||
+    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT] ||
         !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED] ||
         !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX] ||
         !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG] ||
         !tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_PORT]);
+    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
