@@ -220,7 +220,7 @@ int fp_port_set_netdev(struct fp_port *port,
         return fp_port_set_tap_netdev(port, script, downscript);
     default:
         DPRINTF("Invalid backend mode %d\n", backend);
-        return -1;
+        return -EINVAL;
     }
 }
 
