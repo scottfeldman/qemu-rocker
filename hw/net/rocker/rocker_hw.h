@@ -194,6 +194,42 @@ enum {
 #define RX_FLAGS_UDP                    (1 << 6)
 #define RX_FLAGS_TCP_UDP_CSUM_GOOD      (1 << 7)
 
+/* Tx msg */
+enum {
+    ROCKER_TLV_TX_LPORT,                        /* u16 */
+    ROCKER_TLV_TX_OFFLOAD,                      /* u8, see TX_OFFLOAD_ */
+    ROCKER_TLV_TX_L3_CSUM_OFF,                  /* u16 */
+    ROCKER_TLV_TX_TSO_MSS,                      /* u16 */
+    ROCKER_TLV_TX_TSO_HDR_LEN,                  /* u16 */
+    ROCKER_TLV_TX_FRAGS,                        /* array */
+
+    __ROCKER_TLV_TX_MAX,
+    ROCKER_TLV_TX_MAX = __ROCKER_TLV_TX_MAX - 1,
+};
+
+#define TX_OFFLOAD_NONE                 0
+#define TX_OFFLOAD_IP_CSUM              1
+#define TX_OFFLOAD_TCP_UDP_CSUM         2
+#define TX_OFFLOAD_L3_CSUM              3
+#define TX_OFFLOAD_TSO                  4
+
+#define TX_FRAGS_MAX                    16
+
+enum {
+    ROCKER_TLV_TX_FRAG,                         /* nest */
+
+    __ROCKER_TLV_TX_FRAG_MAX,
+    ROCKER_TLV_TX_FRAG_MAX = __ROCKER_TLV_TX_FRAG_MAX - 1,
+};
+
+enum {
+    ROCKER_TLV_TX_FRAG_ATTR_ADDR,               /* u64 */
+    ROCKER_TLV_TX_FRAG_ATTR_LEN,                /* u16 */
+
+    __ROCKER_TLV_TX_FRAG_ATTR_MAX,
+    ROCKER_TLV_TX_FRAG_ATTR_MAX = __ROCKER_TLV_TX_FRAG_ATTR_MAX - 1,
+};
+
 enum {
     /* Nest type */
     TLV_NEST = 1,
@@ -318,16 +354,6 @@ enum {
 #define CMD_GET                         3
 #define CMD_SET                         4
 #define CMD_GET_STATS                   5
-
-/*
- * Tx offload modes
- */
-
-#define TX_OFFLOAD_NONE                 0
-#define TX_OFFLOAD_IP_CSUM              1
-#define TX_OFFLOAD_TCP_UDP_CSUM         2
-#define TX_OFFLOAD_L3_CSUM              3
-#define TX_OFFLOAD_TSO                  4
 
 /*
  * Flow group types

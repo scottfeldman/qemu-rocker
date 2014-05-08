@@ -461,36 +461,33 @@ TLV is used for each packet fragment.
 
 The TLVs for Tx descriptor buffer are:
 
-	field		width	description
-	---------------------------------------------------
-	LPORT		2	Destination logical port #
-	TX_OFFLOAD	1	Hardware offload modes:
-				  0: no offload
-				  1: insert IP csum (ipv4 only)
-				  2: insert TCP/UDP csum
-				  3: L3 csum calc and insert
-                                     into csum offset (TX_L3_CSUM_OFF)
-                                     16-bit 1's complement csum value.
-                                     IPv4 pseudo-header and IP
-                                     already calculated by OS
-                                     and inserted.
-				  4: TSO (TCP Segmentation Offload)
-	TX_L3_CSUM_OFF	2	For L3 csum offload mode, the offset,
-				from the beginning of the packet,
-				of the csum field in the L3 header
-	TX_TSO_MSS	2	For TSO offload mode, the
-				Maximum Segment Size in bytes
-        TX_TSO_HDR_LEN	2	For TSO offload mode, the
-				length of ethernet, IP, and
-				TCP/UDP headers, including IP
-				and TCP options.
-	TX_FRAGS	<array>	Packet fragment references,
-                                packet in array of structures:
-					struct {
-						uint64_t addr;
-						uint16_t len;
-						uint16_t pad2[2];
-					} frag;
+	field			width	description
+	---------------------------------------------------------------------
+	LPORT			2	Destination logical port #
+	TX_OFFLOAD		1	Hardware offload modes:
+					  0: no offload
+					  1: insert IP csum (ipv4 only)
+					  2: insert TCP/UDP csum
+					  3: L3 csum calc and insert
+                        	             into csum offset (TX_L3_CSUM_OFF)
+                 	                    16-bit 1's complement csum value.
+                                	     IPv4 pseudo-header and IP
+                        	             already calculated by OS
+                  	                   and inserted.
+					  4: TSO (TCP Segmentation Offload)
+	TX_L3_CSUM_OFF		2	For L3 csum offload mode, the offset,
+					from the beginning of the packet,
+					of the csum field in the L3 header
+	TX_TSO_MSS		2	For TSO offload mode, the
+					Maximum Segment Size in bytes
+        TX_TSO_HDR_LEN		2	For TSO offload mode, the
+					length of ethernet, IP, and
+					TCP/UDP headers, including IP
+					and TCP options.
+	TX_FRAGS		<array>	Packet fragments
+	  TX_FRAG		<nest>	Packet fragment
+	    TX_FRAG_ADDR	8	DMA address of packet fragment
+	    TX_FRAG_LEN		2	Packet fragment length
 
 Possible status return codes in descriptor on completion are:
 
@@ -499,7 +496,8 @@ Possible status return codes in descriptor on completion are:
 	0		OK
 	ENXIO		address or data read err on desc buf or packet
 			fragment
-	EINVAL		TSO or csum offloading error
+	EINVAL		bad lport or TSO or csum offloading error
+	ENOMEM		no memory for internal staging tx fragment
 
 Rx Packet Processing
 --------------------
