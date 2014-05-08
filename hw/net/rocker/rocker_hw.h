@@ -120,29 +120,13 @@ struct rocker_tlv {
     __le32 type;
     __le16 len;
     __le16 rsvd;
-    union {
-        __le16 lport;
-        __le16 cmd;
-        __le16 rx_flags;
-        __le16 rx_csum;
-        char rx_packet[0];
-        struct {
-            __le64 addr;
-            __le16 len;
-            __le16 pad[3];
-        } tx_frag[0];
-        __le16 port_speed;
-        uint8_t port_duplex;
-        uint8_t port_autoneg;
-        MACAddr port_macaddr;
-    } value[0];
 } __attribute__((packed, aligned (8)));
 
 /* cmd msg */
 enum {
     ROCKER_TLV_CMD_UNSPEC,
-    ROCKER_TLV_CMD_TYPE,        /* u16 */
-    ROCKER_TLV_CMD_INFO,        /* nest */
+    ROCKER_TLV_CMD_TYPE,                /* u16 */
+    ROCKER_TLV_CMD_INFO,                /* nest */
 
     __ROCKER_TLV_CMD_MAX,
     ROCKER_TLV_CMD_MAX = __ROCKER_TLV_CMD_MAX - 1,
@@ -176,10 +160,10 @@ enum {
 
 /* Rx msg */
 enum {
-    ROCKER_TLV_RX_LPORT,                        /* u16 */
-    ROCKER_TLV_RX_FLAGS,                        /* u16, see RX_FLAGS_ */
-    ROCKER_TLV_RX_CSUM,                         /* u16 */
-    ROCKER_TLV_RX_PACKET,                       /* binary */
+    ROCKER_TLV_RX_LPORT,                /* u16 */
+    ROCKER_TLV_RX_FLAGS,                /* u16, see RX_FLAGS_ */
+    ROCKER_TLV_RX_CSUM,                 /* u16 */
+    ROCKER_TLV_RX_PACKET,               /* binary */
 
     __ROCKER_TLV_RX_MAX,
     ROCKER_TLV_RX_MAX = __ROCKER_TLV_RX_MAX - 1,
@@ -196,12 +180,12 @@ enum {
 
 /* Tx msg */
 enum {
-    ROCKER_TLV_TX_LPORT,                        /* u16 */
-    ROCKER_TLV_TX_OFFLOAD,                      /* u8, see TX_OFFLOAD_ */
-    ROCKER_TLV_TX_L3_CSUM_OFF,                  /* u16 */
-    ROCKER_TLV_TX_TSO_MSS,                      /* u16 */
-    ROCKER_TLV_TX_TSO_HDR_LEN,                  /* u16 */
-    ROCKER_TLV_TX_FRAGS,                        /* array */
+    ROCKER_TLV_TX_LPORT,                /* u16 */
+    ROCKER_TLV_TX_OFFLOAD,              /* u8, see TX_OFFLOAD_ */
+    ROCKER_TLV_TX_L3_CSUM_OFF,          /* u16 */
+    ROCKER_TLV_TX_TSO_MSS,              /* u16 */
+    ROCKER_TLV_TX_TSO_HDR_LEN,          /* u16 */
+    ROCKER_TLV_TX_FRAGS,                /* array */
 
     __ROCKER_TLV_TX_MAX,
     ROCKER_TLV_TX_MAX = __ROCKER_TLV_TX_MAX - 1,
@@ -216,144 +200,19 @@ enum {
 #define TX_FRAGS_MAX                    16
 
 enum {
-    ROCKER_TLV_TX_FRAG,                         /* nest */
+    ROCKER_TLV_TX_FRAG,                 /* nest */
 
     __ROCKER_TLV_TX_FRAG_MAX,
     ROCKER_TLV_TX_FRAG_MAX = __ROCKER_TLV_TX_FRAG_MAX - 1,
 };
 
 enum {
-    ROCKER_TLV_TX_FRAG_ATTR_ADDR,               /* u64 */
-    ROCKER_TLV_TX_FRAG_ATTR_LEN,                /* u16 */
+    ROCKER_TLV_TX_FRAG_ATTR_ADDR,       /* u64 */
+    ROCKER_TLV_TX_FRAG_ATTR_LEN,        /* u16 */
 
     __ROCKER_TLV_TX_FRAG_ATTR_MAX,
     ROCKER_TLV_TX_FRAG_ATTR_MAX = __ROCKER_TLV_TX_FRAG_ATTR_MAX - 1,
 };
-
-enum {
-    /* Nest type */
-    TLV_NEST = 1,
-
-    /* Logical port number */
-    TLV_LPORT,
-
-    /* Port settings */
-    TLV_PORT_SETTINGS,
-    TLV_PORT_SPEED,
-    TLV_PORT_DUPLEX,
-    TLV_PORT_AUTONEG,
-    TLV_PORT_MACADDR,
-
-    /* TX TLV's */
-    TLV_TX_OFFLOAD,
-    TLV_TX_L3_CSUM_OFF,
-    TLV_TX_TSO_MSS,
-    TLV_TX_TSO_HDR_LEN,
-    TLV_TX_FRAG_CNT,
-    TLV_TX_FRAGS,
-
-    /* RX TLV's */
-    TLV_RX_FLAGS,
-    TLV_RX_CSUM,
-    TLV_RX_PACKET,
-
-    /* Flow Table TLV's */
-    TLV_FLOW_CMD,
-    TLV_FLOW_TBL,
-    TLV_FLOW_PRIORITY,
-    TLV_FLOW_HARDTIME,
-    TLV_FLOW_IDLETIME,
-    TLV_FLOW_COOKIE,
-    TLV_FLOW_IG_PORT,               /* nest */
-    TLV_FLOW_IN_PORT,               /* lport */
-    TLV_FLOW_IN_PORT_MASK,
-    TLV_FLOW_VLAN,                  /* nest */
-    TLV_FLOW_VLAN_ID,
-    TLV_FLOW_VLAN_ID_MASK,
-    TLV_FLOW_VLAN_PCP,
-    TLV_FLOW_VLAN_PCP_MASK,
-    TLV_FLOW_NEW_VLAN_ID,
-    TLV_FLOW_TERM_MAC,              /* nest */
-    TLV_FLOW_ETHERTYPE,
-    TLV_FLOW_SRC_MAC,
-    TLV_FLOW_SRC_MAC_MASK,
-    TLV_FLOW_DST_MAC,
-    TLV_FLOW_DST_MAC_MASK,
-    TLV_FLOW_BRIDGING,              /* nest */
-    TLV_FLOW_TUNNEL_ID,
-    TLV_FLOW_GROUP_ID,
-    TLV_FLOW_TUN_LOG_PORT,          /* lport */
-    TLV_FLOW_OUT_PORT,              /* lport */
-    TLV_FLOW_UNICAST_ROUTING,       /* nest */
-    TLV_FLOW_DST_IP,
-    TLV_FLOW_DST_IP_MASK,
-    TLV_FLOW_DST_IPV6,
-    TLV_FLOW_DST_IPV6_MASK,
-    TLV_FLOW_MULTICAST_ROUTING,     /* nest */
-    TLV_FLOW_SRC_IP,
-    TLV_FLOW_SRC_IP_MASK,
-    TLV_FLOW_SRC_IPV6,
-    TLV_FLOW_SRC_IPV6_MASK,
-    TLV_FLOW_L2_PORT,               /* lport */
-    TLV_FLOW_INDEX,
-    TLV_OVERLAY_TYPE,
-    TLV_FLOW_ACL,                   /* nest */
-    TLV_FLOW_SRC_ARP_IP,
-    TLV_FLOW_SRC_ARP_IP_MASK,
-    TLV_FLOW_IP_PROTO,
-    TLV_FLOW_IP_PROTO_MASK,
-    TLV_FLOW_DSCP,
-    TLV_FLOW_DSCP_MASK,
-    TLV_FLOW_ECN,
-    TLV_FLOW_ECN_MASK,
-    TLV_FLOW_L4_SRC_PORT,
-    TLV_FLOW_L4_SRC_PORT_MASK,
-    TLV_FLOW_L4_DST_PORT,
-    TLV_FLOW_L4_DST_PORT_MASK,
-    TLV_FLOW_ICMP_TYPE,
-    TLV_FLOW_ICMP_TYPE_MASK,
-    TLV_FLOW_ICMP_CODE,
-    TLV_FLOW_ICMP_CODE_MASK,
-    TLV_FLOW_IPV6_LABEL,
-    TLV_FLOW_IPV6_LABEL_MASK,
-    TLV_FLOW_QUEUE_ID_ACTION,
-    TLV_FLOW_QUEUE_ID,
-    TLV_FLOW_VLAN_PCP_ACTION,
-    TLV_FLOW_NEW_VLAN_PCP,
-    TLV_FLOW_DSCP_ACTION,
-    TLV_FLOW_NEW_DSCP,
-    TLV_FLOW_CLEAR_ACTIONS,
-    TLV_FLOW_STAT_DURATION,
-    TLV_FLOW_STAT_REF_COUNT,
-    TLV_FLOW_STAT_BUCKET_COUNT,
-    TLV_FLOW_STAT_RX_PKT,
-    TLV_FLOW_STAT_TX_PKT,
-    TLV_FLOW_GROUP_CMD,
-    TLV_FLOW_GROUP_TYPE,
-    TLV_FLOW_GROUP_ACTION,          /* nest */
-
-    /* Trunking TLV's */
-    TLV_TRUNK_CMD,
-    TLV_TRUNK_LPORT,                /* lport */
-    TLV_TRUNK_HASH,
-    TLV_TRUNK_MEMBER,               /* lport */
-    TLV_TRUNK_ACTIVE,
-
-    /* Bridging TLV's */
-    TLV_BRIDGE_CMD,
-    TLV_BRIDGE_LPORT,               /* lport */
-    TLV_BRIDGE_MEMBER,              /* lport */
-};
-
-/*
- * Command TLV value definitions
- */
-#define CMD_ADD                         0
-#define CMD_DEL                         1
-#define CMD_MOD                         2
-#define CMD_GET                         3
-#define CMD_SET                         4
-#define CMD_GET_STATS                   5
 
 /*
  * Flow group types
