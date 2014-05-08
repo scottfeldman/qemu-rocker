@@ -80,7 +80,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
     struct rocker_tlv *tlvs[TX_TLVS_MAX + 1], *tlv;
     struct iovec iov[16] = { { 0, }, };
     uint16_t lport = 0, port = 0;
-    int iovcnt = 0, status = 0, i;
+    int iovcnt = 0, err = 0, i;
     hwaddr addr;
 
     if (!buf)
@@ -94,7 +94,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
         case TLV_LPORT:
             lport = le16_to_cpu(tlv->value->lport);
             if (!fp_port_from_lport(lport, &port)) {
-                status = -EINVAL;
+                err = -EINVAL;
                 goto err_bad_lport;
             }
             break;
@@ -107,19 +107,19 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
         case TLV_TX_FRAGS:
             iovcnt = TLV_SIZE(tlv) / sizeof(tlv->value->tx_frag[0]);
             if (iovcnt > 16) {
-                status = -EINVAL;
+                err = -EINVAL;
                 goto err_too_many_frags;
             }
             for (i = 0; i < iovcnt; i++) {
                 iov[i].iov_len = le16_to_cpu(tlv->value->tx_frag[i].len);
                 iov[i].iov_base = g_malloc(iov[i].iov_len);
                 if (!iov[i].iov_base) {
-                    status = -ENOMEM;
+                    err = -ENOMEM;
                     goto err_no_mem;
                 }
                 addr = le64_to_cpu(tlv->value->tx_frag[i].addr);
                 if (pci_dma_read(dev, addr, iov[i].iov_base, iov[i].iov_len)) {
-                    status = -ENXIO;
+                    err = -ENXIO;
                     goto err_bad_io;
                 }
             }
@@ -131,7 +131,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
         ; // XXX perform Tx offloads
     }
 
-    status = fp_port_eg(r->fp_port[port], iov, iovcnt);
+    err = fp_port_eg(r->fp_port[port], iov, iovcnt);
 
 err_bad_lport:
 err_no_mem:
@@ -143,7 +143,7 @@ err_bad_io:
 err_too_many_frags:
     desc_put_buf(buf);
 
-    return status;
+    return err;
 }
 
 static int cmd_get_port_settings(struct rocker *r,
@@ -322,7 +322,7 @@ int rx_produce(struct world *world, uint16_t lport,
     char *buf;
     uint16_t rx_flags = 0, rx_csum = 0;
     size_t tlv_size;
-    int status = 0;
+    int err = 0;
 
     if (!desc)
         return -ENOBUFS;
@@ -353,16 +353,16 @@ int rx_produce(struct world *world, uint16_t lport,
 
     iov_to_buf(iov, iovcnt, 0, tlv->value->rx_packet, size);
 
-    status = desc_set_buf(desc, dev, buf, tlv_size);
+    err = desc_set_buf(desc, dev, buf, tlv_size);
 
-    desc_ring_post_desc(ring, desc, status);
+    desc_ring_post_desc(ring, desc, err);
 
     rocker_irq_status_append(r, ROCKER_IRQ_RX_DMA_DONE);
     rocker_update_irq(r);
 
     g_free(buf);
 
-    return status;
+    return err;
 }
 
 static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
@@ -609,15 +609,15 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
 static uint64_t rocker_port_phys_mode_read(struct rocker *r)
 {
     int i;
-    uint64_t status = 0;
+    uint64_t mode = 0;
 
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
 
         if (world_type(fp_port_get_world(port)) == ROCKER_WORLD_TYPE_FLOW)
-            status |= 1 << (i + 1);
+            mode |= 1 << (i + 1);
     }
-    return status;
+    return mode;
 }
 
 static uint64_t rocker_port_phys_link_status(struct rocker *r)
