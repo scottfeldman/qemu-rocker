@@ -185,6 +185,7 @@ static int cmd_get_port_settings(struct rocker *r,
 {
     PCIDevice *dev = (PCIDevice *)r;
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
+    struct rocker_tlv *nest;
     struct fp_port *fp_port;
     uint16_t lport;
     uint16_t port;
@@ -215,17 +216,19 @@ static int cmd_get_port_settings(struct rocker *r,
     fp_port_get_macaddr(fp_port, macaddr);
     mode = world_type(fp_port_get_world(fp_port));
 
-    tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +  /* lport */
-               rocker_tlv_total_size(sizeof(uint32_t)) +  /* speed */
-               rocker_tlv_total_size(sizeof(uint8_t)) +   /* duplex */
-               rocker_tlv_total_size(sizeof(uint8_t)) +   /* autoneg */
-               rocker_tlv_total_size(sizeof(macaddr.a)) + /* macaddr */
-               rocker_tlv_total_size(sizeof(uint8_t));    /* mode */
+    tlv_size = rocker_tlv_total_size(0) +                 /* nest */
+               rocker_tlv_total_size(sizeof(uint16_t)) +  /*   lport */
+               rocker_tlv_total_size(sizeof(uint32_t)) +  /*   speed */
+               rocker_tlv_total_size(sizeof(uint8_t)) +   /*   duplex */
+               rocker_tlv_total_size(sizeof(uint8_t)) +   /*   autoneg */
+               rocker_tlv_total_size(sizeof(macaddr.a)) + /*   macaddr */
+               rocker_tlv_total_size(sizeof(uint8_t));    /*   mode */
 
     if (tlv_size > desc_buf_size(desc))
         return -EMSGSIZE;
 
     pos = 0;
+    nest = rocker_tlv_nest_start(buf, &pos, ROCKER_TLV_CMD_INFO);
     rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
     rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_SPEED, speed);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX, duplex);
@@ -233,6 +236,7 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
                    sizeof(macaddr.a), macaddr.a);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MODE, mode);
+    rocker_tlv_nest_end(buf, &pos, nest);
 
     return desc_set_buf(desc, dev, buf, tlv_size);
 }
