@@ -206,6 +206,9 @@ int desc_ring_set_head(struct desc_ring *ring, uint32_t new)
         return 0;
     }
 
+    if (new == ring->head)
+        DPRINTF("WARNING: setting head (%d) to current head position\n", new);
+
     ring->head = new;
 
     return ring_pump(ring);
