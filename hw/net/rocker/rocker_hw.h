@@ -97,7 +97,7 @@ ROCKER_DMA_RING_REG_SET(EVENT, 3);
  * to its index.  Based on the fact that the register
  * group stride is 32 bytes.
  */
-#define ROCKER_RING_INDEX(reg) ((reg >> 8) & 0xf)
+#define ROCKER_RING_INDEX(reg) ((reg >> 5) & 0x7)
 
 /*
  * Rocker DMA Descriptor
