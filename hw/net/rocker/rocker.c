@@ -70,10 +70,10 @@ struct rocker {
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
 
-static int tx_consume(struct rocker *r, struct rocker_desc *desc)
+static int tx_consume(struct rocker *r, struct desc_info *info)
 {
     PCIDevice *dev = (PCIDevice *)r;
-    char *buf = desc_get_buf(desc, dev, true);
+    char *buf = desc_get_buf(info, true);
     struct rocker_tlv *tlv_frag;
     struct rocker_tlv *tlv_frags;
     struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
@@ -92,7 +92,7 @@ static int tx_consume(struct rocker *r, struct rocker_desc *desc)
     if (!buf)
         return -ENXIO;
 
-    rocker_tlv_parse(tlvs, ROCKER_TLV_TX_MAX, buf, desc_tlv_size(desc));
+    rocker_tlv_parse(tlvs, ROCKER_TLV_TX_MAX, buf, desc_tlv_size(info));
 
     if (!tlvs[ROCKER_TLV_TX_LPORT] ||
         !tlvs[ROCKER_TLV_TX_FRAGS])
@@ -174,16 +174,13 @@ err_too_many_frags:
         if (iov[i].iov_base)
             g_free(iov[i].iov_base);
 
-    desc_put_buf(buf);
-
     return err;
 }
 
 static int cmd_get_port_settings(struct rocker *r,
-                                 struct rocker_desc *desc, char *buf,
+                                 struct desc_info *info, char *buf,
                                  struct rocker_tlv *cmd_info_tlv)
 {
-    PCIDevice *dev = (PCIDevice *)r;
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
     struct rocker_tlv *nest;
     struct fp_port *fp_port;
@@ -224,7 +221,7 @@ static int cmd_get_port_settings(struct rocker *r,
                rocker_tlv_total_size(sizeof(macaddr.a)) + /*   macaddr */
                rocker_tlv_total_size(sizeof(uint8_t));    /*   mode */
 
-    if (tlv_size > desc_buf_size(desc))
+    if (tlv_size > desc_buf_size(info))
         return -EMSGSIZE;
 
     pos = 0;
@@ -238,11 +235,10 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MODE, mode);
     rocker_tlv_nest_end(buf, &pos, nest);
 
-    return desc_set_buf(desc, dev, buf, tlv_size);
+    return desc_set_buf(info, tlv_size);
 }
 
 static int cmd_set_port_settings(struct rocker *r,
-                                 struct rocker_desc *desc, char *buf,
                                  struct rocker_tlv *cmd_info_tlv)
 {
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
@@ -298,22 +294,19 @@ static int cmd_set_port_settings(struct rocker *r,
     return 0;
 }
 
-static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
+static int cmd_consume(struct rocker *r, struct desc_info *info)
 {
-    PCIDevice *dev = (PCIDevice *)r;
-    char *buf = desc_get_buf(desc, dev, false);
+    char *buf = desc_get_buf(info, false);
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_MAX + 1];
     int err;
 
     if (!buf)
         return -ENXIO;
 
-    rocker_tlv_parse(tlvs, ROCKER_TLV_CMD_MAX, buf, desc_tlv_size(desc));
+    rocker_tlv_parse(tlvs, ROCKER_TLV_CMD_MAX, buf, desc_tlv_size(info));
 
-    if (!tlvs[ROCKER_TLV_CMD_TYPE] || !tlvs[ROCKER_TLV_CMD_INFO]) {
-        err = -EINVAL;
-        goto buf_put;
-    }
+    if (!tlvs[ROCKER_TLV_CMD_TYPE] || !tlvs[ROCKER_TLV_CMD_INFO])
+        return -EINVAL;
 
     /* This might be reworked to something like this:
      * Every world will have an array of command handlers from
@@ -334,20 +327,16 @@ static int cmd_consume(struct rocker *r, struct rocker_desc *desc)
                            tlvs[ROCKER_TLV_CMD_INFO]);
         break;
     case ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS:
-        err = cmd_get_port_settings(r, desc, buf,
+        err = cmd_get_port_settings(r, info, buf,
                                     tlvs[ROCKER_TLV_CMD_INFO]);
         break;
     case ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS:
-        err = cmd_set_port_settings(r, desc, buf,
-                                    tlvs[ROCKER_TLV_CMD_INFO]);
+        err = cmd_set_port_settings(r, tlvs[ROCKER_TLV_CMD_INFO]);
         break;
     default:
+        err = -EINVAL;
         break;
     }
-    err = 0;
-
-buf_put:
-    desc_put_buf(buf);
 
     return err;
 }
@@ -372,9 +361,8 @@ int rx_produce(struct world *world, uint16_t lport,
                const struct iovec *iov, int iovcnt)
 {
     struct rocker *r = world_rocker(world);
-    PCIDevice *dev = (PCIDevice *)r;
     struct desc_ring *ring = r->rings[ROCKER_RX_INDEX];
-    struct rocker_desc *desc = desc_ring_fetch_desc(ring);
+    struct desc_info *info = desc_ring_fetch_desc(ring);
     size_t size = iov_size(iov, iovcnt);
     char *buf;
     uint16_t rx_flags = 0;
@@ -383,7 +371,7 @@ int rx_produce(struct world *world, uint16_t lport,
     int pos;
     int err;
 
-    if (!desc)
+    if (!info)
         return -ENOBUFS;
 
     // XXX calc rx flags/csum
@@ -393,12 +381,12 @@ int rx_produce(struct world *world, uint16_t lport,
                rocker_tlv_total_size(sizeof(uint16_t));
                rocker_tlv_total_size(size);
 
-    if (tlv_size > desc_buf_size(desc)) {
+    if (tlv_size > desc_buf_size(info)) {
         err = -EMSGSIZE;
         goto err_too_big;
    }
 
-    buf = g_malloc(tlv_size);
+    buf = desc_get_buf(info, true);
     if (!buf) {
         err = -ENOMEM;
         goto err_no_mem;
@@ -410,12 +398,11 @@ int rx_produce(struct world *world, uint16_t lport,
     rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
     rocker_tlv_put_iov(buf, &pos, ROCKER_TLV_RX_PACKET, iov, iovcnt);
 
-    err = desc_set_buf(desc, dev, buf, tlv_size);
-    g_free(buf);
+    err = desc_set_buf(info, tlv_size);
 
 err_too_big:
 err_no_mem:
-    desc_ring_post_desc(ring, desc, err);
+    desc_ring_post_desc(ring, err);
 
     rocker_irq_status_append(r, ROCKER_IRQ_RX_DMA_DONE);
     rocker_update_irq(r);
