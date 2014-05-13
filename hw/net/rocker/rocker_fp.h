@@ -41,22 +41,17 @@ int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,
                          uint8_t duplex, uint8_t autoneg);
 bool fp_port_from_lport(uint16_t lport, uint16_t *port);
-void fp_port_set_conf(struct fp_port *port, struct rocker *r, char *sw_name,
-                      MACAddr *start_mac, uint index);
-void fp_port_clear_conf(struct fp_port *port);
-int fp_port_set_netdev(struct fp_port *port,
-                       enum fp_port_backend backend,
-                       char *script, char *downscript);
-void fp_port_clear_netdev(struct fp_port *port);
-int fp_port_set_nic(struct fp_port *port, const char *type);
-void fp_port_clear_nic(struct fp_port *port);
 struct world *fp_port_get_world(struct fp_port *port);
 void fp_port_set_world(struct fp_port *port, struct world *world);
 bool fp_port_enabled(struct fp_port *port);
 void fp_port_enable(struct fp_port *port);
 void fp_port_disable(struct fp_port *port);
 
-struct fp_port *fp_port_alloc(void);
+struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
+                              MACAddr *start_mac, uint index,
+                              enum fp_port_backend backend,
+                              char *script, char *downscript,
+                              const char *type);
 void fp_port_free(struct fp_port *port);
 void fp_port_reset(struct fp_port *port);
 
