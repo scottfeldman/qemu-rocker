@@ -734,9 +734,6 @@ static void pci_rocker_uninit(PCIDevice *dev)
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
 
-        fp_port_clear_nic(port);
-        fp_port_clear_netdev(port);
-        fp_port_clear_conf(port);
         fp_port_free(port);
         r->fp_port[i] = NULL;
     }
@@ -816,36 +813,23 @@ static int pci_rocker_init(PCIDevice *pci_dev)
             goto err_ring_alloc;
 
     for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = fp_port_alloc();
+        struct fp_port *port =
+            fp_port_alloc(r, r->name, &r->fp_start_macaddr,
+                          i, backend, r->script, r->downscript,
+                          object_get_typename(OBJECT(r)));
 
         if (!port)
             goto err_port_alloc;
 
         r->fp_port[i] = port;
-
         fp_port_set_world(port, r->world_dflt);
-        fp_port_set_conf(port, r, r->name, &r->fp_start_macaddr, i);
-        err = fp_port_set_netdev(port, backend,
-                                 r->script, r->downscript);
-        if (err)
-            goto err_set_netdev;
-        err = fp_port_set_nic(port, object_get_typename(OBJECT(r)));
-        if (err)
-            goto err_set_nic;
     }
 
     return 0;
 
-err_set_nic:
-    fp_port_clear_netdev(r->fp_port[i]);
-err_set_netdev:
-    fp_port_free(r->fp_port[i]);
 err_port_alloc:
     for (--i; i >= 0; i--) {
         struct fp_port *port = r->fp_port[i];
-        fp_port_clear_nic(port);
-        fp_port_clear_netdev(port);
-        fp_port_clear_conf(port);
         fp_port_free(port);
     }
 err_ring_alloc:

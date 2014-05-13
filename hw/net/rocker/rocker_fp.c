@@ -174,26 +174,6 @@ static NetClientInfo fp_port_info = {
     .link_status_changed = fp_port_set_link_status,
 };
 
-void fp_port_set_conf(struct fp_port *port, struct rocker *r, char *sw_name,
-                      MACAddr *start_mac, uint index)
-{
-    port->r = r;
-    port->index = index;
-    port->lport = index + 1;
-
-    /* front-panel switch port names are 1-based */
-    port->name = g_strdup_printf("%s.%d", sw_name, index + 1);
-
-    memcpy(port->conf.macaddr.a, start_mac, sizeof(port->conf.macaddr.a));
-    port->conf.macaddr.a[5] += index;
-    port->conf.bootindex = -1;
-}
-
-void fp_port_clear_conf(struct fp_port *port)
-{
-    g_free(port->name);
-}
-
 static int fp_port_set_tap_netdev(struct fp_port *port, char *script,
                                   char *downscript)
 {
@@ -211,49 +191,6 @@ static int fp_port_set_tap_netdev(struct fp_port *port, char *script,
     };
 
     return net_init_tap(&ncopts, port->name, NULL);
-}
-
-int fp_port_set_netdev(struct fp_port *port,
-                       enum fp_port_backend backend,
-                       char *script, char *downscript)
-{
-    port->backend = backend;
-
-    switch (backend) {
-    case FP_BACKEND_NONE:
-        return 0;
-    case FP_BACKEND_TAP:
-        return fp_port_set_tap_netdev(port, script, downscript);
-    default:
-        DPRINTF("Invalid backend mode %d\n", backend);
-        return -EINVAL;
-    }
-}
-
-void fp_port_clear_netdev(struct fp_port *port)
-{
-}
-
-int fp_port_set_nic(struct fp_port *port, const char *type)
-{
-    /* find the netdev to peer with, if any, by matching
-     * id=port->name
-     */
-
-    port->conf.peers.ncs[0] = qemu_find_netdev(port->name);
-
-    port->nic = qemu_new_nic(&fp_port_info, &port->conf,
-                             type, NULL, port);
-    qemu_format_nic_info_str(qemu_get_queue(port->nic),
-                             port->conf.macaddr.a);
-
-    return 0;
-}
-
-void fp_port_clear_nic(struct fp_port *port)
-{
-    qemu_del_nic(port->nic);
-    port->nic = NULL;
 }
 
 struct world *fp_port_get_world(struct fp_port *port)
@@ -283,19 +220,69 @@ void fp_port_disable(struct fp_port *port)
     DPRINTF("port %d disabled\n", port->index);
 }
 
-struct fp_port *fp_port_alloc(void)
+struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
+                              MACAddr *start_mac, uint index,
+                              enum fp_port_backend backend,
+                              char *script, char *downscript,
+                              const char *type)
 {
     struct fp_port *port = g_malloc0(sizeof(struct fp_port));
+    int err;
 
     if (!port)
         return NULL;
+
+    if (backend != FP_BACKEND_NONE && backend != FP_BACKEND_TAP)
+        return NULL;
+
+    port->r = r;
+    port->index = index;
+    port->lport = index + 1;
+
+    /* front-panel switch port names are 1-based */
+
+    port->name = g_strdup_printf("%s.%d", sw_name, port->lport);
+
+    memcpy(port->conf.macaddr.a, start_mac, sizeof(port->conf.macaddr.a));
+    port->conf.macaddr.a[5] += index;
+    port->conf.bootindex = -1;
+
+    port->backend = backend;
+
+    switch (backend) {
+    case FP_BACKEND_NONE:
+        break;
+    case FP_BACKEND_TAP:
+        err = fp_port_set_tap_netdev(port, script, downscript);
+        if (err)
+            goto err_set_netdev;
+    }
+
+    /* find the netdev to peer with, if any, by matching
+     * id=port->name
+     */
+
+    port->conf.peers.ncs[0] = qemu_find_netdev(port->name);
+
+    port->nic = qemu_new_nic(&fp_port_info, &port->conf,
+                             type, NULL, port);
+    qemu_format_nic_info_str(qemu_get_queue(port->nic),
+                             port->conf.macaddr.a);
+
     fp_port_reset(port);
 
     return port;
+
+err_set_netdev:
+    g_free(port);
+
+    return NULL;
 }
 
 void fp_port_free(struct fp_port *port)
 {
+    qemu_del_nic(port->nic);
+    g_free(port->name);
     g_free(port);
 }
 
