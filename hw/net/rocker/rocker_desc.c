@@ -22,6 +22,8 @@
 #include "rocker_hw.h"
 #include "rocker_desc.h"
 
+struct desc_info;
+
 struct desc_ring {
     hwaddr base_addr;
     uint32_t size;
@@ -29,56 +31,67 @@ struct desc_ring {
     uint32_t tail;
     uint32_t ctrl;
     struct rocker *r;
-    struct rocker_desc *backing;
+    struct desc_info *info;
     int index;
     desc_ring_consume *consume;
 };
 
-char *desc_get_buf(struct rocker_desc *desc, PCIDevice *dev, bool read_only)
-{
+struct desc_info {
+    struct desc_ring *ring;
+    struct rocker_desc desc;
     char *buf;
-    size_t size = read_only ? le16_to_cpu(desc->tlv_size) :
-                              le16_to_cpu(desc->buf_size);
+    size_t buf_size;
+};
 
-    buf = g_malloc(size);
-
-    if (!buf)
-        return NULL;
-
-    if (pci_dma_read(dev, le64_to_cpu(desc->buf_addr), buf, size))
-        return NULL;
-
-    return buf;
+uint16_t desc_buf_size(struct desc_info *info)
+{
+    return le16_to_cpu(info->desc.buf_size);
 }
 
-void desc_put_buf(char *buf)
+uint16_t desc_tlv_size(struct desc_info *info)
 {
-    g_free(buf);
+    return le16_to_cpu(info->desc.tlv_size);
 }
 
-int desc_set_buf(struct rocker_desc *desc, PCIDevice *dev, char *buf,
-                 size_t tlv_size)
+char *desc_get_buf(struct desc_info *info, bool read_only)
 {
-    if (tlv_size > le16_to_cpu(desc->buf_size)) {
-        DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %d tlv_size %ld\n",
-                le16_to_cpu(desc->buf_size), tlv_size);
+    PCIDevice *dev = (PCIDevice *)info->ring->r;
+    size_t size = read_only ? le16_to_cpu(info->desc.tlv_size) :
+                              le16_to_cpu(info->desc.buf_size);
+
+    if (size > info->buf_size) {
+        info->buf = g_realloc(info->buf, size);
+        info->buf_size = size;
+    }
+
+    if (!info->buf)
+        return NULL;
+
+    if (pci_dma_read(dev, le64_to_cpu(info->desc.buf_addr), info->buf, size))
+        return NULL;
+
+    return info->buf;
+}
+
+int desc_set_buf(struct desc_info *info, size_t tlv_size)
+{
+    PCIDevice *dev = (PCIDevice *)info->ring->r;
+
+    if (tlv_size > info->buf_size) {
+        DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %ld tlv_size %ld\n",
+                info->buf_size, tlv_size);
         return -EMSGSIZE;
     }
 
-    desc->tlv_size = cpu_to_le16(tlv_size);
-    pci_dma_write(dev, le64_to_cpu(desc->buf_addr), buf, tlv_size);
+    info->desc.tlv_size = cpu_to_le16(tlv_size);
+    pci_dma_write(dev, le64_to_cpu(info->desc.buf_addr), info->buf, tlv_size);
 
     return 0;
 }
 
-bool desc_ring_empty(struct desc_ring *ring)
+static bool desc_ring_empty(struct desc_ring *ring)
 {
     return ring->head == ring->tail;
-}
-
-bool desc_ring_full(struct desc_ring *ring)
-{
-    return ((ring->head + 1) % ring->size) == ring->tail;
 }
 
 bool desc_ring_set_base_addr(struct desc_ring *ring, uint64_t base_addr)
@@ -101,18 +114,29 @@ uint64_t desc_ring_get_base_addr(struct desc_ring *ring)
 
 bool desc_ring_set_size(struct desc_ring *ring, uint32_t size)
 {
+    int i;
+
     if (size < 2 || size > 0x10000 || (size & (size - 1))) {
         DPRINTF("ERROR: ring[%d] size (%d) not a power of 2 or in range [2, 64K]\n",
                 ring->index, size);
         return false;
     }
 
+    for (i = 0; i < ring->size; i++)
+        if (ring->info[i].buf)
+            g_free(ring->info[i].buf);
+
     ring->size = size;
     ring->head = ring->tail = 0;
 
-    ring->backing = g_realloc(ring->backing, size * sizeof(struct rocker_desc));
-    if (!ring->backing)
+    ring->info = g_realloc(ring->info, size * sizeof(struct desc_info));
+    if (!ring->info)
         return false;
+
+    memset(ring->info, 0, size * sizeof(struct desc_info));
+
+    for (i = 0; i < size; i++)
+        ring->info[i].ring = ring;
 
     return true;
 }
@@ -122,27 +146,27 @@ uint32_t desc_ring_get_size(struct desc_ring *ring)
     return ring->size;
 }
 
-static struct rocker_desc *desc_read(struct desc_ring *ring, uint32_t index)
+static struct desc_info *desc_read(struct desc_ring *ring, uint32_t index)
 {
     PCIDevice *dev = (PCIDevice *)ring->r;
-    struct rocker_desc *desc = &ring->backing[index];
+    struct desc_info *info = &ring->info[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
-    pci_dma_read(dev, addr, desc, sizeof(*desc));
+    pci_dma_read(dev, addr, &info->desc, sizeof(info->desc));
 
-    return desc;
+    return info;
 }
 
 static void desc_write(struct desc_ring *ring, uint32_t index)
 {
     PCIDevice *dev = (PCIDevice *)ring->r;
-    struct rocker_desc *desc = &ring->backing[index];
+    struct desc_info *info = &ring->info[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
-    pci_dma_write(dev, addr, desc, sizeof(*desc));
+    pci_dma_write(dev, addr, &info->desc, sizeof(info->desc));
 }
 
-struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring)
+struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring)
 {
     if (desc_ring_empty(ring))
         return NULL;
@@ -150,10 +174,10 @@ struct rocker_desc *desc_ring_fetch_desc(struct desc_ring *ring)
     return desc_read(ring, ring->tail);
 }
 
-void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
-                         int err)
+void desc_ring_post_desc(struct desc_ring *ring, int err)
 {
     uint16_t comp_err = 0x8000 | (uint16_t)-err;
+    struct desc_info *info = &ring->info[ring->tail];
 
     if (desc_ring_empty(ring)) {
         DPRINTF("ERROR: ring[%d] trying to post desc to empty ring\n",
@@ -161,14 +185,14 @@ void desc_ring_post_desc(struct desc_ring *ring, struct rocker_desc *desc,
         return;
     }
 
-    desc->comp_err = cpu_to_le16(comp_err);
+    info->desc.comp_err = cpu_to_le16(comp_err);
     desc_write(ring, ring->tail);
     ring->tail = (ring->tail + 1) % ring->size;
 }
 
 static int ring_pump(struct desc_ring *ring)
 {
-    struct rocker_desc *desc;
+    struct desc_info *info;
     int err, consumed = 0;
 
     /* If the ring has a consumer, call consumer for each
@@ -178,9 +202,9 @@ static int ring_pump(struct desc_ring *ring)
 
     if (ring->consume) {
         while (ring->head != ring->tail) {
-            desc = desc_read(ring, ring->tail);
-            err = ring->consume(ring->r, desc);
-            desc_ring_post_desc(ring, desc, err);
+            info = desc_ring_fetch_desc(ring);
+            err = ring->consume(ring->r, info);
+            desc_ring_post_desc(ring, err);
             consumed++;
         }
     }
@@ -253,8 +277,8 @@ struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
 
 void desc_ring_free(struct desc_ring *ring)
 {
-    if (ring->backing)
-        g_free(ring->backing);
+    if (ring->info)
+        g_free(ring->info);
     g_free(ring);
 }
 
