@@ -75,7 +75,6 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     PCIDevice *dev = (PCIDevice *)r;
     char *buf = desc_get_buf(info, true);
     struct rocker_tlv *tlv_frag;
-    struct rocker_tlv *tlv_frags;
     struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
     struct iovec iov[TX_FRAGS_MAX] = { { 0, }, };
     uint16_t lport;
@@ -124,9 +123,7 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     if (tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
         tx_tso_hdr_len = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]);
 
-    tlv_frags = tlvs[ROCKER_TLV_TX_FRAGS];
-    rocker_tlv_for_each(tlv_frag, rocker_tlv_data(tlv_frags),
-                        rocker_tlv_len(tlv_frags), rem) {
+    rocker_tlv_for_each_nested(tlv_frag, tlvs[ROCKER_TLV_TX_FRAGS], rem) {
         hwaddr frag_addr;
         uint16_t frag_len;
 

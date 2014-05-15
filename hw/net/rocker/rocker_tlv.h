@@ -52,6 +52,9 @@ static inline int rocker_tlv_ok(const struct rocker_tlv *tlv, int remaining)
          rocker_tlv_ok(pos, rem); \
          pos = rocker_tlv_next(pos, &(rem)))
 
+#define rocker_tlv_for_each_nested(pos, tlv, rem) \
+        rocker_tlv_for_each(pos, rocker_tlv_data(tlv), rocker_tlv_len(tlv), rem)
+
 static inline int rocker_tlv_size(int payload)
 {
     return ROCKER_TLV_HDRLEN + payload;
