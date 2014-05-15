@@ -76,10 +76,10 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     char *buf = desc_get_buf(info, true);
     struct rocker_tlv *tlv_frag;
     struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
-    struct iovec iov[TX_FRAGS_MAX] = { { 0, }, };
+    struct iovec iov[ROCKER_TX_FRAGS_MAX] = { { 0, }, };
     uint16_t lport;
     uint16_t port;
-    uint16_t tx_offload = TX_OFFLOAD_NONE;
+    uint16_t tx_offload = ROCKER_TX_OFFLOAD_NONE;
     uint16_t tx_l3_csum_off = 0;
     uint16_t tx_tso_mss = 0;
     uint16_t tx_tso_hdr_len = 0;
@@ -105,10 +105,10 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
         tx_offload = rocker_tlv_get_u8(tlvs[ROCKER_TLV_TX_OFFLOAD]);
 
     switch (tx_offload) {
-        case TX_OFFLOAD_L3_CSUM:
+        case ROCKER_TX_OFFLOAD_L3_CSUM:
         if (!tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
             return -EINVAL;
-        case TX_OFFLOAD_TSO:
+        case ROCKER_TX_OFFLOAD_TSO:
         if (!tlvs[ROCKER_TLV_TX_TSO_MSS] ||
             !tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
             return -EINVAL;
@@ -152,7 +152,7 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
             goto err_bad_io;
         }
 
-        if (++iovcnt > TX_FRAGS_MAX)
+        if (++iovcnt > ROCKER_TX_FRAGS_MAX)
             goto err_too_many_frags;
     }
 
