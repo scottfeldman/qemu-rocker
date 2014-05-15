@@ -160,6 +160,7 @@ enum {
 
 /* Rx msg */
 enum {
+    ROCKER_TLV_RX_UNSPEC,
     ROCKER_TLV_RX_LPORT,                /* u16 */
     ROCKER_TLV_RX_FLAGS,                /* u16, see RX_FLAGS_ */
     ROCKER_TLV_RX_CSUM,                 /* u16 */
@@ -180,6 +181,7 @@ enum {
 
 /* Tx msg */
 enum {
+    ROCKER_TLV_TX_UNSPEC,
     ROCKER_TLV_TX_LPORT,                /* u16 */
     ROCKER_TLV_TX_OFFLOAD,              /* u8, see TX_OFFLOAD_ */
     ROCKER_TLV_TX_L3_CSUM_OFF,          /* u16 */
@@ -200,6 +202,7 @@ enum {
 #define TX_FRAGS_MAX                    16
 
 enum {
+    ROCKER_TLV_TX_FRAG_UNSPEC,
     ROCKER_TLV_TX_FRAG,                 /* nest */
 
     __ROCKER_TLV_TX_FRAG_MAX,
@@ -207,6 +210,7 @@ enum {
 };
 
 enum {
+    ROCKER_TLV_TX_FRAG_ATTR_UNSPEC,
     ROCKER_TLV_TX_FRAG_ATTR_ADDR,       /* u64 */
     ROCKER_TLV_TX_FRAG_ATTR_LEN,        /* u16 */
 
