@@ -307,20 +307,24 @@ PORT_PHYS_COUNT returns the actual number of physical ports available:
 	PORT_PHYS_COUNT, offset 0x0304, 32-bit, (R)
 
 In addition to front-panel ports, the switch supports virtual ports
-representing higher-level constructs such as trunks, tunnels, or L2 bridges.
+representing higher-level constructs such as trunks and L2 bridges, as well as
+tunnel ports.
 
-The switch maps logical ports to front-pacnel and virtual ports.  A special CPU
-port is assigned logical port 0.  The front-panel ports are mapped to logical
-ports 1-62.  A special loopback port is assigned logical port 63.  Virtual
-ports are assigned logical ports 64-511.  The switch only uses logical port
-references.  To summarize the mapping:
+Front-panel ports, virtual ports, and tunnel ports are mapped into a single
+32-bit logical port space.  A special CPU port is assigned logical port 0.  The
+front-panel ports are mapped to logical ports 1-62.  A special loopback port is
+assigned logical port 63.  Virtual ports are assigned logical ports
+64-0x0000ffff.  Tunnel ports are assigned logical ports 0x0001000-0x0001ffff.
+The switch only uses logical port references.  To summarize the mapping:
 
-	logical port	mapping
+	logical port		mapping
 	-------------------------------------------------------
-	0		CPU port (for packets to/from host CPU)
-	1-62		front-panel physical ports
-	63		loopback port
-	64-511		virtual ports
+	0			CPU port (for packets to/from host CPU)
+	1-62			front-panel physical ports
+	63			loopback port
+	64-0x0000ffff		virtual ports
+	0x00010000-0x0001ffff	tunnel ports
+        0x00020000-0xffffffff   RSVD
 
 Physical Port Mode
 ------------------
@@ -346,13 +350,13 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		field		width	description
 		----------------------------------------------
 		PORT_SETTINGS	2	CMD_GET
-		LPORT		2	Logical port #
+		LPORT		4	Logical port #
 
 	Get PORT_SETTINGS completion:	
 
 		field		width	description
 		----------------------------------------------
-		LPORT		2	Logical port #
+		LPORT		4	Logical port #
 		SPEED		4	Current port interface speed, in Mbps
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
@@ -365,7 +369,7 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		field		width	description
 		----------------------------------------------
 		PORT_SETTINGS	2	CMD_SET
-		LPORT		2	Logical port #
+		LPORT		4	Logical port #
 		SPEED		4	Port interface speed, in Mbps
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
@@ -458,7 +462,7 @@ The TLVs for Tx descriptor buffer are:
 
 	field			width	description
 	---------------------------------------------------------------------
-	LPORT			2	Destination logical port #
+	LPORT			4	Destination logical port #
 	TX_OFFLOAD		1	Hardware offload modes:
 					  0: no offload
 					  1: insert IP csum (ipv4 only)
@@ -511,7 +515,7 @@ The TLVs for Rx descriptor buffer are:
 
 	field		width	description
 	---------------------------------------------------
-	LPORT		2	Source logical port #
+	LPORT		4	Source logical port #
 	RX_FLAGS	2	Packet parsing flags:
 				  (1 << 0): IPv4 packet
 				  (1 << 1): IPv6 packet
@@ -606,13 +610,13 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_IG_PORT			nest
-	  FLOW_IN_PORT		2	ingress port number
 	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_IN_LPORT		4	ingress port number
 
 	field			width	description
 	----------------------------------------------------
 	FLOW_VLAN			nest
-	  FLOW_IN_PORT		2	ingress port number
+	  FLOW_IN_LPORT		4	ingress port number
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
 	  FLOW_TBL		2	goto table ID; zero to drop
@@ -621,8 +625,8 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_TERM_MAC			nest
-	  FLOW_IN_PORT		2	ingress port number
-	  FLOW_IN_PORT_MASK	2	ingress port number mask
+	  FLOW_IN_LPORT		4	ingress port number
+	  FLOW_IN_LPORT_MASK	4	ingress port number mask
 	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
 	  FLOW_DST_MAC		6	destination MAC
 	  FLOW_DST_MAC_MASK	6	destination MAC mask
@@ -631,7 +635,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_TBL		2	only acceptable values are
 					unicast or multicast routing
 					table IDs
-	  FLOW_OUT_PORT		2	if specified, must be controller,
+	  FLOW_OUT_LPORT	2	if specified, must be controller,
 					set zero otherwise
 
 	field			width	description
@@ -647,10 +651,10 @@ FLOW_xxx nested TLVs are defined below:
 					Multicast, L2 Flood,
 					or L2 Overlay group entry
 					as appropriate
-	  FLOW_TUN_LOG_PORT	4	unicast Tenant Bridging
+	  FLOW_TUN_LOG_LPORT	4	unicast Tenant Bridging
 					flows specify a tunnel
 					logical port ID
-	  FLOW_OUT_PORT		2	data for OUTPUT action,
+	  FLOW_OUT_LPORT	2	data for OUTPUT action,
 					restricted to CONTROLLER,
 					set to 0 otherwise
 
@@ -702,8 +706,8 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_ACL			nest
-	  FLOW_IN_PORT		2	ingress port number
-	  FLOW_IN_PORT_MASK	2	ingress port number mask
+	  FLOW_IN_LPORT		4	ingress port number
+	  FLOW_IN_LPORT_MASK	4	ingress port number mask
 	  FLOW_ETHERTYPE	2	ethertype
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
@@ -765,10 +769,10 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_NEW_VLAN_PCP	1	VLAN priority
 	  FLOW_DSCP_ACTION	1	write the DSCP
 	  FLOW_NEW_DSCP		1	new DSCP
-	  FLOW_TUN_LOG_PORT	4	restrct to valid tunnel
+	  FLOW_TUN_LOG_LPORT	4	restrct to valid tunnel
 					logical port, set to 0
 					otherwise.
-	  FLOW_OUT_PORT		2	data for OUTPUT action,
+	  FLOW_OUT_LPORT	2	data for OUTPUT action,
 					restricted to CONTROLLER,
 					set to 0 otherwise
 	  FLOW_CLEAR_ACTIONS	4	if 1 packets matching flow are
@@ -848,7 +852,7 @@ TLVs for add and modify commands are:
 	FLOW_GROUP_ACTION		nest
 	  FLOW_GROUP_ID		2	next group ID in chain (all
 					types except 0)
-	  FLOW_OUT_PORT		2	egress port (types 0, 8)
+	  FLOW_OUT_PORT		4	egress port (types 0, 8)
 	  FLOW_POP_VLAN_TAG	1	strip outer VLAN tag (type 1
 					only)
 	  FLOW_VLAN_ID		2	(types 1, 5)

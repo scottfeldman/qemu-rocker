@@ -55,7 +55,7 @@ struct fp_port {
     struct world *world;
     uint index;
     char *name;
-    uint16_t lport;
+    uint32_t lport;
     bool enabled;
     uint32_t speed;
     uint8_t duplex;
@@ -103,7 +103,7 @@ int fp_port_set_settings(struct fp_port *port, uint32_t speed,
     return 0;
 }
 
-bool fp_port_from_lport(uint16_t lport, uint16_t *port)
+bool fp_port_from_lport(uint32_t lport, uint32_t *port)
 {
     if (lport < 1 || lport > ROCKER_FP_PORTS_MAX)
         return false;

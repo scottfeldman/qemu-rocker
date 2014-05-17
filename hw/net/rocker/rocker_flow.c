@@ -553,7 +553,7 @@ static struct hash_tbl hash_tbl_dflts[HASH_TABLE_MAX] = {
     },
 };
 
-static ssize_t flow_ig(struct world *world, uint16_t lport,
+static ssize_t flow_ig(struct world *world, uint32_t lport,
                        const struct iovec *iov, int iovcnt)
 {
     size_t size = iov_size(iov, iovcnt);
