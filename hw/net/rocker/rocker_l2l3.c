@@ -30,7 +30,7 @@ static int l2l3_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv)
     return 0;
 }
 
-static ssize_t l2l3_ig(struct world *world, uint16_t lport,
+static ssize_t l2l3_ig(struct world *world, uint32_t lport,
                        const struct iovec *iov, int iovcnt)
 {
     // XXX for now just sent every packet received up on same port

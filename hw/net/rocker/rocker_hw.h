@@ -147,7 +147,7 @@ enum {
 /* cmd info nested for set/get port settings */
 enum {
     ROCKER_TLV_CMD_PORT_SETTINGS_UNSPEC,
-    ROCKER_TLV_CMD_PORT_SETTINGS_LPORT,         /* u16 */
+    ROCKER_TLV_CMD_PORT_SETTINGS_LPORT,         /* u32 */
     ROCKER_TLV_CMD_PORT_SETTINGS_SPEED,         /* u32 */
     ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX,        /* u8 */
     ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG,       /* u8 */
@@ -161,7 +161,7 @@ enum {
 /* Rx msg */
 enum {
     ROCKER_TLV_RX_UNSPEC,
-    ROCKER_TLV_RX_LPORT,                /* u16 */
+    ROCKER_TLV_RX_LPORT,                /* u32 */
     ROCKER_TLV_RX_FLAGS,                /* u16, see RX_FLAGS_ */
     ROCKER_TLV_RX_CSUM,                 /* u16 */
     ROCKER_TLV_RX_PACKET,               /* binary */
@@ -182,7 +182,7 @@ enum {
 /* Tx msg */
 enum {
     ROCKER_TLV_TX_UNSPEC,
-    ROCKER_TLV_TX_LPORT,                /* u16 */
+    ROCKER_TLV_TX_LPORT,                /* u32 */
     ROCKER_TLV_TX_OFFLOAD,              /* u8, see TX_OFFLOAD_ */
     ROCKER_TLV_TX_L3_CSUM_OFF,          /* u16 */
     ROCKER_TLV_TX_TSO_MSS,              /* u16 */

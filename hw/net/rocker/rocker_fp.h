@@ -40,7 +40,7 @@ int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
                          uint8_t *duplex, uint8_t *autoneg);
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,
                          uint8_t duplex, uint8_t autoneg);
-bool fp_port_from_lport(uint16_t lport, uint16_t *port);
+bool fp_port_from_lport(uint32_t lport, uint32_t *port);
 struct world *fp_port_get_world(struct fp_port *port);
 void fp_port_set_world(struct fp_port *port, struct world *world);
 bool fp_port_enabled(struct fp_port *port);

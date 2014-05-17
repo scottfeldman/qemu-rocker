@@ -27,7 +27,7 @@ struct world {
     struct world_ops *ops;
 };
 
-ssize_t world_ingress(struct world *world, uint16_t lport,
+ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt)
 {
     if (world->ops->ig)

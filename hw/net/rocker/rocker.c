@@ -77,8 +77,8 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     struct rocker_tlv *tlv_frag;
     struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
     struct iovec iov[ROCKER_TX_FRAGS_MAX] = { { 0, }, };
-    uint16_t lport;
-    uint16_t port;
+    uint32_t lport;
+    uint32_t port;
     uint16_t tx_offload = ROCKER_TX_OFFLOAD_NONE;
     uint16_t tx_l3_csum_off = 0;
     uint16_t tx_tso_mss = 0;
@@ -97,7 +97,7 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
         !tlvs[ROCKER_TLV_TX_FRAGS])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_LPORT]);
+    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_TX_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
 
@@ -181,8 +181,8 @@ static int cmd_get_port_settings(struct rocker *r,
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
     struct rocker_tlv *nest;
     struct fp_port *fp_port;
-    uint16_t lport;
-    uint16_t port;
+    uint32_t lport;
+    uint32_t port;
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
@@ -198,7 +198,7 @@ static int cmd_get_port_settings(struct rocker *r,
     if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
+    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
@@ -211,7 +211,7 @@ static int cmd_get_port_settings(struct rocker *r,
     mode = world_type(fp_port_get_world(fp_port));
 
     tlv_size = rocker_tlv_total_size(0) +                 /* nest */
-               rocker_tlv_total_size(sizeof(uint16_t)) +  /*   lport */
+               rocker_tlv_total_size(sizeof(uint32_t)) +  /*   lport */
                rocker_tlv_total_size(sizeof(uint32_t)) +  /*   speed */
                rocker_tlv_total_size(sizeof(uint8_t)) +   /*   duplex */
                rocker_tlv_total_size(sizeof(uint8_t)) +   /*   autoneg */
@@ -223,7 +223,7 @@ static int cmd_get_port_settings(struct rocker *r,
 
     pos = 0;
     nest = rocker_tlv_nest_start(buf, &pos, ROCKER_TLV_CMD_INFO);
-    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
+    rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
     rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_SPEED, speed);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX, duplex);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG, autoneg);
@@ -240,8 +240,8 @@ static int cmd_set_port_settings(struct rocker *r,
 {
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
     struct fp_port *fp_port;
-    uint16_t lport;
-    uint16_t port;
+    uint32_t lport;
+    uint32_t port;
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
@@ -255,7 +255,7 @@ static int cmd_set_port_settings(struct rocker *r,
     if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
+    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
@@ -354,7 +354,7 @@ void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
     r->irq_status |= irq_status;
 }
 
-int rx_produce(struct world *world, uint16_t lport,
+int rx_produce(struct world *world, uint32_t lport,
                const struct iovec *iov, int iovcnt)
 {
     struct rocker *r = world_rocker(world);
@@ -390,7 +390,7 @@ int rx_produce(struct world *world, uint16_t lport,
     }
 
     pos = 0;
-    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
+    rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
     rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_FLAGS, rx_flags);
     rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
     rocker_tlv_put_iov(buf, &pos, ROCKER_TLV_RX_PACKET, iov, iovcnt);
