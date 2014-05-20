@@ -136,7 +136,10 @@ enum {
     ROCKER_TLV_CMD_TYPE_UNSPEC,
     ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS,
     ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS,
-    ROCKER_TLV_CMD_TYPE_FLOW, /* to be changed to add/del/stat/... */
+    ROCKER_TLV_CMD_TYPE_FLOW_ADD,
+    ROCKER_TLV_CMD_TYPE_FLOW_MOD,
+    ROCKER_TLV_CMD_TYPE_FLOW_DEL,
+    ROCKER_TLV_CMD_TYPE_FLOW_GET_STATS,
     ROCKER_TLV_CMD_TYPE_TRUNK, /* to be changed to ... */
     ROCKER_TLV_CMD_TYPE_BRIDGE, /* to be changed to ... */
 
@@ -216,6 +219,92 @@ enum {
 
     __ROCKER_TLV_TX_FRAG_ATTR_MAX,
     ROCKER_TLV_TX_FRAG_ATTR_MAX = __ROCKER_TLV_TX_FRAG_ATTR_MAX - 1,
+};
+
+/* cmd info nested for flow msgs */
+enum {
+    ROCKER_TLV_FLOW_TBL,                /* u16 */
+    ROCKER_TLV_FLOW_PRIORITY,           /* u32 */
+    ROCKER_TLV_FLOW_HARDTIME,           /* u32 */
+    ROCKER_TLV_FLOW_IDLETIME,           /* u32 */
+    ROCKER_TLV_FLOW_COOKIE,             /* u64 */
+    ROCKER_TLV_FLOW_IG_PORT,            /* nest */
+    ROCKER_TLV_FLOW_VLAN,               /* nest */
+    ROCKER_TLV_FLOW_TERM_MAC,           /* nest */
+    ROCKER_TLV_FLOW_BRIDGING,           /* nest */
+    ROCKER_TLV_FLOW_UNICAST_ROUTING,    /* nest */
+    ROCKER_TLV_FLOW_MULTICAST_ROUTING,  /* nest */
+    ROCKER_TLV_FLOW_ACL,                /* nest */
+
+    __ROCKER_TLV_FLOW_MAX,
+    ROCKER_TLV_FLOW_MAX = __ROCKER_TLV_FLOW_MAX - 1,
+};
+
+/* flow_xxx nest */
+enum {
+    ROCKER_TLV_FLOW_IN_LPORT,           /* u16 */
+    ROCKER_TLV_FLOW_IN_LPORT_MASK,      /* u16 */
+    ROCKER_TLV_FLOW_OUT_LPORT,          /* u16 */
+    ROCKER_TLV_FLOW_GOTO_TBL,           /* u16 */
+    ROCKER_TLV_FLOW_GROUP_ID,           /* u32 */
+    ROCKER_TLV_FLOW_VLAN_ID,            /* u16 */
+    ROCKER_TLV_FLOW_VLAN_ID_MASK,       /* u16 */
+    ROCKER_TLV_FLOW_VLAN_PCP,           /* u16 */
+    ROCKER_TLV_FLOW_VLAN_PCP_MASK,      /* u16 */
+    ROCKER_TLV_FLOW_VLAN_PCP_ACTION,    /* u8 */
+    ROCKER_TLV_FLOW_NEW_VLAN_ID,        /* u16 */
+    ROCKER_TLV_FLOW_NEW_VLAN_PCP,       /* u8 */
+    ROCKER_TLV_FLOW_TUNNEL_ID,          /* u32 */
+    ROCKER_TLV_FLOW_TUN_LOG_LPORT,      /* u32 */
+    ROCKER_TLV_FLOW_ETHERTYPE,          /* u16 */
+    ROCKER_TLV_FLOW_DST_MAC,            /* binary */
+    ROCKER_TLV_FLOW_DST_MAC_MASK,       /* binary */
+    ROCKER_TLV_FLOW_SRC_MAC,            /* binary */
+    ROCKER_TLV_FLOW_SRC_MAC_MASK,       /* binary */
+    ROCKER_TLV_FLOW_IP_PROTO,           /* u16 */
+    ROCKER_TLV_FLOW_IP_PROTO_MASK,      /* u16 */
+    ROCKER_TLV_FLOW_DSCP,               /* u16 */
+    ROCKER_TLV_FLOW_DSCP_MASK,          /* u16 */
+    ROCKER_TLV_FLOW_DSCP_ACTION,        /* u8 */
+    ROCKER_TLV_FLOW_NEW_DSCP,           /* u8 */
+    ROCKER_TLV_FLOW_ECN,                /* u16 */
+    ROCKER_TLV_FLOW_ECN_MASK,           /* u16 */
+    ROCKER_TLV_FLOW_DST_IP,             /* binary */
+    ROCKER_TLV_FLOW_DST_IP_MASK,        /* binary */
+    ROCKER_TLV_FLOW_SRC_IP,             /* binary */
+    ROCKER_TLV_FLOW_SRC_IP_MASK,        /* binary */
+    ROCKER_TLV_FLOW_DST_IPV6,           /* binary */
+    ROCKER_TLV_FLOW_DST_IPV6_MASK,      /* binary */
+    ROCKER_TLV_FLOW_SRC_IPV6,           /* binary */
+    ROCKER_TLV_FLOW_SRC_IPV6_MASK,      /* binary */
+    ROCKER_TLV_FLOW_SRC_ARP_IP,         /* u32 */
+    ROCKER_TLV_FLOW_SRC_ARP_IP_MASK,    /* u32 */
+    ROCKER_TLV_FLOW_L4_DST_PORT,        /* u16 */
+    ROCKER_TLV_FLOW_L4_DST_PORT_MASK,   /* u16 */
+    ROCKER_TLV_FLOW_L4_SRC_PORT,        /* u16 */
+    ROCKER_TLV_FLOW_L4_SRC_PORT_MASK,   /* u16 */
+    ROCKER_TLV_FLOW_ICMP_TYPE,          /* u8 */
+    ROCKER_TLV_FLOW_ICMP_TYPE_MASK,     /* u8 */
+    ROCKER_TLV_FLOW_ICMP_CODE,          /* u8 */
+    ROCKER_TLV_FLOW_ICMP_CODE_MASK,     /* u8 */
+    ROCKER_TLV_FLOW_IPV6_LABEL,         /* u32 */
+    ROCKER_TLV_FLOW_IPV6_LABEL_MASK,    /* u32 */
+    ROCKER_TLV_FLOW_QUEUE_ID_ACTION,    /* u8 */
+    ROCKER_TLV_FLOW_NEW_QUEUE_ID,       /* u8 */
+    ROCKER_TLV_FLOW_CLEAR_ACTIONS,      /* u32 */
+
+    __ROCKER_TLV_FLOW_INFO_MAX,
+    ROCKER_TLV_FLOW_INFO_MAX = __ROCKER_TLV_FLOW_INFO_MAX - 1,
+};
+
+/* flow stats */
+enum {
+    ROCKER_TLV_FLOW_STAT_DURATION,      /* u32 */
+    ROCKER_TLV_FLOW_STAT_RX_PKTS,       /* u64 */
+    ROCKER_TLV_FLOW_STAT_TX_PKTS,       /* u64 */
+
+    __ROCKER_TLV_FLOW_STAT_MAX,
+    ROCKER_TLV_FLOW_STAT_MAX = __ROCKER_TLV_FLOW_STAT_MAX - 1,
 };
 
 /*
