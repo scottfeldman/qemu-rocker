@@ -314,7 +314,10 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
      */
 
     switch (rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE])) {
-    case ROCKER_TLV_CMD_TYPE_FLOW:
+    case ROCKER_TLV_CMD_TYPE_FLOW_ADD:
+    case ROCKER_TLV_CMD_TYPE_FLOW_MOD:
+    case ROCKER_TLV_CMD_TYPE_FLOW_DEL:
+    case ROCKER_TLV_CMD_TYPE_FLOW_GET_STATS:
         err = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_FLOW],
                            tlvs[ROCKER_TLV_CMD_INFO]);
         break;
