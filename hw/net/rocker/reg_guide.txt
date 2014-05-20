@@ -610,8 +610,8 @@ FLOW_xxx nested TLVs are defined below:
 	field			width	description
 	----------------------------------------------------
 	FLOW_IG_PORT			nest
-	  FLOW_TBL		2	goto table ID; zero to drop
 	  FLOW_IN_LPORT		4	ingress port number
+	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
 
 	field			width	description
 	----------------------------------------------------
@@ -619,7 +619,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_IN_LPORT		4	ingress port number
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
-	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
 	  FLOW_NEW_VLAN_ID	2	new vlan ID
 
 	field			width	description
@@ -632,7 +632,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_DST_MAC_MASK	6	destination MAC mask
 	  FLOW_VLAN_ID		2	vlan ID
 	  FLOW_VLAN_ID_MASK	2	vlan ID mask
-	  FLOW_TBL		2	only acceptable values are
+	  FLOW_GOTO_TBL		2	only acceptable values are
 					unicast or multicast routing
 					table IDs
 	  FLOW_OUT_LPORT	2	if specified, must be controller,
@@ -645,7 +645,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_TUNNEL_ID	4	tunnel ID
 	  FLOW_DST_MAC		6	destination MAC
 	  FLOW_DST_MAC_MASK	6	destination MAC mask
-	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
 	  FLOW_GROUP_ID		4	data for GROUP action must
 					be a L2 Interface, L2
 					Multicast, L2 Flood,
@@ -672,7 +672,7 @@ FLOW_xxx nested TLVs are defined below:
 					Must be unicast address
 	  FLOW_DST_IPV6_MASK	16	IPv6 mask stored in host byte
 					order. Must be prefix mask
-	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
 	  FLOW_GROUP_ID		4	data for GROUP action must
 					be an L3 Unicast group entry
 
@@ -699,7 +699,7 @@ FLOW_xxx nested TLVs are defined below:
 	  FLOW_DST_IPV6		16	destination IPv6 Address. Must
 					be multicast address
 					Must be multicast address
-	  FLOW_TBL		2	goto table ID; zero to drop
+	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
 	  FLOW_GROUP_ID		4	data for GROUP action must
 					be an L3 multicast group entry
 
@@ -791,7 +791,6 @@ the following TLVs:
 
 	field			width	description
 	---------------------------------------------------
-	FLOW_COOKIE		8	Cookie
 	FLOW_STAT_DURATION	4	Flow duration
 	FLOW_STAT_RX_PKTS	8	Received packets
 	FLOW_STAT_TX_PKTS	8	Transmit packets
@@ -805,10 +804,10 @@ Possible status return codes in descriptor on completion are:
 						of ring
 	ENXIO		all			address or data read err on
 						desc buf
-	ENOSPC		GET_STATS		cmd descriptor buffer wasn't
+	EMSGSIZE	GET_STATS		cmd descriptor buffer wasn't
 						big enough to contain write-back
 						TLVs
-	EINVAL		ADD|MOD			invalid parameters passed in
+	EINVAL		all			invalid parameters passed in
 	EEXIST		ADD			entry already exists
 	ENOSPC		ADD			no space left in flow table
 	ENOENT		MOD|DEL|GET_STATS	cookie invalid
