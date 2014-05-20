@@ -97,7 +97,7 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
         !tlvs[ROCKER_TLV_TX_FRAGS])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_TX_LPORT]);
+    lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_TX_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
 
@@ -115,13 +115,13 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     }
 
     if (tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
-        tx_l3_csum_off = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]);
+        tx_l3_csum_off = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]);
 
     if (tlvs[ROCKER_TLV_TX_TSO_MSS])
-        tx_tso_mss = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_TSO_MSS]);
+        tx_tso_mss = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_TSO_MSS]);
 
     if (tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
-        tx_tso_hdr_len = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]);
+        tx_tso_hdr_len = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]);
 
     rocker_tlv_for_each_nested(tlv_frag, tlvs[ROCKER_TLV_TX_FRAGS], rem) {
         hwaddr frag_addr;
@@ -136,8 +136,8 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
             !tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN])
             return -EINVAL;
 
-        frag_addr = rocker_tlv_get_u64(tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR]);
-        frag_len = rocker_tlv_get_u16(tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN]);
+        frag_addr = rocker_tlv_get_le64(tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR]);
+        frag_len = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN]);
 
         iov[iovcnt].iov_len = frag_len;
         iov[iovcnt].iov_base = g_malloc(frag_len);
@@ -198,7 +198,7 @@ static int cmd_get_port_settings(struct rocker *r,
     if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
+    lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
@@ -223,8 +223,8 @@ static int cmd_get_port_settings(struct rocker *r,
 
     pos = 0;
     nest = rocker_tlv_nest_start(buf, &pos, ROCKER_TLV_CMD_INFO);
-    rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
-    rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_SPEED, speed);
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LPORT, lport);
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_SPEED, speed);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX, duplex);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG, autoneg);
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
@@ -255,7 +255,7 @@ static int cmd_set_port_settings(struct rocker *r,
     if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
         return -EINVAL;
 
-    lport = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
+    lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
     fp_port = r->fp_port[port];
@@ -264,7 +264,7 @@ static int cmd_set_port_settings(struct rocker *r,
         tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX] &&
         tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]) {
 
-        speed = rocker_tlv_get_u32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED]);
+        speed = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED]);
         duplex = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_DUPLEX]);
         autoneg = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]);
 
@@ -313,7 +313,7 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
      * cmd_get_port_settings
      */
 
-    switch (rocker_tlv_get_u16(tlvs[ROCKER_TLV_CMD_TYPE])) {
+    switch (rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE])) {
     case ROCKER_TLV_CMD_TYPE_FLOW:
         err = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_FLOW],
                            tlvs[ROCKER_TLV_CMD_INFO]);
@@ -390,9 +390,9 @@ int rx_produce(struct world *world, uint32_t lport,
     }
 
     pos = 0;
-    rocker_tlv_put_u32(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
-    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_FLAGS, rx_flags);
-    rocker_tlv_put_u16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
+    rocker_tlv_put_le16(buf, &pos, ROCKER_TLV_RX_FLAGS, rx_flags);
+    rocker_tlv_put_le16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
     rocker_tlv_put_iov(buf, &pos, ROCKER_TLV_RX_PACKET, iov, iovcnt);
 
     err = desc_set_buf(info, tlv_size);

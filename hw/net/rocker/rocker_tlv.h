@@ -92,15 +92,30 @@ static inline uint8_t rocker_tlv_get_u8(const struct rocker_tlv *tlv)
 
 static inline uint16_t rocker_tlv_get_u16(const struct rocker_tlv *tlv)
 {
-    return le16_to_cpup((uint16_t *) rocker_tlv_data(tlv));
+    return *(uint16_t *) rocker_tlv_data(tlv);
 }
 
 static inline uint32_t rocker_tlv_get_u32(const struct rocker_tlv *tlv)
 {
-    return le32_to_cpup((uint32_t *) rocker_tlv_data(tlv));
+    return *(uint32_t *) rocker_tlv_data(tlv);
 }
 
 static inline uint64_t rocker_tlv_get_u64(const struct rocker_tlv *tlv)
+{
+    return *(uint64_t *) rocker_tlv_data(tlv);
+}
+
+static inline uint16_t rocker_tlv_get_le16(const struct rocker_tlv *tlv)
+{
+    return le16_to_cpup((uint16_t *) rocker_tlv_data(tlv));
+}
+
+static inline uint32_t rocker_tlv_get_le32(const struct rocker_tlv *tlv)
+{
+    return le32_to_cpup((uint32_t *) rocker_tlv_data(tlv));
+}
+
+static inline uint64_t rocker_tlv_get_le64(const struct rocker_tlv *tlv)
 {
     return le64_to_cpup((uint64_t *) rocker_tlv_data(tlv));
 }
@@ -171,18 +186,36 @@ static inline void rocker_tlv_put_u8(char *buf, int *buf_pos,
 static inline void rocker_tlv_put_u16(char *buf, int *buf_pos,
                                       int type, uint16_t value)
 {
-    value = cpu_to_le16(value);
     rocker_tlv_put(buf, buf_pos, type, sizeof(uint16_t), &value);
 }
 
 static inline void rocker_tlv_put_u32(char *buf, int *buf_pos,
                                       int type, uint32_t value)
 {
-    value = cpu_to_le32(value);
     rocker_tlv_put(buf, buf_pos, type, sizeof(uint32_t), &value);
 }
 
 static inline void rocker_tlv_put_u64(char *buf, int *buf_pos,
+                                      int type, uint64_t value)
+{
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint64_t), &value);
+}
+
+static inline void rocker_tlv_put_le16(char *buf, int *buf_pos,
+                                      int type, uint16_t value)
+{
+    value = cpu_to_le16(value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint16_t), &value);
+}
+
+static inline void rocker_tlv_put_le32(char *buf, int *buf_pos,
+                                      int type, uint32_t value)
+{
+    value = cpu_to_le32(value);
+    rocker_tlv_put(buf, buf_pos, type, sizeof(uint32_t), &value);
+}
+
+static inline void rocker_tlv_put_le64(char *buf, int *buf_pos,
                                       int type, uint64_t value)
 {
     value = cpu_to_le64(value);
