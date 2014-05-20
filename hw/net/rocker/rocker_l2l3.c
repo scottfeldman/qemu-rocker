@@ -25,7 +25,9 @@
 struct l2l3_world {
 };
 
-static int l2l3_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv)
+static int l2l3_cmd(struct world *world, struct desc_info *info,
+                    char *buf, uint16_t cmd,
+                    struct rocker_tlv *cmd_info_tlv)
 {
     return 0;
 }
