@@ -269,9 +269,7 @@ static bool flow_tbl_full(struct flow *flow)
     return g_hash_table_size(flow->fw->flow_tbl) >= flow->fw->flow_tbl_max_size;
 }
 
-static int flow_cmd(struct world *world, struct desc_info *info,
-                    char *buf, uint16_t cmd,
-                    struct rocker_tlv *cmd_info_tlv)
+static struct flow *flow_find(struct flow_world *fw, uint64_t cookie)
 {
     return g_hash_table_lookup(fw->flow_tbl, &cookie);
 }
