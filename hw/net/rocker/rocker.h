@@ -18,6 +18,8 @@
 #ifndef _ROCKER_H_
 #define _ROCKER_H_
 
+#include <arpa/inet.h>
+
 #if defined (DEBUG_ROCKER)
 #  define DPRINTF(fmt, ...) \
     do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
@@ -35,6 +37,24 @@ static inline GCC_FMT_ATTR(1, 2) int DPRINTF(const char *fmt, ...)
 #define __be16 uint16_t
 #define __be32 uint32_t
 #define __be64 uint64_t
+
+static inline bool ipv4_addr_is_multicast(__be32 addr)
+{
+    return (addr & htonl(0xf0000000)) == htonl(0xe0000000);
+}
+
+typedef struct _ipv6_addr {
+    union {
+	uint8_t addr8[16];
+	__be16 addr16[8];
+	__be32 addr32[4];
+    };
+} ipv6_addr;
+
+static inline bool ipv6_addr_is_multicast(const ipv6_addr *addr)
+{
+    return (addr->addr32[0] & htonl(0xFF000000)) == htonl(0xFF000000);
+}
 
 struct world;
 struct rocker;
