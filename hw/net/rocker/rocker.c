@@ -415,6 +415,20 @@ err_no_mem:
     return err;
 }
 
+int rocker_port_eg(struct rocker *r, uint32_t lport,
+                   const struct iovec *iov, int iovcnt)
+{
+    struct fp_port *fp_port;
+    uint32_t port;
+
+    if (!fp_port_from_lport(lport, &port))
+        return -EINVAL;
+
+    fp_port = r->fp_port[port];
+
+    return fp_port_eg(fp_port, iov, iovcnt);
+}
+
 static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
 {
     PCIDevice *dev = PCI_DEVICE(r);

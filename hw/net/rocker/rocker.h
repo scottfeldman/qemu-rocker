@@ -41,6 +41,8 @@ struct rocker;
 
 int rx_produce(struct world *world, uint32_t lport,
                const struct iovec *iov, int iovcnt);
+int rocker_port_eg(struct rocker *r, uint32_t lport,
+                   const struct iovec *iov, int iovcnt);
 void rocker_update_irq(struct rocker *r);
 void rocker_irq_status_append(struct rocker *r, uint32_t irq_status);
 
