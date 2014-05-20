@@ -569,7 +569,9 @@ static ssize_t flow_ig(struct world *world, uint32_t lport,
     return size;
 }
 
-static int flow_cmd(struct world *world, struct rocker_tlv *cmd_info_tlv)
+static int flow_cmd(struct world *world, struct desc_info *info,
+                    char *buf, uint16_t cmd,
+                    struct rocker_tlv *cmd_info_tlv)
 {
     struct flow_world *fw = world_private(world);
     struct flow *flow;

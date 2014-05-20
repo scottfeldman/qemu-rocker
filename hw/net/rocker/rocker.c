@@ -295,6 +295,9 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
 {
     char *buf = desc_get_buf(info, false);
     struct rocker_tlv *tlvs[ROCKER_TLV_CMD_MAX + 1];
+    struct rocker_tlv *info_tlv;
+    struct world *world;
+    uint16_t cmd;
     int err;
 
     if (!buf)
@@ -305,6 +308,9 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
     if (!tlvs[ROCKER_TLV_CMD_TYPE] || !tlvs[ROCKER_TLV_CMD_INFO])
         return -EINVAL;
 
+    cmd = rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE]);
+    info_tlv = tlvs[ROCKER_TLV_CMD_INFO];
+
     /* This might be reworked to something like this:
      * Every world will have an array of command handlers from
      * ROCKER_TLV_CMD_TYPE_UNSPEC to ROCKER_TLV_CMD_TYPE_MAX. There is
@@ -313,25 +319,24 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
      * cmd_get_port_settings
      */
 
-    switch (rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE])) {
+    switch (cmd) {
     case ROCKER_TLV_CMD_TYPE_FLOW_ADD:
     case ROCKER_TLV_CMD_TYPE_FLOW_MOD:
     case ROCKER_TLV_CMD_TYPE_FLOW_DEL:
     case ROCKER_TLV_CMD_TYPE_FLOW_GET_STATS:
-        err = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_FLOW],
-                           tlvs[ROCKER_TLV_CMD_INFO]);
+        world = r->worlds[ROCKER_WORLD_TYPE_FLOW];
+        err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_TRUNK:
     case ROCKER_TLV_CMD_TYPE_BRIDGE:
-        err = world_do_cmd(r->worlds[ROCKER_WORLD_TYPE_L2L3],
-                           tlvs[ROCKER_TLV_CMD_INFO]);
+        world = r->worlds[ROCKER_WORLD_TYPE_L2L3];
+        err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS:
-        err = cmd_get_port_settings(r, info, buf,
-                                    tlvs[ROCKER_TLV_CMD_INFO]);
+        err = cmd_get_port_settings(r, info, buf, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS:
-        err = cmd_set_port_settings(r, tlvs[ROCKER_TLV_CMD_INFO]);
+        err = cmd_set_port_settings(r, info_tlv);
         break;
     default:
         err = -EINVAL;
