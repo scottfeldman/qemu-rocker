@@ -59,6 +59,7 @@ static inline bool ipv6_addr_is_multicast(const ipv6_addr *addr)
 struct world;
 struct rocker;
 
+int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up);
 int rx_produce(struct world *world, uint32_t lport,
                const struct iovec *iov, int iovcnt);
 int rocker_port_eg(struct rocker *r, uint32_t lport,

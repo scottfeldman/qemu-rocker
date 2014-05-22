@@ -363,6 +363,55 @@ static void rocker_msix_irq(struct rocker *r, unsigned vector)
     msix_notify(dev, vector);
 }
 
+int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up)
+{
+    struct desc_ring *ring = r->rings[1];
+    struct desc_info *info = desc_ring_fetch_desc(ring);
+    struct rocker_tlv *nest;
+    char *buf;
+    size_t tlv_size;
+    int pos;
+    int err;
+
+    if (!info)
+        return -ENOBUFS;
+
+    tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +  /* event type */
+               rocker_tlv_total_size(0) +                 /* nest */
+               rocker_tlv_total_size(sizeof(uint32_t)) +  /*   lport */
+               rocker_tlv_total_size(sizeof(uint8_t));    /*   link up */
+
+    if (tlv_size > desc_buf_size(info)) {
+        err = -EMSGSIZE;
+        goto err_too_big;
+    }
+
+    buf = desc_get_buf(info, false);
+    if (!buf) {
+        err = -ENOMEM;
+        goto err_no_mem;
+    }
+
+    pos = 0;
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_EVENT_TYPE,
+                        ROCKER_TLV_EVENT_TYPE_LINK_CHANGED);
+    nest = rocker_tlv_nest_start(buf, &pos, ROCKER_TLV_EVENT_INFO);
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_EVENT_LINK_CHANGED_LPORT, lport);
+    rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_EVENT_LINK_CHANGED_LINKUP,
+                      link_up ? 1 : 0);
+    rocker_tlv_nest_end(buf, &pos, nest);
+
+    err = desc_set_buf(info, tlv_size);
+
+err_too_big:
+err_no_mem:
+    desc_ring_post_desc(ring, err);
+
+    rocker_msix_irq(r, ROCKER_MSIX_VEC_EVENT);
+
+    return err;
+}
+
 static struct desc_ring *rocker_get_rx_ring_by_lport(struct rocker *r,
                                                      uint32_t lport)
 {
