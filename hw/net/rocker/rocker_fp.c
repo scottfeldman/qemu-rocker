@@ -159,7 +159,7 @@ static void fp_port_set_link_status(NetClientState *nc)
         return;
 
     port->link_up = !nc->link_down;
-    /* TODO: use event channel to let know of the link change */
+    rocker_event_link_changed(port->r, port->lport, port->link_up);
 }
 
 static NetClientInfo fp_port_info = {
