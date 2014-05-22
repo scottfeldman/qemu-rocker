@@ -47,7 +47,8 @@ struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring);
 void desc_ring_post_desc(struct desc_ring *ring, int status);
 
 void desc_ring_set_consume(struct desc_ring *ring,
-                           desc_ring_consume *consume);
+                           desc_ring_consume *consume, unsigned vector);
+unsigned desc_ring_get_msix_vector(struct desc_ring *ring);
 struct desc_ring *desc_ring_alloc(struct rocker *r, int index);
 void desc_ring_free(struct desc_ring *ring);
 void desc_ring_reset(struct desc_ring *ring);

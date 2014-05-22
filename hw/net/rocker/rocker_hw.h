@@ -18,14 +18,31 @@
  */
 
 #define ROCKER_PCI_REVISION             0x1
-#define ROCKER_PCI_INTERRUPT_PIN        1 /* interrupt pin A */
 #define ROCKER_PCI_BAR0_IDX             0
 #define ROCKER_PCI_BAR0_SIZE            0x2000
 #define ROCKER_PCI_MSIX_BAR_IDX         1
 #define ROCKER_PCI_MSIX_BAR_SIZE        0x2000
-#define ROCKER_PCI_MSIX_MAX_INTRS       256
 #define ROCKER_PCI_MSIX_TABLE_OFFSET    0x0000
 #define ROCKER_PCI_MSIX_PBA_OFFSET      0x1000
+
+/*
+ * MSI-X vectors
+ */
+
+enum {
+    ROCKER_MSIX_VEC_CMD,
+    ROCKER_MSIX_VEC_EVENT,
+    ROCKER_MSIX_VEC_TEST,
+    ROCKER_MSIX_VEC_RESERVED0,
+    __ROCKER_MSIX_VEC_TX,
+    __ROCKER_MSIX_VEC_RX,
+#define ROCKER_MSIX_VEC_TX(port) \
+                (__ROCKER_MSIX_VEC_TX + (port * 2))
+#define ROCKER_MSIX_VEC_RX(port) \
+                (__ROCKER_MSIX_VEC_RX + (port * 2))
+#define ROCKER_MSIX_VEC_COUNT(portcnt) \
+                (ROCKER_MSIX_VEC_RX(portcnt) + 1)
+};
 
 /*
  * Rocker bogus registers
@@ -51,22 +68,6 @@
 #define ROCKER_TEST_DMA_CTRL_CLEAR      (1 << 0)
 #define ROCKER_TEST_DMA_CTRL_FILL       (1 << 1)
 #define ROCKER_TEST_DMA_CTRL_INVERT     (1 << 2)
-
-/*
- * Rocker IRQ registers
- */
-#define ROCKER_IRQ_MASK                 0x0200
-#define ROCKER_IRQ_STAT                 0x0204
-
-/*
- * Rocker IRQ status bits
- */
-#define ROCKER_IRQ_LINK                 (1 << 0)
-#define ROCKER_IRQ_TX_DMA_DONE          (1 << 1)
-#define ROCKER_IRQ_RX_DMA_DONE          (1 << 2)
-#define ROCKER_IRQ_CMD_DMA_DONE         (1 << 3)
-#define ROCKER_IRQ_EVENT_DMA_DONE       (1 << 4)
-#define ROCKER_IRQ_TEST_DMA_DONE        (1 << 5)
 
 /*
  * Rocker DMA ring register offsets

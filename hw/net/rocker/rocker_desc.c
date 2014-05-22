@@ -34,6 +34,7 @@ struct desc_ring {
     struct desc_info *info;
     int index;
     desc_ring_consume *consume;
+    unsigned msix_vector;
 };
 
 struct desc_info {
@@ -270,9 +271,15 @@ uint32_t desc_ring_get_ctrl(struct desc_ring *ring)
 }
 
 void desc_ring_set_consume(struct desc_ring *ring,
-                           desc_ring_consume *consume)
+                           desc_ring_consume *consume, unsigned vector)
 {
     ring->consume = consume;
+    ring->msix_vector = vector;
+}
+
+unsigned desc_ring_get_msix_vector(struct desc_ring *ring)
+{
+    return ring->msix_vector;
 }
 
 struct desc_ring *desc_ring_alloc(struct rocker *r, int index)

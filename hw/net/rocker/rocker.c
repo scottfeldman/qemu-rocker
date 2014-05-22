@@ -56,8 +56,6 @@ struct rocker {
     uint64_t test_reg64;
     dma_addr_t test_dma_addr;
     uint32_t test_dma_size;
-    uint32_t irq_status;
-    uint32_t irq_mask;
 
     /* desc rings */
     struct desc_ring **rings;
@@ -353,20 +351,16 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
     return err;
 }
 
-void rocker_update_irq(struct rocker *r)
+static void rocker_msix_irq(struct rocker *r, unsigned vector)
 {
     PCIDevice *dev = PCI_DEVICE(r);
-    uint32_t isr = r->irq_status & r->irq_mask;
 
-    DPRINTF("Set IRQ to %d (%04x %04x)\n", isr ? 1 : 0,
-            r->irq_status, r->irq_mask);
-
-    pci_set_irq(dev, (isr != 0));
-}
-
-void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
-{
-    r->irq_status |= irq_status;
+    DPRINTF("MSI-X notify request for vector %d\n", vector);
+    if (vector >= ROCKER_MSIX_VEC_COUNT(r->fp_ports)) {
+        DPRINTF("incorrect vector %d\n", vector);
+        return;
+    }
+    msix_notify(dev, vector);
 }
 
 static struct desc_ring *rocker_get_rx_ring_by_lport(struct rocker *r,
@@ -421,8 +415,7 @@ err_too_big:
 err_no_mem:
     desc_ring_post_desc(ring, err);
 
-    rocker_irq_status_append(r, ROCKER_IRQ_RX_DMA_DONE);
-    rocker_update_irq(r);
+    rocker_msix_irq(r, ROCKER_MSIX_VEC_RX(lport - 1));
 
     return err;
 }
@@ -471,8 +464,8 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
         return;
     }
     pci_dma_write(dev, r->test_dma_addr, buf, r->test_dma_size);
-    rocker_irq_status_append(r, ROCKER_IRQ_TEST_DMA_DONE);
-    rocker_update_irq(r);
+
+    rocker_msix_irq(r, ROCKER_MSIX_VEC_TEST);
 }
 
 static void rocker_reset(DeviceState *dev);
@@ -514,10 +507,8 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
             desc_ring_set_size(r->rings[index], val);
             break;
         case ROCKER_DMA_DESC_HEAD_OFFSET:
-            if (desc_ring_set_head(r->rings[index], val)) {
-                rocker_irq_status_append(r, (1 << (index + 1)));
-                rocker_update_irq(r);
-            }
+            if (desc_ring_set_head(r->rings[index], val))
+                rocker_msix_irq(r, desc_ring_get_msix_vector(r->rings[index]));
             break;
         case ROCKER_DMA_DESC_CTRL_OFFSET:
             desc_ring_set_ctrl(r->rings[index], val);
@@ -535,12 +526,7 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
         r->test_reg = val;
         break;
     case ROCKER_TEST_IRQ:
-        r->irq_status = val;
-        rocker_update_irq(r);
-        break;
-    case ROCKER_IRQ_MASK:
-        r->irq_mask = val;
-        rocker_update_irq(r);
+        rocker_msix_irq(r, val);
         break;
     case ROCKER_TEST_DMA_SIZE:
         r->test_dma_size = val;
@@ -668,14 +654,6 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
         break;
     case ROCKER_TEST_REG:
         ret = r->test_reg * 2;
-        break;
-    case ROCKER_IRQ_STAT:
-        ret = r->irq_status;
-        r->irq_status = 0;
-        rocker_update_irq(r);
-        break;
-    case ROCKER_IRQ_MASK:
-        ret = r->irq_mask;
         break;
     case ROCKER_TEST_DMA_SIZE:
         ret = r->test_dma_size;
@@ -832,7 +810,7 @@ static int rocker_msix_init(struct rocker *r)
     PCIDevice *dev = PCI_DEVICE(r);
     int err;
 
-    err = msix_init(dev, ROCKER_PCI_MSIX_MAX_INTRS,
+    err = msix_init(dev, ROCKER_MSIX_VEC_COUNT(r->fp_ports),
                     &r->msix_bar,
                     ROCKER_PCI_MSIX_BAR_IDX, ROCKER_PCI_MSIX_TABLE_OFFSET,
                     &r->msix_bar,
@@ -841,7 +819,7 @@ static int rocker_msix_init(struct rocker *r)
     if (err)
         return err;
 
-    err = rocker_msix_vectors_use(r, ROCKER_PCI_MSIX_MAX_INTRS);
+    err = rocker_msix_vectors_use(r, ROCKER_MSIX_VEC_COUNT(r->fp_ports));
     if (err)
         goto err_msix_vectors_use;
 
@@ -857,12 +835,11 @@ static void rocker_msix_uninit(struct rocker *r)
     PCIDevice *dev = PCI_DEVICE(r);
 
     msix_uninit(dev, &r->msix_bar, &r->msix_bar);
-    rocker_msix_vectors_unuse(r, ROCKER_PCI_MSIX_MAX_INTRS);
+    rocker_msix_vectors_unuse(r, ROCKER_MSIX_VEC_COUNT(r->fp_ports));
 }
 
 static int pci_rocker_init(PCIDevice *dev)
 {
-    uint8_t *pci_conf = dev->config;
     struct rocker *r = to_rocker(dev);
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
@@ -879,10 +856,6 @@ static int pci_rocker_init(PCIDevice *dev)
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (!r->worlds[i])
             goto err_world_alloc;
-
-    /* setup PCI device */
-
-    pci_conf[PCI_INTERRUPT_PIN] = ROCKER_PCI_INTERRUPT_PIN;
 
     /* set up memory-mapped region at BAR0 */
 
@@ -947,9 +920,9 @@ static int pci_rocker_init(PCIDevice *dev)
         if (!ring)
             goto err_ring_alloc;
         if (i == 0)
-            desc_ring_set_consume(ring, cmd_consume);
+            desc_ring_set_consume(ring, cmd_consume, ROCKER_MSIX_VEC_CMD);
         else if (i % 2 == 0)
-            desc_ring_set_consume(ring, tx_consume);
+            desc_ring_set_consume(ring, tx_consume, ROCKER_MSIX_VEC_TX(i - 2));
         r->rings[i] = ring;
     }
 
@@ -1030,8 +1003,6 @@ static void rocker_reset(DeviceState *dev)
     r->test_reg64 = 0;
     r->test_dma_addr = 0;
     r->test_dma_size = 0;
-    r->irq_status = 0;
-    r->irq_mask = 0;
 
     for (i = 0; i < rocker_pci_ring_count(r); i++)
         desc_ring_reset(r->rings[i]);
