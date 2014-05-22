@@ -447,7 +447,7 @@ int rx_produce(struct world *world, uint32_t lport,
         goto err_too_big;
    }
 
-    buf = desc_get_buf(info, true);
+    buf = desc_get_buf(info, false);
     if (!buf) {
         err = -ENOMEM;
         goto err_no_mem;
