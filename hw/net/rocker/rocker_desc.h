@@ -30,7 +30,9 @@ uint16_t desc_buf_size(struct desc_info *info);
 uint16_t desc_tlv_size(struct desc_info *info);
 char *desc_get_buf(struct desc_info *info, bool read_only);
 int desc_set_buf(struct desc_info *info, size_t tlv_size);
+struct desc_ring *desc_get_ring(struct desc_info *info);
 
+int desc_ring_index(struct desc_ring *ring);
 bool desc_ring_set_base_addr(struct desc_ring *ring, uint64_t base_addr);
 uint64_t desc_ring_get_base_addr(struct desc_ring *ring);
 bool desc_ring_set_size(struct desc_ring *ring, uint32_t size);
@@ -44,8 +46,9 @@ uint32_t desc_ring_get_ctrl(struct desc_ring *ring);
 struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring);
 void desc_ring_post_desc(struct desc_ring *ring, int status);
 
-struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
-                                  desc_ring_consume *consume);
+void desc_ring_set_consume(struct desc_ring *ring,
+                           desc_ring_consume *consume);
+struct desc_ring *desc_ring_alloc(struct rocker *r, int index);
 void desc_ring_free(struct desc_ring *ring);
 void desc_ring_reset(struct desc_ring *ring);
 
