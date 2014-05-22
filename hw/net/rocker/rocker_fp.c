@@ -154,14 +154,12 @@ static void fp_port_cleanup(NetClientState *nc)
 static void fp_port_set_link_status(NetClientState *nc)
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
-    struct rocker *r = port->r;
 
     if (port->link_up == !nc->link_down)
         return;
 
     port->link_up = !nc->link_down;
-    rocker_irq_status_append(r, ROCKER_IRQ_LINK);
-    rocker_update_irq(r);
+    /* TODO: use event channel to let know of the link change */
 }
 
 static NetClientInfo fp_port_info = {
