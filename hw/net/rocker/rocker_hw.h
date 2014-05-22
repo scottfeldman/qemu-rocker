@@ -19,7 +19,13 @@
 
 #define ROCKER_PCI_REVISION             0x1
 #define ROCKER_PCI_INTERRUPT_PIN        1 /* interrupt pin A */
+#define ROCKER_PCI_BAR0_IDX             0
 #define ROCKER_PCI_BAR0_SIZE            0x2000
+#define ROCKER_PCI_MSIX_BAR_IDX         1
+#define ROCKER_PCI_MSIX_BAR_SIZE        0x2000
+#define ROCKER_PCI_MSIX_MAX_INTRS       256
+#define ROCKER_PCI_MSIX_TABLE_OFFSET    0x0000
+#define ROCKER_PCI_MSIX_PBA_OFFSET      0x1000
 
 /*
  * Rocker bogus registers
