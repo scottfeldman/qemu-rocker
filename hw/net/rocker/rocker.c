@@ -860,10 +860,10 @@ static void rocker_msix_uninit(struct rocker *r)
     rocker_msix_vectors_unuse(r, ROCKER_PCI_MSIX_MAX_INTRS);
 }
 
-static int pci_rocker_init(PCIDevice *pci_dev)
+static int pci_rocker_init(PCIDevice *dev)
 {
-    uint8_t *pci_conf = pci_dev->config;
-    struct rocker *r = to_rocker(pci_dev);
+    uint8_t *pci_conf = dev->config;
+    struct rocker *r = to_rocker(dev);
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
     static int sw_index = 0;
@@ -888,14 +888,14 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
     memory_region_init_io(&r->mmio, OBJECT(r), &rocker_mmio_ops, r,
                           "rocker-mmio", ROCKER_PCI_BAR0_SIZE);
-    pci_register_bar(pci_dev, ROCKER_PCI_BAR0_IDX,
+    pci_register_bar(dev, ROCKER_PCI_BAR0_IDX,
                      PCI_BASE_ADDRESS_SPACE_MEMORY, &r->mmio);
 
     /* set up memory-mapped region for MSI-X */
 
     memory_region_init(&r->msix_bar, OBJECT(r), "rocker-msix-bar",
                        ROCKER_PCI_MSIX_BAR_SIZE);
-    pci_register_bar(pci_dev, ROCKER_PCI_MSIX_BAR_IDX,
+    pci_register_bar(dev, ROCKER_PCI_MSIX_BAR_IDX,
                      PCI_BASE_ADDRESS_SPACE_MEMORY, &r->msix_bar);
 
     /* MSI-X init */
