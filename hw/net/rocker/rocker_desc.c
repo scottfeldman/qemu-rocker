@@ -177,28 +177,49 @@ static void desc_write(struct desc_ring *ring, uint32_t index)
     pci_dma_write(dev, addr, &info->desc, sizeof(info->desc));
 }
 
+static bool desc_ring_base_addr_check(struct desc_ring *ring)
+{
+    if (!ring->base_addr) {
+        DPRINTF("ERROR: ring[%d] not-initialized desc base address!\n",
+                ring->index);
+        return false;
+    }
+    return true;
+}
+
+static struct desc_info *__desc_ring_fetch_desc(struct desc_ring *ring)
+{
+    return desc_read(ring, ring->tail);
+}
+
 struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring)
 {
-    if (desc_ring_empty(ring))
+    if (desc_ring_empty(ring) || !desc_ring_base_addr_check(ring))
         return NULL;
 
     return desc_read(ring, ring->tail);
 }
 
-void desc_ring_post_desc(struct desc_ring *ring, int err)
+static void __desc_ring_post_desc(struct desc_ring *ring, int err)
 {
     uint16_t comp_err = 0x8000 | (uint16_t)-err;
     struct desc_info *info = &ring->info[ring->tail];
 
+    info->desc.comp_err = cpu_to_le16(comp_err);
+    desc_write(ring, ring->tail);
+    ring->tail = (ring->tail + 1) % ring->size;
+}
+
+void desc_ring_post_desc(struct desc_ring *ring, int err)
+{
     if (desc_ring_empty(ring)) {
         DPRINTF("ERROR: ring[%d] trying to post desc to empty ring\n",
                 ring->index);
         return;
     }
-
-    info->desc.comp_err = cpu_to_le16(comp_err);
-    desc_write(ring, ring->tail);
-    ring->tail = (ring->tail + 1) % ring->size;
+    if (!desc_ring_base_addr_check(ring))
+        return;
+    __desc_ring_post_desc(ring, err);
 }
 
 static int ring_pump(struct desc_ring *ring)
@@ -213,9 +234,9 @@ static int ring_pump(struct desc_ring *ring)
 
     if (ring->consume) {
         while (ring->head != ring->tail) {
-            info = desc_ring_fetch_desc(ring);
+            info = __desc_ring_fetch_desc(ring);
             err = ring->consume(ring->r, info);
-            desc_ring_post_desc(ring, err);
+            __desc_ring_post_desc(ring, err);
             consumed++;
         }
     }
@@ -227,6 +248,9 @@ int desc_ring_set_head(struct desc_ring *ring, uint32_t new)
 {
     uint32_t tail = ring->tail;
     uint32_t head = ring->head;
+
+    if (!desc_ring_base_addr_check(ring))
+        return 0;
 
     if (new >= ring->size) {
         DPRINTF("ERROR: trying to set head (%d) past ring[%d] size (%d) \n",
