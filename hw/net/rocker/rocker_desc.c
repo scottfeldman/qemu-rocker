@@ -89,6 +89,16 @@ int desc_set_buf(struct desc_info *info, size_t tlv_size)
     return 0;
 }
 
+struct desc_ring *desc_get_ring(struct desc_info *info)
+{
+    return info->ring;
+}
+
+int desc_ring_index(struct desc_ring *ring)
+{
+    return ring->index;
+}
+
 static bool desc_ring_empty(struct desc_ring *ring)
 {
     return ring->head == ring->tail;
@@ -259,8 +269,13 @@ uint32_t desc_ring_get_ctrl(struct desc_ring *ring)
     return ring->ctrl;
 }
 
-struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
-                                  desc_ring_consume *consume)
+void desc_ring_set_consume(struct desc_ring *ring,
+                           desc_ring_consume *consume)
+{
+    ring->consume = consume;
+}
+
+struct desc_ring *desc_ring_alloc(struct rocker *r, int index)
 {
     struct desc_ring *ring;
 
@@ -269,7 +284,6 @@ struct desc_ring *desc_ring_alloc(struct rocker *r, int index,
         return NULL;
 
     ring->r = r;
-    ring->consume = consume;
     ring->index = index;
 
     return ring;

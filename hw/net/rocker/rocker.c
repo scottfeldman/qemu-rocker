@@ -58,7 +58,7 @@ struct rocker {
     uint32_t irq_mask;
 
     /* desc rings */
-    struct desc_ring *rings[4];
+    struct desc_ring **rings;
 
     /* switch worlds */
     struct world *worlds[ROCKER_WORLD_TYPE_MAX];
@@ -69,6 +69,12 @@ struct rocker {
 
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
+
+static uint32_t rocker_get_lport_by_tx_ring(struct rocker *r,
+                                            struct desc_ring *ring)
+{
+    return (desc_ring_index(ring) - 2) / 2 + 1;
+}
 
 static int tx_consume(struct rocker *r, struct desc_info *info)
 {
@@ -93,11 +99,10 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
 
     rocker_tlv_parse(tlvs, ROCKER_TLV_TX_MAX, buf, desc_tlv_size(info));
 
-    if (!tlvs[ROCKER_TLV_TX_LPORT] ||
-        !tlvs[ROCKER_TLV_TX_FRAGS])
+    if (!tlvs[ROCKER_TLV_TX_FRAGS])
         return -EINVAL;
 
-    lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_TX_LPORT]);
+    lport = rocker_get_lport_by_tx_ring(r, desc_get_ring(info));
     if (!fp_port_from_lport(lport, &port))
         return -EINVAL;
 
@@ -362,11 +367,17 @@ void rocker_irq_status_append(struct rocker *r, uint32_t irq_status)
     r->irq_status |= irq_status;
 }
 
+static struct desc_ring *rocker_get_rx_ring_by_lport(struct rocker *r,
+                                                     uint32_t lport)
+{
+    return r->rings[(lport - 1) * 2 + 3];
+}
+
 int rx_produce(struct world *world, uint32_t lport,
                const struct iovec *iov, int iovcnt)
 {
     struct rocker *r = world_rocker(world);
-    struct desc_ring *ring = r->rings[ROCKER_RX_INDEX];
+    struct desc_ring *ring = rocker_get_rx_ring_by_lport(r, lport);
     struct desc_info *info = desc_ring_fetch_desc(ring);
     size_t size = iov_size(iov, iovcnt);
     char *buf;
@@ -398,7 +409,6 @@ int rx_produce(struct world *world, uint32_t lport,
     }
 
     pos = 0;
-    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_RX_LPORT, lport);
     rocker_tlv_put_le16(buf, &pos, ROCKER_TLV_RX_FLAGS, rx_flags);
     rocker_tlv_put_le16(buf, &pos, ROCKER_TLV_RX_CSUM, rx_csum);
     rocker_tlv_put_iov(buf, &pos, ROCKER_TLV_RX_PACKET, iov, iovcnt);
@@ -471,10 +481,52 @@ static void rocker_control(struct rocker *r, uint32_t val)
         rocker_reset(DEVICE(r));
 }
 
+static int rocker_pci_ring_count(struct rocker *r)
+{
+    /* There are:
+     * - command ring
+     * - event ring
+     * - tx and rx ring per each port
+     */
+    return 2 + (2 * r->fp_ports);
+}
+
+static bool rocker_addr_is_desc_reg(struct rocker *r, hwaddr addr)
+{
+    hwaddr start = ROCKER_DMA_DESC_BASE;
+    hwaddr end = start + (ROCKER_DMA_DESC_SIZE * rocker_pci_ring_count(r));
+
+    return addr >= start && addr < end;
+}
+
 static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
 {
     struct rocker *r = opaque;
-    int index = ROCKER_RING_INDEX(addr);
+
+    if (rocker_addr_is_desc_reg(r, addr)) {
+        unsigned index = ROCKER_RING_INDEX(addr);
+        unsigned offset = addr & ROCKER_DMA_DESC_MASK;
+
+        switch (offset) {
+        case ROCKER_DMA_DESC_SIZE_OFFSET:
+            desc_ring_set_size(r->rings[index], val);
+            break;
+        case ROCKER_DMA_DESC_HEAD_OFFSET:
+            if (desc_ring_set_head(r->rings[index], val)) {
+                rocker_irq_status_append(r, (1 << (index + 1)));
+                rocker_update_irq(r);
+            }
+            break;
+        case ROCKER_DMA_DESC_CTRL_OFFSET:
+            desc_ring_set_ctrl(r->rings[index], val);
+            break;
+        default:
+            DPRINTF("not implemented dma reg write(l) addr=0x%lx val=0x%08x (ring %d, addr=0x%02x)\n",
+                    addr, val, index, offset);
+            break;
+        }
+        return;
+    }
 
     switch (addr) {
     case ROCKER_TEST_REG:
@@ -493,27 +545,6 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
         break;
     case ROCKER_TEST_DMA_CTRL:
         rocker_test_dma_ctrl(r, val);
-        break;
-    case ROCKER_TX_DMA_DESC_SIZE:
-    case ROCKER_RX_DMA_DESC_SIZE:
-    case ROCKER_CMD_DMA_DESC_SIZE:
-    case ROCKER_EVENT_DMA_DESC_SIZE:
-        desc_ring_set_size(r->rings[index], val);
-        break;
-    case ROCKER_TX_DMA_DESC_HEAD:
-    case ROCKER_RX_DMA_DESC_HEAD:
-    case ROCKER_CMD_DMA_DESC_HEAD:
-    case ROCKER_EVENT_DMA_DESC_HEAD:
-        if (desc_ring_set_head(r->rings[index], val)) {
-            rocker_irq_status_append(r, (1 << (index + 1)));
-            rocker_update_irq(r);
-        }
-        break;
-    case ROCKER_TX_DMA_DESC_CTRL:
-    case ROCKER_RX_DMA_DESC_CTRL:
-    case ROCKER_CMD_DMA_DESC_CTRL:
-    case ROCKER_EVENT_DMA_DESC_CTRL:
-        desc_ring_set_ctrl(r->rings[index], val);
         break;
     case ROCKER_CONTROL:
         rocker_control(r, val);
@@ -547,7 +578,22 @@ static void rocker_port_phys_enable_write(struct rocker *r, uint64_t new)
 static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
 {
     struct rocker *r = opaque;
-    int index;
+
+    if (rocker_addr_is_desc_reg(r, addr)) {
+        unsigned index = ROCKER_RING_INDEX(addr);
+        unsigned offset = addr & ROCKER_DMA_DESC_MASK;
+
+        switch (offset) {
+        case ROCKER_DMA_DESC_ADDR_OFFSET:
+            desc_ring_set_base_addr(r->rings[index], val);
+            break;
+        default:
+            DPRINTF("not implemented dma reg write(q) addr=0x%lx val=0x%016lx (ring %d, addr=0x%02x)\n",
+                    addr, val, index, offset);
+            break;
+        }
+        return;
+    }
 
     switch (addr) {
     case ROCKER_TEST_REG64:
@@ -555,13 +601,6 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
         break;
     case ROCKER_TEST_DMA_ADDR:
         r->test_dma_addr = val;
-        break;
-    case ROCKER_TX_DMA_DESC_ADDR:
-    case ROCKER_RX_DMA_DESC_ADDR:
-    case ROCKER_CMD_DMA_DESC_ADDR:
-    case ROCKER_EVENT_DMA_DESC_ADDR:
-        index = ROCKER_RING_INDEX(addr);
-        desc_ring_set_base_addr(r->rings[index], val);
         break;
     case ROCKER_PORT_PHYS_ENABLE:
         rocker_port_phys_enable_write(r, val);
@@ -591,7 +630,32 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
 {
     struct rocker *r = opaque;
     uint32_t ret;
-    int index = ROCKER_RING_INDEX(addr);
+
+    if (rocker_addr_is_desc_reg(r, addr)) {
+        unsigned index = ROCKER_RING_INDEX(addr);
+        unsigned offset = addr & ROCKER_DMA_DESC_MASK;
+
+        switch (offset) {
+        case ROCKER_DMA_DESC_SIZE_OFFSET:
+            ret = desc_ring_get_size(r->rings[index]);
+            break;
+        case ROCKER_DMA_DESC_HEAD_OFFSET:
+            ret = desc_ring_get_head(r->rings[index]);
+            break;
+        case ROCKER_DMA_DESC_TAIL_OFFSET:
+            ret = desc_ring_get_tail(r->rings[index]);
+            break;
+        case ROCKER_DMA_DESC_CTRL_OFFSET:
+            ret = desc_ring_get_ctrl(r->rings[index]);
+            break;
+        default:
+            DPRINTF("not implemented dma reg read(l) addr=0x%lx (ring %d, addr=0x%02x)\n",
+                    addr, index, offset);
+            ret = 0;
+            break;
+        }
+        return ret;
+    }
 
     switch (addr) {
     case ROCKER_BOGUS_REG0:
@@ -616,30 +680,6 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
         break;
     case ROCKER_PORT_PHYS_COUNT:
         ret = r->fp_ports;
-        break;
-    case ROCKER_TX_DMA_DESC_SIZE:
-    case ROCKER_RX_DMA_DESC_SIZE:
-    case ROCKER_CMD_DMA_DESC_SIZE:
-    case ROCKER_EVENT_DMA_DESC_SIZE:
-        ret = desc_ring_get_size(r->rings[index]);
-        break;
-    case ROCKER_TX_DMA_DESC_HEAD:
-    case ROCKER_RX_DMA_DESC_HEAD:
-    case ROCKER_CMD_DMA_DESC_HEAD:
-    case ROCKER_EVENT_DMA_DESC_HEAD:
-        ret = desc_ring_get_head(r->rings[index]);
-        break;
-    case ROCKER_TX_DMA_DESC_TAIL:
-    case ROCKER_RX_DMA_DESC_TAIL:
-    case ROCKER_CMD_DMA_DESC_TAIL:
-    case ROCKER_EVENT_DMA_DESC_TAIL:
-        ret = desc_ring_get_tail(r->rings[index]);
-        break;
-    case ROCKER_TX_DMA_DESC_CTRL:
-    case ROCKER_RX_DMA_DESC_CTRL:
-    case ROCKER_CMD_DMA_DESC_CTRL:
-    case ROCKER_EVENT_DMA_DESC_CTRL:
-        ret = desc_ring_get_ctrl(r->rings[index]);
         break;
     default:
         DPRINTF("not implemented read(l) addr=0x%lx\n", addr);
@@ -680,8 +720,24 @@ static uint64_t rocker_port_phys_enable_read(struct rocker *r)
 static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
 {
     struct rocker *r = opaque;
-    int index = ROCKER_RING_INDEX(addr);
     uint64_t ret;
+
+    if (rocker_addr_is_desc_reg(r, addr)) {
+        unsigned index = ROCKER_RING_INDEX(addr);
+        unsigned offset = addr & ROCKER_DMA_DESC_MASK;
+
+        switch (addr & ROCKER_DMA_DESC_MASK) {
+        case ROCKER_DMA_DESC_ADDR_OFFSET:
+            ret = desc_ring_get_base_addr(r->rings[index]);
+            break;
+        default:
+            DPRINTF("not implemented dma reg read(q) addr=0x%lx (ring %d, addr=0x%02x)\n",
+                    addr, index, offset);
+            ret = 0;
+            break;
+        }
+        return ret;
+    }
 
     switch (addr) {
     case ROCKER_BOGUS_REG0:
@@ -693,12 +749,6 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
         break;
     case ROCKER_TEST_DMA_ADDR:
         ret = r->test_dma_addr;
-        break;
-    case ROCKER_TX_DMA_DESC_ADDR:
-    case ROCKER_RX_DMA_DESC_ADDR:
-    case ROCKER_CMD_DMA_DESC_ADDR:
-    case ROCKER_EVENT_DMA_DESC_ADDR:
-        ret = desc_ring_get_base_addr(r->rings[index]);
         break;
     case ROCKER_PORT_PHYS_LINK_STATUS:
         ret = rocker_port_phys_link_status(r);
@@ -757,9 +807,10 @@ static void pci_rocker_uninit(PCIDevice *dev)
         r->fp_port[i] = NULL;
     }
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < rocker_pci_ring_count(r); i++)
         if (r->rings[i])
              desc_ring_free(r->rings[i]);
+    g_free(r->rings);
 
     memory_region_destroy(&r->mmio);
 
@@ -821,15 +872,31 @@ static int pci_rocker_init(PCIDevice *pci_dev)
     if (r->fp_ports > ROCKER_FP_PORTS_MAX)
         r->fp_ports = ROCKER_FP_PORTS_MAX;
 
-    r->rings[ROCKER_TX_INDEX] = desc_ring_alloc(r, ROCKER_TX_INDEX, tx_consume);
-    r->rings[ROCKER_RX_INDEX] = desc_ring_alloc(r, ROCKER_RX_INDEX, NULL);
-    r->rings[ROCKER_CMD_INDEX] = desc_ring_alloc(r, ROCKER_CMD_INDEX,
-                                                 cmd_consume);
-    r->rings[ROCKER_EVENT_INDEX] = desc_ring_alloc(r, ROCKER_EVENT_INDEX, NULL);
+    r->rings = g_malloc(sizeof(struct desc_ring *) * rocker_pci_ring_count(r));
+    if (!r->rings)
+        goto err_rings_alloc;
 
-    for (i = 0; i < 4; i++)
-        if (!r->rings[i])
+    /* Rings are ordered like this:
+     * - command ring
+     * - event ring
+     * - port0 tx ring
+     * - port0 rx ring
+     * - port1 tx ring
+     * - port1 rx ring
+     * .....
+     */
+
+    for (i = 0; i < rocker_pci_ring_count(r); i++) {
+        struct desc_ring *ring = desc_ring_alloc(r, i);
+
+        if (!ring)
             goto err_ring_alloc;
+        if (i == 0)
+            desc_ring_set_consume(ring, cmd_consume);
+        else if (i % 2 == 0)
+            desc_ring_set_consume(ring, tx_consume);
+        r->rings[i] = ring;
+    }
 
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port =
@@ -852,9 +919,10 @@ err_port_alloc:
         fp_port_free(port);
     }
 err_ring_alloc:
-    for (i = 0; i < 4; i++)
-        if (r->rings[i])
-             desc_ring_free(r->rings[i]);
+    for (--i; i >= 0; i--)
+        desc_ring_free(r->rings[i]);
+    g_free(r->rings);
+err_rings_alloc:
     memory_region_destroy(&r->mmio);
 err_world_alloc:
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
@@ -881,10 +949,8 @@ static void rocker_reset(DeviceState *dev)
     r->irq_status = 0;
     r->irq_mask = 0;
 
-    desc_ring_reset(r->rings[ROCKER_TX_INDEX]);
-    desc_ring_reset(r->rings[ROCKER_RX_INDEX]);
-    desc_ring_reset(r->rings[ROCKER_CMD_INDEX]);
-    desc_ring_reset(r->rings[ROCKER_EVENT_INDEX]);
+    for (i = 0; i < rocker_pci_ring_count(r); i++)
+        desc_ring_reset(r->rings[i]);
 
     DPRINTF("Reset done\n");
 }

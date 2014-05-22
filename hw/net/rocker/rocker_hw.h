@@ -19,7 +19,7 @@
 
 #define ROCKER_PCI_REVISION             0x1
 #define ROCKER_PCI_INTERRUPT_PIN        1 /* interrupt pin A */
-#define ROCKER_PCI_BAR0_SIZE            0x1000
+#define ROCKER_PCI_BAR0_SIZE            0x2000
 
 /*
  * Rocker bogus registers
@@ -65,39 +65,24 @@
 /*
  * Rocker DMA ring register offsets
  */
-#define __ROCKER_DMA_DESC_ADDR(x)       (0x0100 + (x) * 32)     /* 8-byte */
-#define __ROCKER_DMA_DESC_SIZE(x)       (0x0108 + (x) * 32)
-#define __ROCKER_DMA_DESC_HEAD(x)       (0x010c + (x) * 32)
-#define __ROCKER_DMA_DESC_TAIL(x)       (0x0110 + (x) * 32)
-#define __ROCKER_DMA_DESC_CTRL(x)       (0x0114 + (x) * 32)
-#define __ROCKER_DMA_DESC_RSVD1(x)      (0x0118 + (x) * 32)
-#define __ROCKER_DMA_DESC_RSVD2(x)      (0x011c + (x) * 32)
-
-#define ROCKER_DMA_RING_REG_SET(name, index)                                    \
-enum {                                                                          \
-        ROCKER_ ## name ## _DMA_DESC_ADDR = __ROCKER_DMA_DESC_ADDR(index),      \
-        ROCKER_ ## name ## _DMA_DESC_SIZE = __ROCKER_DMA_DESC_SIZE(index),      \
-        ROCKER_ ## name ## _DMA_DESC_HEAD = __ROCKER_DMA_DESC_HEAD(index),      \
-        ROCKER_ ## name ## _DMA_DESC_TAIL = __ROCKER_DMA_DESC_TAIL(index),      \
-        ROCKER_ ## name ## _DMA_DESC_CTRL = __ROCKER_DMA_DESC_CTRL(index),      \
-        ROCKER_ ## name ## _DMA_DESC_RSVD1 = __ROCKER_DMA_DESC_RSVD1(index),    \
-        ROCKER_ ## name ## _DMA_DESC_RSVD2 = __ROCKER_DMA_DESC_RSVD2(index),    \
-};\
-enum {\
-        ROCKER_ ## name ## _INDEX = index,  \
-}
-
-ROCKER_DMA_RING_REG_SET(TX, 0);
-ROCKER_DMA_RING_REG_SET(RX, 1);
-ROCKER_DMA_RING_REG_SET(CMD, 2);
-ROCKER_DMA_RING_REG_SET(EVENT, 3);
+#define ROCKER_DMA_DESC_BASE            0x1000
+#define ROCKER_DMA_DESC_SIZE            32
+#define ROCKER_DMA_DESC_MASK            0x1F
+#define ROCKER_DMA_DESC_TOTAL_SIZE      (ROCKER_DMA_DESC_SIZE * 64) /* 62 ports + event + cmd */
+#define ROCKER_DMA_DESC_ADDR_OFFSET     0x00     /* 8-byte */
+#define ROCKER_DMA_DESC_SIZE_OFFSET     0x08
+#define ROCKER_DMA_DESC_HEAD_OFFSET     0x0c
+#define ROCKER_DMA_DESC_TAIL_OFFSET     0x10
+#define ROCKER_DMA_DESC_CTRL_OFFSET     0x14
+#define ROCKER_DMA_DESC_RSVD1_OFFSET    0x18
+#define ROCKER_DMA_DESC_RSVD2_OFFSET    0x1c
 
 /*
- * Helper macro to do convert a dma ring register 
+ * Helper macro to do convert a dma ring register
  * to its index.  Based on the fact that the register
  * group stride is 32 bytes.
  */
-#define ROCKER_RING_INDEX(reg) ((reg >> 5) & 0x7)
+#define ROCKER_RING_INDEX(reg) ((reg >> 5) & 0x7F)
 
 /*
  * Rocker DMA Descriptor
@@ -164,7 +149,6 @@ enum {
 /* Rx msg */
 enum {
     ROCKER_TLV_RX_UNSPEC,
-    ROCKER_TLV_RX_LPORT,                /* u32 */
     ROCKER_TLV_RX_FLAGS,                /* u16, see RX_FLAGS_ */
     ROCKER_TLV_RX_CSUM,                 /* u16 */
     ROCKER_TLV_RX_PACKET,               /* binary */
@@ -185,7 +169,6 @@ enum {
 /* Tx msg */
 enum {
     ROCKER_TLV_TX_UNSPEC,
-    ROCKER_TLV_TX_LPORT,                /* u32 */
     ROCKER_TLV_TX_OFFLOAD,              /* u8, see TX_OFFLOAD_ */
     ROCKER_TLV_TX_L3_CSUM_OFF,          /* u16 */
     ROCKER_TLV_TX_TSO_MSS,              /* u16 */
