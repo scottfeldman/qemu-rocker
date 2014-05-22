@@ -17,6 +17,7 @@
 
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
+#include "hw/pci/msix.h"
 #include "net/net.h"
 #include "qemu/iov.h"
 #include "qemu/bitops.h"
@@ -36,6 +37,7 @@ struct rocker {
     /* public */
 
     MemoryRegion mmio;
+    MemoryRegion msix_bar;
 
     /* switch configuration */
     char *name;                  /* switch name */
@@ -795,28 +797,67 @@ static const MemoryRegionOps rocker_mmio_ops = {
     },
 };
 
-static void pci_rocker_uninit(PCIDevice *dev)
+static void rocker_msix_vectors_unuse(struct rocker *r,
+                                      unsigned int num_vectors)
 {
-    struct rocker *r = to_rocker(dev);
+    PCIDevice *dev = PCI_DEVICE(r);
     int i;
 
-    for (i = 0; i < r->fp_ports; i++) {
-        struct fp_port *port = r->fp_port[i];
-
-        fp_port_free(port);
-        r->fp_port[i] = NULL;
+    for (i = 0; i < num_vectors; i++) {
+        msix_vector_unuse(dev, i);
     }
+}
 
-    for (i = 0; i < rocker_pci_ring_count(r); i++)
-        if (r->rings[i])
-             desc_ring_free(r->rings[i]);
-    g_free(r->rings);
+static int rocker_msix_vectors_use(struct rocker *r,
+                                   unsigned int num_vectors)
+{
+    PCIDevice *dev = PCI_DEVICE(r);
+    int err;
+    int i;
 
-    memory_region_destroy(&r->mmio);
+    for (i = 0; i < num_vectors; i++) {
+        err = msix_vector_use(dev, i);
+        if (err)
+            goto rollback;
+    }
+    return 0;
 
-    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
-        if (r->worlds[i])
-            world_free(r->worlds[i]);
+rollback:
+    rocker_msix_vectors_unuse(r, i);
+    return err;
+}
+
+static int rocker_msix_init(struct rocker *r)
+{
+    PCIDevice *dev = PCI_DEVICE(r);
+    int err;
+
+    err = msix_init(dev, ROCKER_PCI_MSIX_MAX_INTRS,
+                    &r->msix_bar,
+                    ROCKER_PCI_MSIX_BAR_IDX, ROCKER_PCI_MSIX_TABLE_OFFSET,
+                    &r->msix_bar,
+                    ROCKER_PCI_MSIX_BAR_IDX, ROCKER_PCI_MSIX_PBA_OFFSET,
+                    0);
+    if (err)
+        return err;
+
+    err = rocker_msix_vectors_use(r, ROCKER_PCI_MSIX_MAX_INTRS);
+    if (err)
+        goto err_msix_vectors_use;
+
+    return 0;
+
+err_msix_vectors_use:
+    msix_uninit(dev, &r->msix_bar, &r->msix_bar);
+    return err;
+}
+
+static void rocker_msix_uninit(struct rocker *r)
+{
+    PCIDevice *dev = PCI_DEVICE(r);
+
+    msix_uninit(dev, &r->msix_bar, &r->msix_bar);
+    rocker_msix_vectors_unuse(r, ROCKER_PCI_MSIX_MAX_INTRS);
 }
 
 static int pci_rocker_init(PCIDevice *pci_dev)
@@ -847,7 +888,21 @@ static int pci_rocker_init(PCIDevice *pci_dev)
 
     memory_region_init_io(&r->mmio, OBJECT(r), &rocker_mmio_ops, r,
                           "rocker-mmio", ROCKER_PCI_BAR0_SIZE);
-    pci_register_bar(pci_dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &r->mmio);
+    pci_register_bar(pci_dev, ROCKER_PCI_BAR0_IDX,
+                     PCI_BASE_ADDRESS_SPACE_MEMORY, &r->mmio);
+
+    /* set up memory-mapped region for MSI-X */
+
+    memory_region_init(&r->msix_bar, OBJECT(r), "rocker-msix-bar",
+                       ROCKER_PCI_MSIX_BAR_SIZE);
+    pci_register_bar(pci_dev, ROCKER_PCI_MSIX_BAR_IDX,
+                     PCI_BASE_ADDRESS_SPACE_MEMORY, &r->msix_bar);
+
+    /* MSI-X init */
+
+    err = rocker_msix_init(r);
+    if (err)
+        goto err_msix_init;
 
     /* validate switch properties */
 
@@ -923,6 +978,9 @@ err_ring_alloc:
         desc_ring_free(r->rings[i]);
     g_free(r->rings);
 err_rings_alloc:
+    rocker_msix_uninit(r);
+err_msix_init:
+    memory_region_destroy(&r->msix_bar);
     memory_region_destroy(&r->mmio);
 err_world_alloc:
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
@@ -930,6 +988,32 @@ err_world_alloc:
             world_free(r->worlds[i]);
 
     return err;
+}
+
+static void pci_rocker_uninit(PCIDevice *dev)
+{
+    struct rocker *r = to_rocker(dev);
+    int i;
+
+    for (i = 0; i < r->fp_ports; i++) {
+        struct fp_port *port = r->fp_port[i];
+
+        fp_port_free(port);
+        r->fp_port[i] = NULL;
+    }
+
+    for (i = 0; i < rocker_pci_ring_count(r); i++)
+        if (r->rings[i])
+             desc_ring_free(r->rings[i]);
+    g_free(r->rings);
+
+    rocker_msix_uninit(r);
+    memory_region_destroy(&r->msix_bar);
+    memory_region_destroy(&r->mmio);
+
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
+        if (r->worlds[i])
+            world_free(r->worlds[i]);
 }
 
 static void rocker_reset(DeviceState *dev)
