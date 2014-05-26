@@ -995,6 +995,7 @@ err_port_alloc:
         struct fp_port *port = r->fp_port[i];
         fp_port_free(port);
     }
+    i = rocker_pci_ring_count(r);
 err_ring_alloc:
     for (--i; i >= 0; i--)
         desc_ring_free(r->rings[i]);
