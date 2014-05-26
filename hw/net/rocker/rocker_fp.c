@@ -21,30 +21,6 @@
 #include "rocker_fp.h"
 #include "rocker_world.h"
 
-/*
- * A nic is created for the front panel port and is peered
- * with a netdev with the id=port->name.  The port netdev
- * can be created from cmd line using:
- *
- *     -netdev <type>,id=<port_name>
- *
- * example:
- *
- *     -netdev tap,id=sw1.1
- *
- * Alternative, rocker can automatically create the netdevs
- * for all ports using cmd line:
- *
- *     -device rocker,name=<switch_name>,backend=<type>
- *
- * example:
- *
- *     -device rocker,name=sw1,backend=tap,fp_ports=4
- *
- * Would create 4 host tap interfaces with names sw1.[1-4].
- * The rocker nics would be peered with each netdev.
- */
-
 enum duplex {
     DUPLEX_HALF = 0,
     DUPLEX_FULL
@@ -60,7 +36,6 @@ struct fp_port {
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
-    enum fp_port_backend backend;
     NICState *nic;
     NICConf conf;
     bool link_up;
@@ -172,25 +147,6 @@ static NetClientInfo fp_port_info = {
     .link_status_changed = fp_port_set_link_status,
 };
 
-static int fp_port_set_tap_netdev(struct fp_port *port, char *script,
-                                  char *downscript)
-{
-    NetdevTapOptions nctap = {
-        .has_ifname = true,
-        .ifname = port->name,
-        .has_script = script ? true : false,
-        .script = script,
-        .has_downscript = downscript ? true : false,
-        .downscript = downscript,
-    };
-    struct NetClientOptions ncopts = {
-        .kind = NET_CLIENT_OPTIONS_KIND_TAP,
-        .tap = &nctap,
-    };
-
-    return net_init_tap(&ncopts, port->name, NULL);
-}
-
 struct world *fp_port_get_world(struct fp_port *port)
 {
     return port->world;
@@ -220,17 +176,12 @@ void fp_port_disable(struct fp_port *port)
 
 struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
                               MACAddr *start_mac, uint index,
-                              enum fp_port_backend backend,
-                              char *script, char *downscript,
+                              NICPeers *peers,
                               const char *type)
 {
     struct fp_port *port = g_malloc0(sizeof(struct fp_port));
-    int err;
 
     if (!port)
-        return NULL;
-
-    if (backend != FP_BACKEND_NONE && backend != FP_BACKEND_TAP)
         return NULL;
 
     port->r = r;
@@ -244,23 +195,7 @@ struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
     memcpy(port->conf.macaddr.a, start_mac, sizeof(port->conf.macaddr.a));
     port->conf.macaddr.a[5] += index;
     port->conf.bootindex = -1;
-
-    port->backend = backend;
-
-    switch (backend) {
-    case FP_BACKEND_NONE:
-        break;
-    case FP_BACKEND_TAP:
-        err = fp_port_set_tap_netdev(port, script, downscript);
-        if (err)
-            goto err_set_netdev;
-    }
-
-    /* find the netdev to peer with, if any, by matching
-     * id=port->name
-     */
-
-    port->conf.peers.ncs[0] = qemu_find_netdev(port->name);
+    port->conf.peers = *peers;
 
     port->nic = qemu_new_nic(&fp_port_info, &port->conf,
                              type, NULL, port);
@@ -270,11 +205,6 @@ struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
     fp_port_reset(port);
 
     return port;
-
-err_set_netdev:
-    g_free(port);
-
-    return NULL;
 }
 
 void fp_port_free(struct fp_port *port)

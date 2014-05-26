@@ -41,10 +41,8 @@ struct rocker {
 
     /* switch configuration */
     char *name;                  /* switch name */
-    char *backend_name;          /* backend method */
-    char *script;                /* script to run for tap backends */
-    char *downscript;            /* downscript to run for tap backends */
-    uint16_t fp_ports;           /* front-panel port count */
+    uint32_t fp_ports;           /* front-panel port count */
+    NICPeers *fp_ports_peers;
     MACAddr fp_start_macaddr;    /* front-panel port 0 mac addr */
     uint64_t switch_id;          /* switch id */
 
@@ -893,7 +891,6 @@ static int pci_rocker_init(PCIDevice *dev)
     const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
     static int sw_index = 0;
-    enum fp_port_backend backend;
     int i, err = 0;
 
     /* allocate worlds */
@@ -942,10 +939,6 @@ static int pci_rocker_init(PCIDevice *dev)
         memcpy(&r->switch_id, &r->fp_start_macaddr,
                sizeof(r->fp_start_macaddr));
 
-    backend = FP_BACKEND_NONE;
-    if (r->backend_name && memcmp(r->backend_name, "tap", sizeof("tap")) == 0)
-        backend = FP_BACKEND_TAP;
-
     if (r->fp_ports > ROCKER_FP_PORTS_MAX)
         r->fp_ports = ROCKER_FP_PORTS_MAX;
 
@@ -978,7 +971,7 @@ static int pci_rocker_init(PCIDevice *dev)
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port =
             fp_port_alloc(r, r->name, &r->fp_start_macaddr,
-                          i, backend, r->script, r->downscript,
+                          i, &r->fp_ports_peers[i],
                           object_get_typename(OBJECT(r)));
 
         if (!port)
@@ -1037,6 +1030,7 @@ static void pci_rocker_uninit(PCIDevice *dev)
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (r->worlds[i])
             world_free(r->worlds[i]);
+    g_free(r->fp_ports_peers);
 }
 
 static void rocker_reset(DeviceState *dev)
@@ -1062,15 +1056,12 @@ static void rocker_reset(DeviceState *dev)
 
 static Property rocker_properties[] = {
     DEFINE_PROP_STRING("name", struct rocker, name),
-    DEFINE_PROP_STRING("backend", struct rocker, backend_name),
-    DEFINE_PROP_STRING("script", struct rocker, script),
-    DEFINE_PROP_STRING("downscript", struct rocker, downscript),
-    DEFINE_PROP_UINT16("fp_ports", struct rocker,
-                       fp_ports, 16),
     DEFINE_PROP_MACADDR("fp_start_macaddr", struct rocker,
                         fp_start_macaddr),
     DEFINE_PROP_UINT64("switch_id", struct rocker,
                        switch_id, 0),
+    DEFINE_PROP_ARRAY("ports", struct rocker, fp_ports,
+                      fp_ports_peers, qdev_prop_netdev, NICPeers),
     DEFINE_PROP_END_OF_LIST(),
 };
 

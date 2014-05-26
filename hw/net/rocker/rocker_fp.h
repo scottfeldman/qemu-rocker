@@ -22,11 +22,6 @@
 
 #define ROCKER_FP_PORTS_MAX 62
 
-enum fp_port_backend {
-    FP_BACKEND_NONE = 1,
-    FP_BACKEND_TAP,
-};
-
 struct rocker;
 struct fp_port;
 struct world;
@@ -49,8 +44,7 @@ void fp_port_disable(struct fp_port *port);
 
 struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
                               MACAddr *start_mac, uint index,
-                              enum fp_port_backend backend,
-                              char *script, char *downscript,
+                              NICPeers *peers,
                               const char *type);
 void fp_port_free(struct fp_port *port);
 void fp_port_reset(struct fp_port *port);
