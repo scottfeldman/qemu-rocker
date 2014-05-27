@@ -56,7 +56,7 @@ uint16_t desc_tlv_size(struct desc_info *info)
 
 char *desc_get_buf(struct desc_info *info, bool read_only)
 {
-    PCIDevice *dev = (PCIDevice *)info->ring->r;
+    PCIDevice *dev = PCI_DEVICE(info->ring->r);
     size_t size = read_only ? le16_to_cpu(info->desc.tlv_size) :
                               le16_to_cpu(info->desc.buf_size);
 
@@ -76,7 +76,7 @@ char *desc_get_buf(struct desc_info *info, bool read_only)
 
 int desc_set_buf(struct desc_info *info, size_t tlv_size)
 {
-    PCIDevice *dev = (PCIDevice *)info->ring->r;
+    PCIDevice *dev = PCI_DEVICE(info->ring->r);
 
     if (tlv_size > info->buf_size) {
         DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %ld tlv_size %ld\n",
@@ -159,7 +159,7 @@ uint32_t desc_ring_get_size(struct desc_ring *ring)
 
 static struct desc_info *desc_read(struct desc_ring *ring, uint32_t index)
 {
-    PCIDevice *dev = (PCIDevice *)ring->r;
+    PCIDevice *dev = PCI_DEVICE(ring->r);
     struct desc_info *info = &ring->info[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
@@ -170,7 +170,7 @@ static struct desc_info *desc_read(struct desc_ring *ring, uint32_t index)
 
 static void desc_write(struct desc_ring *ring, uint32_t index)
 {
-    PCIDevice *dev = (PCIDevice *)ring->r;
+    PCIDevice *dev = PCI_DEVICE(ring->r);
     struct desc_info *info = &ring->info[index];
     hwaddr addr = ring->base_addr + (sizeof(struct rocker_desc) * index);
 
