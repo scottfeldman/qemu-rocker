@@ -100,7 +100,7 @@ struct rocker_desc {
     uint64_t cookie;
     __le16 buf_size;
     __le16 tlv_size;
-    __le16 resv[5];   /* pad to 32 bytes */
+    __le16 rsvd[5];   /* pad to 32 bytes */
     __le16 comp_err;
 } __attribute__((packed, aligned (8)));
 
