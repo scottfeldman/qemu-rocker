@@ -76,7 +76,7 @@ static uint32_t rocker_get_lport_by_tx_ring(struct rocker *r,
 
 static int tx_consume(struct rocker *r, struct desc_info *info)
 {
-    PCIDevice *dev = (PCIDevice *)r;
+    PCIDevice *dev = PCI_DEVICE(r);
     char *buf = desc_get_buf(info, true);
     struct rocker_tlv *tlv_frag;
     struct rocker_tlv *tlvs[ROCKER_TLV_TX_MAX + 1];
