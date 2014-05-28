@@ -646,10 +646,81 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
     }
 }
 
+#ifdef DEBUG_ROCKER
+#define regname(reg) case (reg): return #reg
+static const char *rocker_reg_name(void *opaque, hwaddr addr)
+{
+    struct rocker *r = opaque;
+
+    if (rocker_addr_is_desc_reg(r, addr)) {
+        unsigned index = ROCKER_RING_INDEX(addr);
+        unsigned offset = addr & ROCKER_DMA_DESC_MASK;
+        static char buf[100];
+        char ring_name[10];
+
+        switch (index) {
+            case 0:
+                sprintf(ring_name, "cmd");
+                break;
+            case 1:
+                sprintf(ring_name, "event");
+                break;
+            default:
+                sprintf(ring_name, "%s-%d", index % 2 ? "rx" : "tx",
+                        (index - 2) / 2); 
+        }
+
+        switch (offset) {
+        case ROCKER_DMA_DESC_ADDR_OFFSET:
+            sprintf(buf, "Ring[%s] ADDR", ring_name);
+            return buf;
+        case ROCKER_DMA_DESC_SIZE_OFFSET:
+            sprintf(buf, "Ring[%s] SIZE", ring_name);
+            return buf;
+        case ROCKER_DMA_DESC_HEAD_OFFSET:
+            sprintf(buf, "Ring[%s] HEAD", ring_name);
+            return buf;
+        case ROCKER_DMA_DESC_TAIL_OFFSET:
+            sprintf(buf, "Ring[%s] TAIL", ring_name);
+            return buf;
+        case ROCKER_DMA_DESC_CTRL_OFFSET:
+            sprintf(buf, "Ring[%s] CTRL", ring_name);
+            return buf;
+        case ROCKER_DMA_DESC_CREDITS_OFFSET:
+            sprintf(buf, "Ring[%s] CREDITS", ring_name);
+            return buf;
+        default:
+            sprintf(buf, "Ring[%s] ???", ring_name);
+            return buf;
+        }
+    } else {
+        switch (addr) {
+            regname(ROCKER_BOGUS_REG0);
+            regname(ROCKER_BOGUS_REG1);
+            regname(ROCKER_BOGUS_REG2);
+            regname(ROCKER_BOGUS_REG3);
+            regname(ROCKER_TEST_REG);
+            regname(ROCKER_TEST_REG64);
+            regname(ROCKER_TEST_IRQ);
+            regname(ROCKER_TEST_DMA_ADDR);
+            regname(ROCKER_TEST_DMA_SIZE);
+            regname(ROCKER_TEST_DMA_CTRL);
+            regname(ROCKER_CONTROL);
+            regname(ROCKER_PORT_PHYS_COUNT);
+            regname(ROCKER_PORT_PHYS_LINK_STATUS);
+            regname(ROCKER_PORT_PHYS_ENABLE);
+            regname(ROCKER_SWITCH_ID);
+        }
+    }
+    return "???";
+}
+#endif
+
 static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
                               unsigned size)
 {
-    DPRINTF("Write addr %lx, size %u, val %lx\n", addr, size, val);
+    DPRINTF("Write %s addr %lx, size %u, val %lx\n",
+            rocker_reg_name(opaque, addr), addr, size, val);
 
     switch (size) {
     case 4:
@@ -796,7 +867,8 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
 
 static uint64_t rocker_mmio_read(void *opaque, hwaddr addr, unsigned size)
 {
-    DPRINTF("Read addr %lx, size %u\n", addr, size);
+    DPRINTF("Read %s addr %lx, size %u\n",
+            rocker_reg_name(opaque, addr), addr, size);
 
     switch (size) {
     case 4:
