@@ -81,8 +81,8 @@ enum {
 #define ROCKER_DMA_DESC_HEAD_OFFSET     0x0c
 #define ROCKER_DMA_DESC_TAIL_OFFSET     0x10
 #define ROCKER_DMA_DESC_CTRL_OFFSET     0x14
-#define ROCKER_DMA_DESC_RSVD1_OFFSET    0x18
-#define ROCKER_DMA_DESC_RSVD2_OFFSET    0x1c
+#define ROCKER_DMA_DESC_CREDITS_OFFSET  0x18
+#define ROCKER_DMA_DESC_RSVD_OFFSET     0x1c
 
 /*
  * Helper macro to do convert a dma ring register
