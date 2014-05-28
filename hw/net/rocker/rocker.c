@@ -403,9 +403,8 @@ int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up)
 
 err_too_big:
 err_no_mem:
-    desc_ring_post_desc(ring, err);
-
-    rocker_msix_irq(r, ROCKER_MSIX_VEC_EVENT);
+    if (desc_ring_post_desc(ring, err))
+        rocker_msix_irq(r, ROCKER_MSIX_VEC_EVENT);
 
     return err;
 }
@@ -460,9 +459,8 @@ int rx_produce(struct world *world, uint32_t lport,
 
 err_too_big:
 err_no_mem:
-    desc_ring_post_desc(ring, err);
-
-    rocker_msix_irq(r, ROCKER_MSIX_VEC_RX(lport - 1));
+    if (desc_ring_post_desc(ring, err))
+        rocker_msix_irq(r, ROCKER_MSIX_VEC_RX(lport - 1));
 
     return err;
 }
@@ -559,6 +557,10 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
             break;
         case ROCKER_DMA_DESC_CTRL_OFFSET:
             desc_ring_set_ctrl(r->rings[index], val);
+            break;
+        case ROCKER_DMA_DESC_CREDITS_OFFSET:
+            if (desc_ring_ret_credits(r->rings[index], val))
+                rocker_msix_irq(r, desc_ring_get_msix_vector(r->rings[index]));
             break;
         default:
             DPRINTF("not implemented dma reg write(l) addr=0x%lx val=0x%08x (ring %d, addr=0x%02x)\n",
@@ -753,6 +755,9 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
             break;
         case ROCKER_DMA_DESC_CTRL_OFFSET:
             ret = desc_ring_get_ctrl(r->rings[index]);
+            break;
+        case ROCKER_DMA_DESC_CREDITS_OFFSET:
+            ret = desc_ring_get_credits(r->rings[index]);
             break;
         default:
             DPRINTF("not implemented dma reg read(l) addr=0x%lx (ring %d, addr=0x%02x)\n",

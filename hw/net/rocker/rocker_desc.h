@@ -37,14 +37,16 @@ bool desc_ring_set_base_addr(struct desc_ring *ring, uint64_t base_addr);
 uint64_t desc_ring_get_base_addr(struct desc_ring *ring);
 bool desc_ring_set_size(struct desc_ring *ring, uint32_t size);
 uint32_t desc_ring_get_size(struct desc_ring *ring);
-int desc_ring_set_head(struct desc_ring *ring, uint32_t new);
+bool desc_ring_set_head(struct desc_ring *ring, uint32_t new);
 uint32_t desc_ring_get_head(struct desc_ring *ring);
 uint32_t desc_ring_get_tail(struct desc_ring *ring);
 bool desc_ring_set_ctrl(struct desc_ring *ring, uint32_t new);
 uint32_t desc_ring_get_ctrl(struct desc_ring *ring);
+bool desc_ring_ret_credits(struct desc_ring *ring, uint32_t credits);
+uint32_t desc_ring_get_credits(struct desc_ring *ring);
 
 struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring);
-void desc_ring_post_desc(struct desc_ring *ring, int status);
+bool desc_ring_post_desc(struct desc_ring *ring, int status);
 
 void desc_ring_set_consume(struct desc_ring *ring,
                            desc_ring_consume *consume, unsigned vector);

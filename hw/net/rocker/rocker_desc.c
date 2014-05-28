@@ -30,6 +30,7 @@ struct desc_ring {
     uint32_t head;
     uint32_t tail;
     uint32_t ctrl;
+    uint32_t credits;
     struct rocker *r;
     struct desc_info *info;
     int index;
@@ -200,7 +201,7 @@ struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring)
     return desc_read(ring, ring->tail);
 }
 
-static void __desc_ring_post_desc(struct desc_ring *ring, int err)
+static bool __desc_ring_post_desc(struct desc_ring *ring, int err)
 {
     uint16_t comp_err = 0x8000 | (uint16_t)-err;
     struct desc_info *info = &ring->info[ring->tail];
@@ -208,24 +209,31 @@ static void __desc_ring_post_desc(struct desc_ring *ring, int err)
     info->desc.comp_err = cpu_to_le16(comp_err);
     desc_write(ring, ring->tail);
     ring->tail = (ring->tail + 1) % ring->size;
+
+    /* return true if starting credit count */
+
+    return (ring->credits++ == 0);
 }
 
-void desc_ring_post_desc(struct desc_ring *ring, int err)
+bool desc_ring_post_desc(struct desc_ring *ring, int err)
 {
     if (desc_ring_empty(ring)) {
         DPRINTF("ERROR: ring[%d] trying to post desc to empty ring\n",
                 ring->index);
-        return;
+        return false;
     }
+
     if (!desc_ring_base_addr_check(ring))
-        return;
-    __desc_ring_post_desc(ring, err);
+        return false;
+
+    return __desc_ring_post_desc(ring, err);
 }
 
-static int ring_pump(struct desc_ring *ring)
+static bool ring_pump(struct desc_ring *ring)
 {
     struct desc_info *info;
-    int err, consumed = 0;
+    bool primed = false;
+    int err;
 
     /* If the ring has a consumer, call consumer for each
      * desc starting at tail and stopping when tail reaches
@@ -236,33 +244,33 @@ static int ring_pump(struct desc_ring *ring)
         while (ring->head != ring->tail) {
             info = __desc_ring_fetch_desc(ring);
             err = ring->consume(ring->r, info);
-            __desc_ring_post_desc(ring, err);
-            consumed++;
+            if (__desc_ring_post_desc(ring, err))
+                primed = true;
         }
     }
 
-    return consumed;
+    return primed;
 }
 
-int desc_ring_set_head(struct desc_ring *ring, uint32_t new)
+bool desc_ring_set_head(struct desc_ring *ring, uint32_t new)
 {
     uint32_t tail = ring->tail;
     uint32_t head = ring->head;
 
     if (!desc_ring_base_addr_check(ring))
-        return 0;
+        return false;
 
     if (new >= ring->size) {
         DPRINTF("ERROR: trying to set head (%d) past ring[%d] size (%d) \n",
                 new, ring->index, ring->size);
-        return 0;
+        return false;
     }
 
     if (((head < tail) && ((new >= tail) || (new < head))) ||
         ((head > tail) && ((new >= tail) && (new < head)))) {
         DPRINTF("ERROR: trying to wrap ring[%d] (head %d, tail %d, new head %d)\n",
                 ring->index, head, tail, new);
-        return 0;
+        return false;
     }
 
     if (new == ring->head)
@@ -292,6 +300,27 @@ bool desc_ring_set_ctrl(struct desc_ring *ring, uint32_t new)
 uint32_t desc_ring_get_ctrl(struct desc_ring *ring)
 {
     return ring->ctrl;
+}
+
+bool desc_ring_ret_credits(struct desc_ring *ring, uint32_t credits)
+{
+    if (credits > ring->credits) {
+        DPRINTF("ERROR: trying to return more credits (%d) than are outstanding (%d)\n",
+                credits, ring->credits);
+        ring->credits = 0;
+        return false;
+    }
+
+    ring->credits -= credits;
+
+    /* return true if credits are still outstanding */
+
+    return ring->credits > 0;
+}
+
+uint32_t desc_ring_get_credits(struct desc_ring *ring)
+{
+    return ring->credits;
 }
 
 void desc_ring_set_consume(struct desc_ring *ring,
@@ -333,4 +362,5 @@ void desc_ring_reset(struct desc_ring *ring)
     ring->head = 0;
     ring->tail = 0;
     ring->ctrl = 0;
+    ring->credits = 0;
 }
