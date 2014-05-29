@@ -291,15 +291,8 @@ uint32_t desc_ring_get_tail(struct desc_ring *ring)
     return ring->tail;
 }
 
-bool desc_ring_set_ctrl(struct desc_ring *ring, uint32_t new)
+void desc_ring_set_ctrl(struct desc_ring *ring, uint32_t val)
 {
-    ring->ctrl = new;
-    return true;
-}
-
-uint32_t desc_ring_get_ctrl(struct desc_ring *ring)
-{
-    return ring->ctrl;
 }
 
 bool desc_ring_ret_credits(struct desc_ring *ring, uint32_t credits)
