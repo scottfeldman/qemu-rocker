@@ -1079,8 +1079,12 @@ static int pci_rocker_init(PCIDevice *dev)
             goto err_ring_alloc;
         if (i == 0)
             desc_ring_set_consume(ring, cmd_consume, ROCKER_MSIX_VEC_CMD);
+        else if (i == 1)
+            desc_ring_set_consume(ring, NULL, ROCKER_MSIX_VEC_EVENT);
         else if (i % 2 == 0)
             desc_ring_set_consume(ring, tx_consume, ROCKER_MSIX_VEC_TX((i - 2) / 2));
+        else if (i % 2 == 1)
+            desc_ring_set_consume(ring, NULL, ROCKER_MSIX_VEC_RX((i - 3) / 2));
         r->rings[i] = ring;
     }
 
