@@ -186,7 +186,9 @@ enum {
     ROCKER_TLV_RX_UNSPEC,
     ROCKER_TLV_RX_FLAGS,                /* u16, see RX_FLAGS_ */
     ROCKER_TLV_RX_CSUM,                 /* u16 */
-    ROCKER_TLV_RX_PACKET,               /* binary */
+    ROCKER_TLV_RX_FRAG_ADDR,            /* u64 */
+    ROCKER_TLV_RX_FRAG_MAX_LEN,         /* u16 */
+    ROCKER_TLV_RX_FRAG_LEN,             /* u16 */
 
     __ROCKER_TLV_RX_MAX,
     ROCKER_TLV_RX_MAX = __ROCKER_TLV_RX_MAX - 1,
