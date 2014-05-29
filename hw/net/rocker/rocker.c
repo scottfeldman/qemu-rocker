@@ -790,9 +790,6 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
         case ROCKER_DMA_DESC_TAIL_OFFSET:
             ret = desc_ring_get_tail(r->rings[index]);
             break;
-        case ROCKER_DMA_DESC_CTRL_OFFSET:
-            ret = desc_ring_get_ctrl(r->rings[index]);
-            break;
         case ROCKER_DMA_DESC_CREDITS_OFFSET:
             ret = desc_ring_get_credits(r->rings[index]);
             break;
