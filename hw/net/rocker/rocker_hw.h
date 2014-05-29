@@ -85,6 +85,11 @@ enum {
 #define ROCKER_DMA_DESC_RSVD_OFFSET     0x1c
 
 /*
+ * Rocker dma ctrl register bits
+ */
+#define ROCKER_DMA_DESC_CTRL_RESET      (1 << 0)
+
+/*
  * Helper macro to do convert a dma ring register
  * to its index.  Based on the fact that the register
  * group stride is 32 bytes.

@@ -293,6 +293,10 @@ uint32_t desc_ring_get_tail(struct desc_ring *ring)
 
 void desc_ring_set_ctrl(struct desc_ring *ring, uint32_t val)
 {
+    if (val & ROCKER_DMA_DESC_CTRL_RESET) {
+        DPRINTF("ring[%d] resetting\n", ring->index);
+        desc_ring_reset(ring);
+    }
 }
 
 bool desc_ring_ret_credits(struct desc_ring *ring, uint32_t credits)
