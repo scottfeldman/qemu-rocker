@@ -753,6 +753,11 @@ static const char *rocker_reg_name(void *opaque, hwaddr addr)
     }
     return "???";
 }
+#else
+static const char *rocker_reg_name(void *opaque, hwaddr addr)
+{
+    return NULL;
+}
 #endif
 
 static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
