@@ -41,7 +41,7 @@ enum {
 #define ROCKER_MSIX_VEC_RX(port) \
                 (__ROCKER_MSIX_VEC_RX + ((port) * 2))
 #define ROCKER_MSIX_VEC_COUNT(portcnt) \
-                (ROCKER_MSIX_VEC_RX(portcnt) + 1)
+                (ROCKER_MSIX_VEC_RX((portcnt) - 1) + 1)
 };
 
 /*
