@@ -38,12 +38,11 @@ struct fp_port {
     uint8_t autoneg;
     NICState *nic;
     NICConf conf;
-    bool link_up;
 };
 
 bool fp_port_get_link_up(struct fp_port *port)
 {
-    return port->link_up;
+    return !qemu_get_queue(port->nic)->link_down;
 }
 
 void fp_port_get_macaddr(struct fp_port *port, MACAddr macaddr)
@@ -130,11 +129,7 @@ static void fp_port_set_link_status(NetClientState *nc)
 {
     struct fp_port *port = qemu_get_nic_opaque(nc);
 
-    if (port->link_up == !nc->link_down)
-        return;
-
-    port->link_up = !nc->link_down;
-    rocker_event_link_changed(port->r, port->lport, port->link_up);
+    rocker_event_link_changed(port->r, port->lport, !nc->link_down);
 }
 
 static NetClientInfo fp_port_info = {
