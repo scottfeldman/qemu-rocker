@@ -53,7 +53,7 @@ Each switch instance registers as a PCI device with PCI configuration space:
 	0x2E	2	Subsystem ID		0x0000
 	0x30-38		Reserved
 	0x3C	1	Interrupt line
-	0x3D	1	Interrupt pin		0x01
+	0x3D	1	Interrupt pin		0x00
 	0x3E	1	Min grant		0x00
 	0x3D	1	Max latency		0x00
 	0x40	1	TRDY timeout
@@ -64,32 +64,39 @@ Each switch instance registers as a PCI device with PCI configuration space:
 SECTION 3: Memory-Mapped Register Space
 =======================================
 
-A single memory-mapped BAR0 is defined to map device's register space and is
-0x1000 in size.  The host BIOS will assign the base address location.  The host
-driver/OS will map the base address to host memory, giving the driver mmio
-access to the device register space.
+There are two memory-mapped BARs.  BAR0 maps device register space and is
+0x2000 in size.  BAR1 maps MSI-X vector and PBA tables and is also 0x2000 in
+size, allowing for 256 MSI-X vectors.  The host BIOS will assign the base
+address location.  The host driver/OS will map the base address to host memory,
+giving the driver mmio access to the device register space.
 
 All registers are 4 or 8 bytes long.  It is assumed host software will access 4
 byte registers with one 4-byte access, and 8 byte registers with either two
 4-byte accesses or a single 8-byte access.  In the case of two 4-byte accesses,
 access must be lower and then upper 4-bytes, in that order.
 
-The 0x1000 device register space is organized as follows:
+BAR0 device register space is organized as follows:
 
 	offset		description
-	----------------------------------------------------
+	------------------------------------------------------
 	0x0000-0x000f	Bogus registers to catch misbehaving
 			drivers.  Writes do nothing.  Reads
 			back as 0xDEADBABE.
 	0x0010-0x00ff	Test registers
-	0x0100-0x01ff	Descriptor control
-	0x0200-0x02ff	Interrupt support
 	0x0300-0x03ff	General purpose registers
+	0x1000-0x1fff	Descriptor control
 
 Holes in register space are reserved.  Writes to reserved registers do nothing.
 Reads to reserved registers read back as 0.
 
-No fancy stuff like write-combining is enabled on any of the reigsters.
+No fancy stuff like write-combining is enabled on any of the registers.
+
+BAR1 MSI-X register space is organized as follows:
+
+	offset		description
+	------------------------------------------------------
+	0x0000-0x0fff	MSI-X vector table (256 vectors total)
+	0x1000-0x1fff	MSI-X PBA table
 
 
 SECTION 4: Interrupts, DMA, and Endianess
@@ -98,35 +105,37 @@ SECTION 4: Interrupts, DMA, and Endianess
 PCI Interrupts
 --------------
 
-Two registers manage interrupt state and source (cause):
+The device supports only MSI-X interrupts.  BAR1 memory-mapped region contains
+the MSI-X vector and PBA tables, with support for up to 256 MSI-X vectors.
 
-	IRQ_MASK: interrupt mask register
-	IRQ_STAT: interrupt status register, clear-on-read
+The vector assignment is:
+
+	vector		description
+	-----------------------------------------------------
+	0		Command descriptor ring completion
+	1		Event descriptor ring completion
+	2		Test operation completion
+	3		RSVD
+	4-255		Tx and Rx descriptor ring completion
+			  Tx vector is even
+			  Rx vector is odd
+
+A MSI-X vector table entry is 16 bytes:
+
+	field		offset	width	description
+	-------------------------------------------------------------
+	lower_addr	0x0	4	[31:2] message address[31:2]
+					[1:0] Rsvd (4 byte alignment
+						    required)
+	upper_addr	0x4	4	[31:19] Rsvd
+					[14:0] message address[46:32]
+	data		0x8	4	message data[31:0]
+	control		0xc	4	[31:1] Rsvd
+					[0] mask (0 = enable,
+						  1 = masked)
 
 Software should install the Interrupt Service Routine (ISR) before any ports
-are enabled.  On receiving an interrupt, the ISR will read IRQ_STAT register to
-get interrupt source.  IRQ_STAT uses clear-on-read semantics giving software
-race-free access to interrupt status.  Any interrupt sources firing after
-IRQ_STAT read will arm the device to generate another interrupts once device
-interrupts are unmasked at the CPU when ISR exits.  There is no need to
-enable/disable interrupt sources in the ISR.
-
-IRQ_MASK is used to enable/disable particular interrupt sources.
-
-IRQ_MASK and IRQ_STAT and share the following bit definitions:
-
-	IRQ_MASK, offset 0x0200, 32-bit, (R/W)
-	IRQ_STAT, offset 0x0204, 32-bit, (COR)
-
-	bit	name			description
-	------------------------------------------------------------------------
-	0	IRQ_LINK		Link status changed on one or more ports
-	1	IRQ_TX_DMA_DONE		Transmit DMA operation complete
-	2	IRQ_RX_DMA_DONE		Receive DMA operation complete
-	3	IRQ_CMD_DMA_DONE	Command DMA operation complete
-	4	IRQ_EVENT_DMA_DONE	Async event DMA operation complete
-	5	IRQ_TEST_DMA_DONE	Test DMA operation complete
-	[6:31]	Reserved
+are enabled or any commands are issued on the command ring.
 
 DMA Operations
 --------------
@@ -137,9 +146,10 @@ table insertion/deletion, and more.  Event processing provides an async
 notification method for device-originating events.  Each DMA operation has a set
 of control registers to manage a descriptor ring.  The descriptor rings are
 allocated from contiguous host DMA-able memory and registers specify the rings
-base address as well as current head and tail indices.  Software always writes
+base address, size and current head and tail indices.  Software always writes
 the head, and hardware always writes the tail.
 
+XXXXX this section needs work
 A generation bit in each descriptors comp_err field marks hardware's progression
 through the descriptor ring.  Each time the ring wraps, the generation bit is
 toggled.  The generation bit allows software to know which descriptors are DMA
@@ -150,34 +160,50 @@ descriptor ring memory to be syncronized with hardware.  Next pass hardware
 writes '1', and so on.  When updating the comp_err, hardware writes the
 generation bit last, after all other fields are written.  This ensures software
 reads correct field values after reading a generation bit change.
+XXXXX
 
 Descriptor ring sizes must be a power of 2 and range from 2 to 64K entries.
 Descriptor rings' base address must be 8-byte aligned.  Descriptors must be
 packed within ring.  Each descriptor in each ring must also be aligned on an 8
 byte boundary.  Each descriptor ring will have these registers:
 
-	DMA_DESC_xxx_BASE_ADDR, offset 0x0100 + (x * 32), 64-bit, (R/W)
-	DMA_DESC_xxx_SIZE, offset 0x0108 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_HEAD, offset 0x010c + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_TAIL, offset 0x0110 + (x * 32), 32-bit, (R)
-	DMA_DESC_xxx_CTRL, offset 0x0114 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_RSVD1, offset 0x0118 + (x * 32), 32-bit, (R/W)
-	DMA_DESC_xxx_RSVD2, offset 0x011c + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_BASE_ADDR, offset 0x1000 + (x * 32), 64-bit, (R/W)
+	DMA_DESC_xxx_SIZE, offset 0x1008 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_HEAD, offset 0x100c + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_TAIL, offset 0x1010 + (x * 32), 32-bit, (R)
+	DMA_DESC_xxx_CTRL, offset 0x1014 + (x * 32), 32-bit, (W)
+	DMA_DESC_xxx_CREDITS, offset 0x1018 + (x * 32), 32-bit, (R/W)
+	DMA_DESC_xxx_RSVD1, offset 0x101c + (x * 32), 32-bit, (R/W)
 
 Where x is descriptor ring index:
 
 	index		ring
 	--------------------
-	0		TX
-	1		RX
-	2		CMD	
-	3		EVENT
-	[4-7]		Reserved
+	0		CMD
+	1		EVENT
+	2		TX (port 0)
+	3		RX (port 0)
+	4		TX (port 1)
+	5		RX (port 1)
+	.
+	.
+	.
+	124		TX (port 61)
+	125		RX (port 61)
+	126		Resv
+	127		Resv
 
 Writing BASE_ADDR or SIZE will reset HEAD and TAIL to zero.  HEAD cannot be
 written passed TAIL.  To do so would wrap the ring.  An empty ring is when HEAD
 == TAIL.  A full ring is when HEAD is one position behind TAIL.  Both HEAD and
 TAIL increment and modulo wrap at the ring size.
+
+CTRL register bits:
+
+	bit	name		description
+	------------------------------------------------------------------------
+	[0]	CTRL_RESET	Reset the descriptor ring
+	[1:31]	Reserved
 
 All descriptor types share some common fields:
 
@@ -246,17 +272,25 @@ Figure 1 shows an example descriptor buffer with two TLVs.
 
 TLVs can be nested within the NEST TLV type.
 
-Control
--------
+Interrupt credits
+^^^^^^^^^^^^^^^^^
 
-This register is used for low level control of the switch.
-
-	CONTROL, offset 0x0300, 32-bit, (W)
-
-	bit	name			description
-	------------------------------------------------------------------------
-    0   CONTROL_RESET    If set, device will perform reset (same as pci reset)
-	[1:31]	Reserved
+MSI-X vectors used for descriptor ring completions use a credit mechanism for
+efficient device, PCIe bus, OS and driver operations.  Each descriptor ring has
+a credit count which represent the number of outstanding descriptors to be
+processed by the driver.  As the device marks descriptors complete, the credit
+count is incremented.  As the driver processes those outstanding descriptors,
+it returns credits back to the device.  This way, the device knows the driver's
+progress and can make decisions about when to fire the next interrupt or not.
+When the credit count is zero, and the first descriptors are posted for the
+driver, a single interrupt is fired.  Once the interrupt is fired, the
+interrupt is disabled (auto-masked).  In response to the interrupt, the driver
+will process descriptors and PIO write a returned credit value for that
+descriptor ring.  If the driver returns all credits (the driver caught up with
+the device and there is no outstanding work), then the interrupt is unmasked,
+but not fired.  If only partial credits are returned, the interrupt remains
+masked but the device generates an interrupt, signally the driver that more
+outstansing work is available.
 
 
 SECTION 5: Test Registers
@@ -393,6 +427,19 @@ SECTION 7: Switch Control
 =========================
 
 This section covers switch-wide register settings.
+
+Control
+-------
+
+This register is used for low level control of the switch.
+
+	CONTROL: offset 0x0300, 32-bit, (W)
+
+	bit	name		description
+	------------------------------------------------------------------------
+	[0]	CONTROL_RESET	If set, device will perform reset (same
+				as pci reset)
+	[1:31]	Reserved
 
 Switch ID
 ---------
