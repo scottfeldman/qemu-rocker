@@ -358,6 +358,7 @@ void desc_ring_free(struct desc_ring *ring)
 
 void desc_ring_reset(struct desc_ring *ring)
 {
+    ring->base_addr = 0;
     ring->size = 0;
     ring->head = 0;
     ring->tail = 0;
