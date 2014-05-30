@@ -20,6 +20,6 @@
 struct rocker;
 struct world;
 
-struct world *flow_world_alloc(struct rocker *r);
+struct world *of_dpa_world_alloc(struct rocker *r);
 
 #endif /* _ROCKER_FLOW_H_ */

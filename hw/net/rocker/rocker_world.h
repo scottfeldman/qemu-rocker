@@ -23,7 +23,7 @@ struct rocker_tlv;
 struct desc_info;
 
 enum rocker_world_type {
-    ROCKER_WORLD_TYPE_FLOW,
+    ROCKER_WORLD_TYPE_OF_DPA,
     ROCKER_WORLD_TYPE_L2L3,
     ROCKER_WORLD_TYPE_MAX,
 };

@@ -323,11 +323,11 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
      */
 
     switch (cmd) {
-    case ROCKER_TLV_CMD_TYPE_FLOW_ADD:
-    case ROCKER_TLV_CMD_TYPE_FLOW_MOD:
-    case ROCKER_TLV_CMD_TYPE_FLOW_DEL:
-    case ROCKER_TLV_CMD_TYPE_FLOW_GET_STATS:
-        world = r->worlds[ROCKER_WORLD_TYPE_FLOW];
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_ADD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_MOD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_DEL:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GET_STATS:
+        world = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
         err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_TRUNK:
@@ -1011,7 +1011,7 @@ static int pci_rocker_init(PCIDevice *dev)
 
     /* allocate worlds */
 
-    r->worlds[ROCKER_WORLD_TYPE_FLOW] = flow_world_alloc(r);
+    r->worlds[ROCKER_WORLD_TYPE_OF_DPA] = of_dpa_world_alloc(r);
     r->worlds[ROCKER_WORLD_TYPE_L2L3] = l2l3_world_alloc(r);
     r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
 
