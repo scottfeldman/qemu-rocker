@@ -28,7 +28,7 @@
 #include "rocker_desc.h"
 #include "rocker_tlv.h"
 #include "rocker_world.h"
-#include "rocker_flow.h"
+#include "rocker_of_dpa.h"
 #include "rocker_l2l3.h"
 
 struct rocker {
