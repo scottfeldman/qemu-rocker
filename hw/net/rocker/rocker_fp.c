@@ -45,12 +45,12 @@ bool fp_port_get_link_up(struct fp_port *port)
     return !qemu_get_queue(port->nic)->link_down;
 }
 
-void fp_port_get_macaddr(struct fp_port *port, MACAddr macaddr)
+void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr)
 {
-    memcpy(macaddr.a, port->conf.macaddr.a, sizeof(macaddr.a));
+    memcpy(macaddr->a, port->conf.macaddr.a, sizeof(macaddr->a));
 }
 
-void fp_port_set_macaddr(struct fp_port *port, MACAddr macaddr)
+void fp_port_set_macaddr(struct fp_port *port, MACAddr *macaddr)
 {
 //XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
 }
