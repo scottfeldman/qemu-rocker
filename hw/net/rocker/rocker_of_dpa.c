@@ -869,7 +869,7 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
     group_add(group);
 
     /* pkts on VLAN 100 goto bridging mode VLAN dflt: group id 1 */
-    flow = flow_alloc(ow->fs, -4, 0, 0, 0);
+    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_BRIDGING;
     flow->key.eth.vlan_id = htons(100);
     memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
@@ -882,7 +882,7 @@ static void of_dpa_default_vlan(struct of_dpa_world *ow)
     struct flow *flow;
 
     /* untagged pkt on port 0 to VLAN 100 */
-    flow = flow_alloc(ow->fs, -3, 0, 0, 0);
+    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_VLAN;
     flow->key.in_lport = 0x00000001;
     flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
@@ -896,7 +896,7 @@ static void of_dpa_default_ig_port(struct of_dpa_world *ow)
     struct flow *flow;
 
     /* default pkts from physical ports goto VLAN tbl */
-    flow = flow_alloc(ow->fs, -1, 0, 0, 0);
+    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
     flow->key.in_lport = 0x00000000;
     flow->mask.in_lport = ROCKER_FP_PORTS_MAX + 1;
@@ -904,7 +904,7 @@ static void of_dpa_default_ig_port(struct of_dpa_world *ow)
     flow_add(flow);
 
     /* default pkts from overlay tunnels goto bridging tbl */
-    flow = flow_alloc(ow->fs, -2, 0, 0, 0);
+    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
     flow->key.in_lport = ROCKER_TUNNEL_LPORT;
     flow->mask.in_lport = 0xffff0000;

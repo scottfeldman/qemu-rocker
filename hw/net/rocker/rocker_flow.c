@@ -342,6 +342,17 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
         flow_exec_action_set(fs, fc, ops);
 }
 
+uint64_t flow_sys_another_cookie(struct flow_sys *fs)
+{
+    uint64_t cookie;
+
+    do {
+        cookie = 0x8000000000000000 | g_random_int();
+    } while (flow_find(fs, cookie));
+
+    return cookie;
+}
+
 struct flow_sys *flow_sys_alloc(struct world *world,
                                 struct flow_tbl_ops *tbl_ops)
 {
