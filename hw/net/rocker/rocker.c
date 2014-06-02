@@ -210,7 +210,7 @@ static int cmd_get_port_settings(struct rocker *r,
     if (err)
         return err;
 
-    fp_port_get_macaddr(fp_port, macaddr);
+    fp_port_get_macaddr(fp_port, &macaddr);
     mode = world_type(fp_port_get_world(fp_port));
 
     tlv_size = rocker_tlv_total_size(0) +                 /* nest */
@@ -283,7 +283,7 @@ static int cmd_set_port_settings(struct rocker *r,
         memcpy(macaddr.a,
                rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]),
                sizeof(macaddr.a));
-        fp_port_set_macaddr(fp_port, macaddr);
+        fp_port_set_macaddr(fp_port, &macaddr);
     }
 
     if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MODE]) {
