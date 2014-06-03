@@ -1091,8 +1091,7 @@ static int pci_rocker_init(PCIDevice *dev)
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port =
             fp_port_alloc(r, r->name, &r->fp_start_macaddr,
-                          i, &r->fp_ports_peers[i],
-                          object_get_typename(OBJECT(r)));
+                          i, &r->fp_ports_peers[i]);
 
         if (!port)
             goto err_port_alloc;
