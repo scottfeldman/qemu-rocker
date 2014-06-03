@@ -44,8 +44,7 @@ void fp_port_disable(struct fp_port *port);
 
 struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
                               MACAddr *start_mac, uint index,
-                              NICPeers *peers,
-                              const char *type);
+                              NICPeers *peers);
 void fp_port_free(struct fp_port *port);
 void fp_port_reset(struct fp_port *port);
 

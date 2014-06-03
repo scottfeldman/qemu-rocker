@@ -171,8 +171,7 @@ void fp_port_disable(struct fp_port *port)
 
 struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
                               MACAddr *start_mac, uint index,
-                              NICPeers *peers,
-                              const char *type)
+                              NICPeers *peers)
 {
     struct fp_port *port = g_malloc0(sizeof(struct fp_port));
 
@@ -193,7 +192,7 @@ struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
     port->conf.peers = *peers;
 
     port->nic = qemu_new_nic(&fp_port_info, &port->conf,
-                             type, NULL, port);
+                             sw_name, NULL, port);
     qemu_format_nic_info_str(qemu_get_queue(port->nic),
                              port->conf.macaddr.a);
 
