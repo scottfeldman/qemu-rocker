@@ -155,7 +155,7 @@ void flow_pkt_insert_vlan(struct flow_context *fc);
 void flow_pkt_strip_vlan(struct flow_context *fc);
 void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
                  uint32_t tbl_id);
-bool flow_tbl_size(struct flow_sys *fs);
+size_t flow_tbl_size(struct flow_sys *fs);
 
 struct flow_tbl_ops {
     void (*build_match)(struct flow_context *fc, struct flow_match *match);

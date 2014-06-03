@@ -132,7 +132,7 @@ struct group *group_alloc(struct flow_sys *fs)
     return group;
 }
 
-bool flow_tbl_size(struct flow_sys *fs)
+size_t flow_tbl_size(struct flow_sys *fs)
 {
     return g_hash_table_size(fs->flow_tbl);
 }
