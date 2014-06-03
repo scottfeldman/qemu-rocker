@@ -46,7 +46,7 @@ static void l2l3_ig_port_build_match(struct flow_context *fc,
 {
     match->value.tbl_id = L2L3_TABLE_INGRESS_PORT;
     match->value.in_lport = fc->in_lport;
-    match->width = FLOW_KEY_WIDTH(tbl_id);
+    match->value.width = FLOW_KEY_WIDTH(tbl_id);
 }
 
 static void l2l3_vlan_build_match(struct flow_context *fc,
@@ -56,7 +56,7 @@ static void l2l3_vlan_build_match(struct flow_context *fc,
     match->value.in_lport = fc->in_lport;
     if (fc->fields.vlanhdr)
         match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
-    match->width = FLOW_KEY_WIDTH(eth.vlan_id);
+    match->value.width = FLOW_KEY_WIDTH(eth.vlan_id);
 }
 
 static void l2l3_vlan_insert(struct flow_context *fc, struct flow *flow)
@@ -77,7 +77,7 @@ static void l2l3_term_mac_build_match(struct flow_context *fc,
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
            sizeof(match->value.eth.dst.a));
-    match->width = FLOW_KEY_WIDTH(eth.type);
+    match->value.width = FLOW_KEY_WIDTH(eth.type);
 }
 
 static void l2l3_term_mac_miss(struct flow_sys *fs, struct flow_context *fc)
@@ -104,7 +104,7 @@ static void l2l3_bridging_build_match(struct flow_context *fc,
         match->value.tunnel_id = fc->tunnel_id;
     memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
            sizeof(match->value.eth.dst.a));
-    match->width = FLOW_KEY_WIDTH(eth.dst);
+    match->value.width = FLOW_KEY_WIDTH(eth.dst);
 }
 
 static void l2l3_bridging_miss(struct flow_sys *fs, struct flow_context *fc)
@@ -129,7 +129,7 @@ static void l2l3_unicast_routing_build_match(struct flow_context *fc,
     if (fc->fields.ipv6_dst_addr)
         memcpy(&match->value.ipv6.addr.dst, fc->fields.ipv6_dst_addr,
                sizeof(match->value.ipv6.addr.dst));
-    match->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
+    match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
 static void l2l3_unicast_routing_action_write(struct flow_context *fc,
@@ -154,7 +154,7 @@ static void l2l3_multicast_routing_build_match(struct flow_context *fc,
     if (fc->fields.ipv6_dst_addr)
         memcpy(&match->value.ipv6.addr.dst, fc->fields.ipv6_dst_addr,
                sizeof(match->value.ipv6.addr.dst));
-    match->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
+    match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
 static void l2l3_multicast_routing_action_write(struct flow_context *fc,
@@ -251,6 +251,7 @@ static void l2l3_default_bridging(struct l2l3_world *lw)
     /* Use dlft VLAN bridging for now for VLAN 100 */
     flow = flow_alloc(lw->fs, flow_sys_another_cookie(lw->fs), 0, 0, 0);
     flow->key.tbl_id = L2L3_TABLE_BRIDGING;
+    flow->key.width = FLOW_KEY_WIDTH(eth.dst);
     flow->key.eth.vlan_id = htons(100);
     memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
     flow->action.goto_tbl = L2L3_TABLE_ACL_POLICY;
@@ -267,6 +268,7 @@ static void l2l3_default_vlan(struct l2l3_world *lw)
     for (lport = 1; lport <= ROCKER_FP_PORTS_MAX; lport++) {
         flow = flow_alloc(lw->fs, flow_sys_another_cookie(lw->fs), 0, 0, 0);
         flow->key.tbl_id = L2L3_TABLE_VLAN;
+        flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
         flow->key.in_lport = lport;
         flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
         flow->action.goto_tbl = L2L3_TABLE_TERMINATION_MAC;
@@ -282,6 +284,7 @@ static void l2l3_default_ig_port(struct l2l3_world *lw)
     /* pkts from physical ports goto VLAN tbl */
     flow = flow_alloc(lw->fs, flow_sys_another_cookie(lw->fs), 0, 0, 0);
     flow->key.tbl_id = L2L3_TABLE_INGRESS_PORT;
+    flow->key.width = FLOW_KEY_WIDTH(tbl_id);
     flow->key.in_lport = 0x00000000;
     flow->mask.in_lport = ROCKER_FP_PORTS_MAX + 1;
     flow->action.goto_tbl = L2L3_TABLE_VLAN;

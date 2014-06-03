@@ -295,10 +295,12 @@ static void flow_match(void *key, void *value, void *user_data)
     uint64_t *v = (uint64_t *)&match->value;
     int i;
 
-    for (i = 0; i < match->width; i++, k++, m++, v++) {
+    if (flow->key.width != match->value.width)
+        return;
+
+    for (i = 0; i < match->value.width; i++, k++, m++, v++) {
         DPRINTF("key 0x%016lx mask 0x%016lx value 0x%016lx\n", *k, *m, *v);
         if ((~*k & ~*m & *v) | (*k & ~*m & ~*v)) {
-            DPRINTF("no match\n");
             return;
         }
     }

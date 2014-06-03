@@ -78,6 +78,7 @@ struct flow_key {
             } nd;
         } ipv6;
     };
+    int width;                       /* how many uint64_t's in key? */
 };
 
 #define FLOW_KEY_WIDTH(f) \
@@ -139,7 +140,6 @@ struct flow_context {
 struct flow_match {
     struct flow_key value;
     struct flow *best;
-    int width;
 };
 
 struct flow *flow_alloc(struct flow_sys *fs, uint64_t cookie,

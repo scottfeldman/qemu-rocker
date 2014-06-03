@@ -48,7 +48,7 @@ static void of_dpa_ig_port_build_match(struct flow_context *fc,
 {
     match->value.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
     match->value.in_lport = fc->in_lport;
-    match->width = FLOW_KEY_WIDTH(tbl_id);
+    match->value.width = FLOW_KEY_WIDTH(tbl_id);
 }
 
 static void of_dpa_vlan_build_match(struct flow_context *fc,
@@ -58,7 +58,7 @@ static void of_dpa_vlan_build_match(struct flow_context *fc,
     match->value.in_lport = fc->in_lport;
     if (fc->fields.vlanhdr)
         match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
-    match->width = FLOW_KEY_WIDTH(eth.vlan_id);
+    match->value.width = FLOW_KEY_WIDTH(eth.vlan_id);
 }
 
 static void of_dpa_vlan_insert(struct flow_context *fc, struct flow *flow)
@@ -79,7 +79,7 @@ static void of_dpa_term_mac_build_match(struct flow_context *fc,
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
            sizeof(match->value.eth.dst.a));
-    match->width = FLOW_KEY_WIDTH(eth.type);
+    match->value.width = FLOW_KEY_WIDTH(eth.type);
 }
 
 static void of_dpa_term_mac_miss(struct flow_sys *fs, struct flow_context *fc)
@@ -106,7 +106,7 @@ static void of_dpa_bridging_build_match(struct flow_context *fc,
         match->value.tunnel_id = fc->tunnel_id;
     memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
            sizeof(match->value.eth.dst.a));
-    match->width = FLOW_KEY_WIDTH(eth.dst);
+    match->value.width = FLOW_KEY_WIDTH(eth.dst);
 }
 
 static void of_dpa_bridging_miss(struct flow_sys *fs, struct flow_context *fc)
@@ -131,7 +131,7 @@ static void of_dpa_unicast_routing_build_match(struct flow_context *fc,
     if (fc->fields.ipv6_dst_addr)
         memcpy(&match->value.ipv6.addr.dst, fc->fields.ipv6_dst_addr,
                sizeof(match->value.ipv6.addr.dst));
-    match->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
+    match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
 static void of_dpa_unicast_routing_action_write(struct flow_context *fc,
@@ -156,7 +156,7 @@ static void of_dpa_multicast_routing_build_match(struct flow_context *fc,
     if (fc->fields.ipv6_dst_addr)
         memcpy(&match->value.ipv6.addr.dst, fc->fields.ipv6_dst_addr,
                sizeof(match->value.ipv6.addr.dst));
-    match->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
+    match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
 static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
@@ -237,6 +237,7 @@ static int of_dpa_cmd_add_ig_port(struct flow *flow, struct rocker_tlv **info)
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    key->width = FLOW_KEY_WIDTH(tbl_id);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
     overlay_tunnel = !!(key->in_lport & ROCKER_TUNNEL_LPORT);
@@ -266,6 +267,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **info)
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_VLAN;
+    key->width = FLOW_KEY_WIDTH(eth.vlan_id);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
     if (1 < key->in_lport || key->in_lport > 63)
@@ -322,6 +324,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_TERMINATION_MAC;
+    key->width = FLOW_KEY_WIDTH(eth.type);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
     if (1 < key->in_lport || key->in_lport > 63)
@@ -397,6 +400,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
     } mode = BRIDGING_MODE_UNKNOWN;
 
     key->tbl_id = OF_DPA_TABLE_BRIDGING;
+    key->width = FLOW_KEY_WIDTH(eth.dst);
 
     if (info[ROCKER_TLV_OF_DPA_VLAN_ID])
         key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID]);
@@ -508,6 +512,7 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_UNICAST_ROUTING;
+    key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
     switch (key->eth.type) {
@@ -583,6 +588,7 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_MULTICAST_ROUTING;
+    key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
     switch (key->eth.type) {
@@ -871,6 +877,7 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
     /* pkts on VLAN 100 goto bridging mode VLAN dflt: group id 1 */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_BRIDGING;
+    flow->key.width = FLOW_KEY_WIDTH(eth.dst);
     flow->key.eth.vlan_id = htons(100);
     memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
     flow->action.write.group_id = 1;
@@ -884,6 +891,7 @@ static void of_dpa_default_vlan(struct of_dpa_world *ow)
     /* untagged pkt on port 0 to VLAN 100 */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_VLAN;
+    flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
     flow->key.in_lport = 0x00000001;
     flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
     flow->action.goto_tbl = OF_DPA_TABLE_TERMINATION_MAC;
@@ -898,6 +906,7 @@ static void of_dpa_default_ig_port(struct of_dpa_world *ow)
     /* default pkts from physical ports goto VLAN tbl */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    flow->key.width = FLOW_KEY_WIDTH(tbl_id);
     flow->key.in_lport = 0x00000000;
     flow->mask.in_lport = ROCKER_FP_PORTS_MAX + 1;
     flow->action.goto_tbl = OF_DPA_TABLE_VLAN;
@@ -906,6 +915,7 @@ static void of_dpa_default_ig_port(struct of_dpa_world *ow)
     /* default pkts from overlay tunnels goto bridging tbl */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
     flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    flow->key.width = FLOW_KEY_WIDTH(tbl_id);
     flow->key.in_lport = ROCKER_TUNNEL_LPORT;
     flow->mask.in_lport = 0xffff0000;
     flow->action.goto_tbl = OF_DPA_TABLE_BRIDGING;
