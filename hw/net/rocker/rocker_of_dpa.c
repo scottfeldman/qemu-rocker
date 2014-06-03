@@ -166,10 +166,10 @@ static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
     fc->action_set.write.vlan_id = flow->action.write.vlan_id;
 }
 
-static void of_dpa_eg(struct world *world, uint32_t lport, struct iovec *iov,
-                      int iovcnt)
+static void of_dpa_eg(struct world *world, struct flow_context *fc,
+                      uint32_t out_lport)
 {
-    rocker_port_eg(world_rocker(world), lport, iov, iovcnt);
+    rocker_port_eg(world_rocker(world), out_lport, fc->iov, fc->iovcnt);
 }
 
 static struct flow_tbl_ops of_dpa_tbl_ops[] = {

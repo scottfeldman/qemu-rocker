@@ -282,7 +282,7 @@ static void flow_exec_action_set(struct flow_sys *fs, struct flow_context *fc,
         if (group->action.pop_vlan_tag)
             flow_pkt_strip_vlan(fc);
         if (ops->eg)
-            ops->eg(fs->world, group->action.out_lport, fc->iov, fc->iovcnt);
+            ops->eg(fs->world, fc, group->action.out_lport);
     }
 }
 
