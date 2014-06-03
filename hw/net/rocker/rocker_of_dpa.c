@@ -47,7 +47,7 @@ static void of_dpa_ig_port_build_match(struct flow_context *fc,
                                        struct flow_match *match)
 {
     match->value.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
-    match->value.in_lport = fc->lport;
+    match->value.in_lport = fc->in_lport;
     match->width = FLOW_KEY_WIDTH(tbl_id);
 }
 
@@ -55,7 +55,7 @@ static void of_dpa_vlan_build_match(struct flow_context *fc,
                                     struct flow_match *match)
 {
     match->value.tbl_id = OF_DPA_TABLE_VLAN;
-    match->value.in_lport = fc->lport;
+    match->value.in_lport = fc->in_lport;
     if (fc->fields.vlanhdr)
         match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     match->width = FLOW_KEY_WIDTH(eth.vlan_id);
@@ -74,7 +74,7 @@ static void of_dpa_term_mac_build_match(struct flow_context *fc,
                                         struct flow_match *match)
 {
     match->value.tbl_id = OF_DPA_TABLE_TERMINATION_MAC;
-    match->value.in_lport = fc->lport;
+    match->value.in_lport = fc->in_lport;
     match->value.eth.type = *fc->fields.h_proto;
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
@@ -213,7 +213,7 @@ static ssize_t of_dpa_ig(struct world *world, uint32_t lport,
     struct of_dpa_world *ow = world_private(world);
     struct iovec iov_copy[iovcnt + 2];
     struct flow_context fc = {
-        .lport = lport,
+        .in_lport = lport,
         .iov = iov_copy,
         .iovcnt = iovcnt + 2,
     };

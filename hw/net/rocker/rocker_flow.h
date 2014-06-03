@@ -127,7 +127,7 @@ struct flow_pkt_fields {
 };
 
 struct flow_context {
-    uint32_t lport;
+    uint32_t in_lport;
     uint32_t tunnel_id;
     struct iovec *iov;
     int iovcnt;
