@@ -363,9 +363,12 @@ The switch only uses logical port references.  To summarize the mapping:
 Physical Port Mode
 ------------------
 
-Switch front-panel ports operate in a mode.  Current modes are Flow and L2/L3.
-Across the switch, a mix of port modes is allowed for hybrid operation.  To
-set/get the mode for front-panel ports, see port settings, below.
+Switch front-panel ports operate in a mode.  Current modes are OF-DPA and
+L2/L3.  OF-DPA[1] mode is based on OpenFlow Data Plane Abstraction (OF-DPA)
+Abstract Switch Specification, Version 1.0, from Broadcom Corporation.  L2/L3
+mode is traditional switch/router model.  Across the switch, a mix of port
+modes is allowed for hybrid operation.  To set/get the mode for front-panel
+ports, see port settings, below.
 
 Port Settings
 -------------
@@ -395,7 +398,7 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
-		MODE		1	0 = Flow
+		MODE		1	0 = OF-DPA
 					1 = L2/L3
 
 	Set PORT_SETTINGS descriptor:
@@ -408,7 +411,7 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		DUPLEX		1	1 = Full, 0 = Half
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
-		MODE		1	0 = Flow
+		MODE		1	0 = OF-DPA
 					1 = L2/L3
 
 Port Enable
@@ -589,23 +592,23 @@ Possible status return codes in descriptor on completion are:
 			pactet data TLV and other TLVs.
 
 
-SECTION 9: Flow Mode
-========================
+SECTION 9: OF-DPA Mode
+======================
 
-Flow mode allows the switch to offload Flow packet processing functions to
-hardware.  An Flow controller would communicate with an Flow agent installed on
-the host.  The Flow agent would (directly or indirectly) communicate with the
-Rocker switch driver, which in turn would program switch hardware with Flow
-functionality.  The block diagram is:
+OF-DPA mode allows the switch to offload flow packet processing functions to
+hardware.  An OpenFlow controller would communicate with an OpenFlow agent
+installed on the switch.  The OpenFlow agent would (directly or indirectly)
+communicate with the Rocker switch driver, which in turn would program switch
+hardware with flow functionality, as defined in OF-DPA.  The block diagram is:
 
 		+–––––––––––––––----–––+
-		|                      |
+		|        OF            |
 		|  Remote Controller   |
 		+––––––––+––----–––––––+
 		         |          
 		         |          
 		+––––––––+–––––––––+
-		|                  |
+		|       OF         |
 		|   Local Agent    |
 		+––––––––––––––––––+
 		|                  |
@@ -617,12 +620,11 @@ functionality.  The block diagram is:
 		|   Rocker Switch  |
 		+––––––––––––––––––+
 
-The switch interface for Flow is roughly modeled from Broadcom's OF-DPA API.
-To participate in Flow functions, ports must be configure for Flow mode during
-switch initialization.
+To participate in flow functions, ports must be configure for OF-DPA mode
+during switch initialization.
 
-Flow Table Interface
---------------------
+OF-DPA Flow Table Interface
+---------------------------
 
 There are commands to add, modify, delete, and get stats of flow table entries.
 The commands are issued using the DMA CMD descriptor ring.  The following
@@ -637,8 +639,8 @@ TLVs for add and modify commands are:
 
 	field		width	description
 	--------------------------------------------------
-	FLOW_CMD	2	CMD_[ADD|MOD]
-	FLOW_TBL	2	Flow table ID
+	OF_DPA_CMD	2	CMD_[ADD|MOD]
+	OF_DPA_TBL	2	Flow table ID
 				  0: ingress port
 				  10: vlan
 				  20: termination mac
@@ -646,201 +648,202 @@ TLVs for add and modify commands are:
 				  40: multicast routing
 				  50: bridging
 				  60: ACL policy
-	FLOW_PRIORITY	4	Flow priority
-	FLOW_HARDTIME	4	Hard timeout for flow
-	FLOW_IDLETIME	4	Idle timeout for flow
-	FLOW_COOKIE	8	Cookie
-	FLOW_xxx	<var>	Nested flow entry TLVs.
+	OF_DPA_PRIORITY	4	Flow priority
+	OF_DPA_HARDTIME	4	Hard timeout for flow
+	OF_DPA_IDLETIME	4	Idle timeout for flow
+	OF_DPA_COOKIE	8	Cookie
+	OF_DPA_xxx	<var>	Nested flow entry TLVs.
 
-FLOW_xxx nested TLVs are defined below:
+OF_DPA_xxx nested TLVs are defined below:
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_IG_PORT			nest
-	  FLOW_IN_LPORT		4	ingress port number
-	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_IG_PORT			nest
+	  OF_DPA_IN_LPORT		4	ingress port number
+	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_VLAN			nest
-	  FLOW_IN_LPORT		4	ingress port number
-	  FLOW_VLAN_ID		2	vlan ID
-	  FLOW_VLAN_ID_MASK	2	vlan ID mask
-	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
-	  FLOW_NEW_VLAN_ID	2	new vlan ID
+	OF_DPA_VLAN			nest
+	  OF_DPA_IN_LPORT		4	ingress port number
+	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
+	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	  OF_DPA_NEW_VLAN_ID		2	new vlan ID
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_TERM_MAC			nest
-	  FLOW_IN_LPORT		4	ingress port number
-	  FLOW_IN_LPORT_MASK	4	ingress port number mask
-	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
-	  FLOW_DST_MAC		6	destination MAC
-	  FLOW_DST_MAC_MASK	6	destination MAC mask
-	  FLOW_VLAN_ID		2	vlan ID
-	  FLOW_VLAN_ID_MASK	2	vlan ID mask
-	  FLOW_GOTO_TBL		2	only acceptable values are
-					unicast or multicast routing
-					table IDs
-	  FLOW_OUT_LPORT	2	if specified, must be controller,
-					set zero otherwise
+	OF_DPA_TERM_MAC			nest
+	  OF_DPA_IN_LPORT		4	ingress port number
+	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
+	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
+	  OF_DPA_DST_MAC		6	destination MAC
+	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
+	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
+	  OF_DPA_GOTO_TBL		2	only acceptable values are
+						unicast or multicast routing
+						table IDs
+	  OF_DPA_OUT_LPORT		2	if specified, must be
+						controller, set zero otherwise
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_BRIDGING			nest
-	  FLOW_VLAN_ID		2	vlan ID
-	  FLOW_TUNNEL_ID	4	tunnel ID
-	  FLOW_DST_MAC		6	destination MAC
-	  FLOW_DST_MAC_MASK	6	destination MAC mask
-	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
-	  FLOW_GROUP_ID		4	data for GROUP action must
-					be a L2 Interface, L2
-					Multicast, L2 Flood,
-					or L2 Overlay group entry
-					as appropriate
-	  FLOW_TUN_LOG_LPORT	4	unicast Tenant Bridging
-					flows specify a tunnel
-					logical port ID
-	  FLOW_OUT_LPORT	2	data for OUTPUT action,
-					restricted to CONTROLLER,
-					set to 0 otherwise
+	OF_DPA_BRIDGING			nest
+	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_TUNNEL_ID		4	tunnel ID
+	  OF_DPA_DST_MAC		6	destination MAC
+	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
+	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	  OF_DPA_GROUP_ID		4	data for GROUP action must
+						be a L2 Interface, L2
+						Multicast, L2 Flood,
+						or L2 Overlay group entry
+						as appropriate
+	  OF_DPA_TUN_LOG_LPORT		4	unicast Tenant Bridging
+						flows specify a tunnel
+						logical port ID
+	  OF_DPA_OUT_LPORT		2	data for OUTPUT action,
+						restricted to CONTROLLER,
+						set to 0 otherwise
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_UNICAST_ROUTING		nest
-	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
-	  FLOW_DST_IP		4	destination IPv4 address
-					stored in host byte order.
-					Must be unicast address
-	  FLOW_DST_IP_MASK	4	IP mask stored in host byte
-					order. Must be prefix mask
-	  FLOW_DST_IPV6		16	destination IPv6 address
-					stored in host byte order.
-					Must be unicast address
-	  FLOW_DST_IPV6_MASK	16	IPv6 mask stored in host byte
-					order. Must be prefix mask
-	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
-	  FLOW_GROUP_ID		4	data for GROUP action must
-					be an L3 Unicast group entry
+	OF_DPA_UNICAST_ROUTING		nest
+	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
+	  OF_DPA_DST_IP			4	destination IPv4 address
+						stored in host byte order.
+						Must be unicast address
+	  OF_DPA_DST_IP_MASK		4	IP mask stored in host byte
+						order. Must be prefix mask
+	  OF_DPA_DST_IPV6		16	destination IPv6 address
+						stored in host byte order.
+						Must be unicast address
+	  OF_DPA_DST_IPV6_MASK		16	IPv6 mask stored in host byte
+						order. Must be prefix mask
+	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	  OF_DPA_GROUP_ID		4	data for GROUP action must
+						be an L3 Unicast group entry
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_MULTICAST_ROUTING		nest
-	  FLOW_ETHERTYPE	2	must be either 0x0800 or 0x86dd
-	  FLOW_VLAN_ID		2	vlan ID
-	  FLOW_SRC_IP		4	source IPv4 address stored
-					in host byte order. Optional,
-					can contain IPv4 address,
-					must be completely masked
-					if not used
-	  FLOW_SRC_IP_MASK	4	IP Mask stored in host byte
-					order
-	  FLOW_DST_IP		4	destination IPv4 address
-					stored in host byte order.
-					Must be multicast address
-	  FLOW_SRC_IPV6		16	source IPv6 Address. Optional.
-					Can contain IPv6 address,
-					must be completely masked
-					if not used
-	  FLOW_SRC_IPV6_MASK	16	IPv6 mask stored in host byte
-	  FLOW_DST_IPV6		16	destination IPv6 Address. Must
-					be multicast address
-					Must be multicast address
-	  FLOW_GOTO_TBL		2	goto table ID; zero to drop
-	  FLOW_GROUP_ID		4	data for GROUP action must
-					be an L3 multicast group entry
+	OF_DPA_MULTICAST_ROUTING	nest
+	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
+	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_SRC_IP			4	source IPv4 address stored
+						in host byte order. Optional,
+						can contain IPv4 address,
+						must be completely masked
+						if not used
+	  OF_DPA_SRC_IP_MASK		4	IP Mask stored in host byte
+						order
+	  OF_DPA_DST_IP			4	destination IPv4 address
+						stored in host byte order.
+						Must be multicast address
+	  OF_DPA_SRC_IPV6		16	source IPv6 Address. Optional.
+						Can contain IPv6 address,
+						must be completely masked
+						if not used
+	  OF_DPA_SRC_IPV6_MASK		16	IPv6 mask stored in host byte
+	  OF_DPA_DST_IPV6		16	destination IPv6 Address. Must
+						be multicast address
+						Must be multicast address
+	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	  OF_DPA_GROUP_ID		4	data for GROUP action must
+						be an L3 multicast group entry
 
-	field			width	description
+	field				width	description
 	----------------------------------------------------
-	FLOW_ACL			nest
-	  FLOW_IN_LPORT		4	ingress port number
-	  FLOW_IN_LPORT_MASK	4	ingress port number mask
-	  FLOW_ETHERTYPE	2	ethertype
-	  FLOW_VLAN_ID		2	vlan ID
-	  FLOW_VLAN_ID_MASK	2	vlan ID mask
-	  FLOW_VLAN_PCP		2	vlan Priority Code Point
-	  FLOW_VLAN_PCP_MASK	2	vlan Priority Code Point mask
-	  FLOW_SRC_MAC		6	source MAC
-	  FLOW_SRC_MAC_MASK	6	source MAC mask
-	  FLOW_DST_MAC		6	destination MAC
-	  FLOW_DST_MAC_MASK	6	destination MAC mask
-	  FLOW_TUNNEL_ID	4	tunnel ID
-	  FLOW_SRC_IP		4	source IPv4 address stored
-					in host byte order. Optional,
-					can contain IPv4 address,
-					must be completely masked
-					if not used
-	  FLOW_SRC_IP_MASK	4	IP Mask stored in host byte
-					order
-	  FLOW_DST_IP		4	destination IPv4 address
-					stored in host byte order.
-					Must be multicast address
-	  FLOW_DST_IP_MASK	4	IP Mask stored in host byte
-					order
-	  FLOW_SRC_IPV6		16	source IPv6 Address. Optional.
-					Can contain IPv6 address,
-					must be completely masked
-					if not used
-	  FLOW_SRC_IPV6_MASK	16	IPv6 mask stored in host byte
-	  FLOW_DST_IPV6		16	destination IPv6 Address. Must
-					be multicast address
-					Must be multicast address
-	  FLOW_DST_IPV6_MASK	16	IPv6 mask stored in host byte
-	  FLOW_SRC_ARP_IP	4	source IPv4 address in the ARP
-					payload.  Only used if ethertype
-					== 0x0806.
-	  FLOW_SRC_ARP_IP_MASK	4	IP Mask stored in host byte
-					order
-	  FLOW_IP_PROTO		2	IP protocol
-	  FLOW_IP_PROTO_MASK	2	IP protocol mask
-	  FLOW_DSCP		2	DSCP
-	  FLOW_DSCP_MASK	2	DSCP mask
-	  FLOW_ECN		2	ECN
-	  FLOW_ECN_MASK		2	ECN mask
-	  FLOW_L4_SRC_PORT	2	L4 source port, only for
-					TCP, UDP, or SCTP
-	  FLOW_L4_SRC_PORT_MASK	2	L4 source port mask
-	  FLOW_L4_DST_PORT	2	L4 source port, only for
-					TCP, UDP, or SCTP
-	  FLOW_L4_DST_PORT_MASK	2	L4 source port mask
-	  FLOW_ICMP_TYPE	1	ICMP type, only if IP protocol is 1
-	  FLOW_ICMP_TYPE_MASK	1	ICMP type mask
-	  FLOW_ICMP_CODE	1	ICMP code
-	  FLOW_ICMP_CODE_MASK	1	ICMP code mask
-	  FLOW_IPV6_LABEL	4	IPv6 flow label
-	  FLOW_IPV6_LABEL_MASK	4	IPv6 flow label mask
-	  FLOW_GROUP_ID		4	data for GROUP action
-	  FLOW_QUEUE_ID_ACTION	1	write the queue ID
-	  FLOW_NEW_QUEUE_ID	1	queue ID
-	  FLOW_VLAN_PCP_ACTION	1	write the VLAN priority
-	  FLOW_NEW_VLAN_PCP	1	VLAN priority
-	  FLOW_DSCP_ACTION	1	write the DSCP
-	  FLOW_NEW_DSCP		1	new DSCP
-	  FLOW_TUN_LOG_LPORT	4	restrct to valid tunnel
-					logical port, set to 0
-					otherwise.
-	  FLOW_OUT_LPORT	2	data for OUTPUT action,
-					restricted to CONTROLLER,
-					set to 0 otherwise
-	  FLOW_CLEAR_ACTIONS	4	if 1 packets matching flow are
-					dropped (all other instructions
-					ignored)
+	OF_DPA_ACL			nest
+	  OF_DPA_IN_LPORT		4	ingress port number
+	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
+	  OF_DPA_ETHERTYPE		2	ethertype
+	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
+	  OF_DPA_VLAN_PCP		2	vlan Priority Code Point
+	  OF_DPA_VLAN_PCP_MASK		2	vlan Priority Code Point mask
+	  OF_DPA_SRC_MAC		6	source MAC
+	  OF_DPA_SRC_MAC_MASK		6	source MAC mask
+	  OF_DPA_DST_MAC		6	destination MAC
+	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
+	  OF_DPA_TUNNEL_ID		4	tunnel ID
+	  OF_DPA_SRC_IP			4	source IPv4 address stored
+						in host byte order. Optional,
+						can contain IPv4 address,
+						must be completely masked
+						if not used
+	  OF_DPA_SRC_IP_MASK		4	IP Mask stored in host byte
+						order
+	  OF_DPA_DST_IP			4	destination IPv4 address
+						stored in host byte order.
+						Must be multicast address
+	  OF_DPA_DST_IP_MASK		4	IP Mask stored in host byte
+						order
+	  OF_DPA_SRC_IPV6		16	source IPv6 Address. Optional.
+						Can contain IPv6 address,
+						must be completely masked
+						if not used
+	  OF_DPA_SRC_IPV6_MASK		16	IPv6 mask stored in host byte
+	  OF_DPA_DST_IPV6		16	destination IPv6 Address. Must
+						be multicast address
+						Must be multicast address
+	  OF_DPA_DST_IPV6_MASK		16	IPv6 mask stored in host byte
+	  OF_DPA_SRC_ARP_IP		4	source IPv4 address in the ARP
+						payload.  Only used if ethertype
+						== 0x0806.
+	  OF_DPA_SRC_ARP_IP_MASK	4	IP Mask stored in host byte
+						order
+	  OF_DPA_IP_PROTO		2	IP protocol
+	  OF_DPA_IP_PROTO_MASK		2	IP protocol mask
+	  OF_DPA_DSCP			2	DSCP
+	  OF_DPA_DSCP_MASK		2	DSCP mask
+	  OF_DPA_ECN			2	ECN
+	  OF_DPA_ECN_MASK		2	ECN mask
+	  OF_DPA_L4_SRC_PORT		2	L4 source port, only for
+						TCP, UDP, or SCTP
+	  OF_DPA_L4_SRC_PORT_MASK	2	L4 source port mask
+	  OF_DPA_L4_DST_PORT		2	L4 source port, only for
+						TCP, UDP, or SCTP
+	  OF_DPA_L4_DST_PORT_MASK	2	L4 source port mask
+	  OF_DPA_ICMP_TYPE		1	ICMP type, only if IP
+						protocol is 1
+	  OF_DPA_ICMP_TYPE_MASK		1	ICMP type mask
+	  OF_DPA_ICMP_CODE		1	ICMP code
+	  OF_DPA_ICMP_CODE_MASK		1	ICMP code mask
+	  OF_DPA_IPV6_LABEL		4	IPv6 flow label
+	  OF_DPA_IPV6_LABEL_MASK	4	IPv6 flow label mask
+	  OF_DPA_GROUP_ID		4	data for GROUP action
+	  OF_DPA_QUEUE_ID_ACTION	1	write the queue ID
+	  OF_DPA_NEW_QUEUE_ID		1	queue ID
+	  OF_DPA_VLAN_PCP_ACTION	1	write the VLAN priority
+	  OF_DPA_NEW_VLAN_PCP		1	VLAN priority
+	  OF_DPA_DSCP_ACTION		1	write the DSCP
+	  OF_DPA_NEW_DSCP		1	new DSCP
+	  OF_DPA_TUN_LOG_LPORT		4	restrct to valid tunnel
+						logical port, set to 0
+						otherwise.
+	  OF_DPA_OUT_LPORT		2	data for OUTPUT action,
+						restricted to CONTROLLER,
+						set to 0 otherwise
+	  OF_DPA_CLEAR_ACTIONS		4	if 1 packets matching flow are
+						dropped (all other instructions
+						ignored)
 
 TLVs for flow delete and get stats command are:
 
-	field		width	description
+	field			width	description
 	---------------------------------------------------
-	FLOW_CMD	2	CMD_[DEL|GET_STATS]
-	FLOW_COOKIE	8	Cookie
+	OF_DPA_CMD		2	CMD_[DEL|GET_STATS]
+	OF_DPA_COOKIE		8	Cookie
 
 On completion of get stats command, the descriptor buffer is written back with
 the following TLVs:
 
 	field			width	description
 	---------------------------------------------------
-	FLOW_STAT_DURATION	4	Flow duration
-	FLOW_STAT_RX_PKTS	8	Received packets
-	FLOW_STAT_TX_PKTS	8	Transmit packets
+	OF_DPA_STAT_DURATION	4	Flow duration
+	OF_DPA_STAT_RX_PKTS	8	Received packets
+	OF_DPA_STAT_TX_PKTS	8	Transmit packets
 
 Possible status return codes in descriptor on completion are:
 
@@ -1042,3 +1045,10 @@ ACL
 ---
 
 xxx TODO
+
+
+References
+==========
+
+[1] OpenFlow Data Plane Abstraction (OF-DPA) Abstract Switch Specification,
+Version 1.0, from Broadcom Corporation, February 21, 2014.
