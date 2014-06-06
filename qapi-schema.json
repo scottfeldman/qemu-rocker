@@ -4689,3 +4689,10 @@
               'btn'     : 'InputBtnEvent',
               'rel'     : 'InputMoveEvent',
               'abs'     : 'InputMoveEvent' } }
+
+{ 'type': 'Rocker',
+  'data': { 'name': 'str', 'id': 'uint64', 'ports': 'uint32' } }
+
+{ 'command': 'rocker',
+  'data': { 'name': 'str' },
+  'returns': 'Rocker' }

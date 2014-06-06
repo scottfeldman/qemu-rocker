@@ -21,6 +21,7 @@
 #include "net/net.h"
 #include "qemu/iov.h"
 #include "qemu/bitops.h"
+#include "qmp-commands.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -81,6 +82,25 @@ static struct rocker *rocker_find(const char *name)
             return r;
 
     return NULL;
+}
+
+Rocker *qmp_rocker(const char *name, Error **errp)
+{
+    Rocker *rocker = g_malloc0(sizeof(*rocker));
+    struct rocker *r;
+
+    r = rocker_find(name);
+    if (!r) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s not found", name);
+        return NULL;
+    }
+
+    rocker->name = g_strdup(r->name);
+    rocker->id = r->switch_id;
+    rocker->ports = r->fp_ports;
+
+    return rocker;
 }
 
 uint32_t rocker_fp_ports(struct rocker *r)

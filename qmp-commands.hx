@@ -3562,3 +3562,9 @@ Example:
                    } } ] }
 
 EQMP
+
+    {
+        .name       = "rocker",
+        .args_type  = "name:s",
+        .mhandler.cmd_new = qmp_marshal_input_rocker,
+    },

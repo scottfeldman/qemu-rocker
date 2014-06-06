@@ -23,11 +23,13 @@
 #include "hw/pci/pci.h"
 #include "qmp-commands.h"
 
+#if 0
 PciInfoList *qmp_query_pci(Error **errp)
 {
     error_set(errp, QERR_UNSUPPORTED);
     return NULL;
 }
+#endif
 
 static void pci_error_message(Monitor *mon)
 {

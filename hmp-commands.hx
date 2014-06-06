@@ -1762,6 +1762,20 @@ STEXI
 show available trace events and their state
 ETEXI
 
+    {
+        .name       = "rocker",
+        .args_type  = "name:s",
+        .params     = "rocker name",
+        .help       = "Show Rocker(s)",
+        .mhandler.cmd = hmp_rocker,
+    },
+
+STEXI
+@item rocker @var{name}
+@findex rocker
+Show Rocker(s)
+ETEXI
+
 STEXI
 @end table
 ETEXI
