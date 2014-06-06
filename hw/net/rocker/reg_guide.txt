@@ -25,6 +25,7 @@ future use.
 o Field width is in bytes, unless otherwise noted.
 o Register are (R) read-only, (R/W) read/write, (W) write-only, or (COR) clear
 on read
+o TLV values in network-byte-order are designated with (N).
 
 
 SECTION 2: PCI Configuration Registers
@@ -291,6 +292,22 @@ the device and there is no outstanding work), then the interrupt is unmasked,
 but not fired.  If only partial credits are returned, the interrupt remains
 masked but the device generates an interrupt, signally the driver that more
 outstansing work is available.
+
+Endianess
+---------
+
+Device registers are hard-coding to little-endian (LE).  The driver should
+convert to/from host endianess to LE for device register accesses.
+
+Descriptors are LE.  Descriptor buffer TLVs will have LE type and length
+fields, but the value field can either be LE or network-byte-order, depending
+on context.  TLV values containing network packet data will be in network-byte
+order.  A TLV value containing a field or mask used to compare against network
+packet data is network-byte order.  For example, flow match fields (and masks)
+are network-byte-order since they're matched directly, byte-by-byte, against
+network packet data.  All non-network-packet TLV multi-byte values will be LE.
+
+TLV values in network-byte-order are designated with (N).
 
 
 SECTION 5: Test Registers
@@ -579,7 +596,7 @@ The TLVs for Rx descriptor buffer are:
 				  IPv4: IP payload csum
 				  IPv6: header and payload csum
 				(Only valid is RX_FLAGS:csum calc is set)
-	RX_PACKET	<var>	Packet data
+	RX_PACKET (N)	<var>	Packet data
 
 Possible status return codes in descriptor on completion are:
 
@@ -666,21 +683,21 @@ OF_DPA_xxx nested TLVs are defined below:
 	----------------------------------------------------
 	OF_DPA_VLAN			nest
 	  OF_DPA_IN_LPORT		4	ingress port number
-	  OF_DPA_VLAN_ID		2	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
+	  OF_DPA_VLAN_ID		2 (N)	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
 	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
-	  OF_DPA_NEW_VLAN_ID		2	new vlan ID
+	  OF_DPA_NEW_VLAN_ID		2 (N)	new vlan ID
 
 	field				width	description
 	----------------------------------------------------
 	OF_DPA_TERM_MAC			nest
 	  OF_DPA_IN_LPORT		4	ingress port number
 	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
-	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_DPA_DST_MAC		6	destination MAC
-	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
-	  OF_DPA_VLAN_ID		2	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
+	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
+	  OF_DPA_DST_MAC		6 (N)	destination MAC
+	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
+	  OF_DPA_VLAN_ID		2 (N)	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
 	  OF_DPA_GOTO_TBL		2	only acceptable values are
 						unicast or multicast routing
 						table IDs
@@ -690,10 +707,10 @@ OF_DPA_xxx nested TLVs are defined below:
 	field				width	description
 	----------------------------------------------------
 	OF_DPA_BRIDGING			nest
-	  OF_DPA_VLAN_ID		2	vlan ID
+	  OF_DPA_VLAN_ID		2 (N)	vlan ID
 	  OF_DPA_TUNNEL_ID		4	tunnel ID
-	  OF_DPA_DST_MAC		6	destination MAC
-	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
+	  OF_DPA_DST_MAC		6 (N)	destination MAC
+	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
 	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
 	  OF_DPA_GROUP_ID		4	data for GROUP action must
 						be a L2 Interface, L2
@@ -710,17 +727,13 @@ OF_DPA_xxx nested TLVs are defined below:
 	field				width	description
 	----------------------------------------------------
 	OF_DPA_UNICAST_ROUTING		nest
-	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_DPA_DST_IP			4	destination IPv4 address
-						stored in host byte order.
+	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
+	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
 						Must be unicast address
-	  OF_DPA_DST_IP_MASK		4	IP mask stored in host byte
-						order. Must be prefix mask
-	  OF_DPA_DST_IPV6		16	destination IPv6 address
-						stored in host byte order.
+	  OF_DPA_DST_IP_MASK		4 (N)	IP mask.  Must be prefix mask
+	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 address.
 						Must be unicast address
-	  OF_DPA_DST_IPV6_MASK		16	IPv6 mask stored in host byte
-						order. Must be prefix mask
+	  OF_DPA_DST_IPV6_MASK		16 (N)	IPv6 mask. Must be prefix mask
 	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
 	  OF_DPA_GROUP_ID		4	data for GROUP action must
 						be an L3 Unicast group entry
@@ -728,24 +741,21 @@ OF_DPA_xxx nested TLVs are defined below:
 	field				width	description
 	----------------------------------------------------
 	OF_DPA_MULTICAST_ROUTING	nest
-	  OF_DPA_ETHERTYPE		2	must be either 0x0800 or 0x86dd
-	  OF_DPA_VLAN_ID		2	vlan ID
-	  OF_DPA_SRC_IP			4	source IPv4 address stored
-						in host byte order. Optional,
+	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
+	  OF_DPA_VLAN_ID		2 (N)	vlan ID
+	  OF_DPA_SRC_IP			4 (N)	source IPv4. Optional,
 						can contain IPv4 address,
 						must be completely masked
 						if not used
-	  OF_DPA_SRC_IP_MASK		4	IP Mask stored in host byte
-						order
-	  OF_DPA_DST_IP			4	destination IPv4 address
-						stored in host byte order.
+	  OF_DPA_SRC_IP_MASK		4 (N)	IP Mask
+	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
 						Must be multicast address
-	  OF_DPA_SRC_IPV6		16	source IPv6 Address. Optional.
+	  OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
 						Can contain IPv6 address,
 						must be completely masked
 						if not used
-	  OF_DPA_SRC_IPV6_MASK		16	IPv6 mask stored in host byte
-	  OF_DPA_DST_IPV6		16	destination IPv6 Address. Must
+	  OF_DPA_SRC_IPV6_MASK		16 (N)	IPv6 mask.
+	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
 						be multicast address
 						Must be multicast address
 	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
@@ -757,61 +767,55 @@ OF_DPA_xxx nested TLVs are defined below:
 	OF_DPA_ACL			nest
 	  OF_DPA_IN_LPORT		4	ingress port number
 	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
-	  OF_DPA_ETHERTYPE		2	ethertype
-	  OF_DPA_VLAN_ID		2	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2	vlan ID mask
-	  OF_DPA_VLAN_PCP		2	vlan Priority Code Point
-	  OF_DPA_VLAN_PCP_MASK		2	vlan Priority Code Point mask
-	  OF_DPA_SRC_MAC		6	source MAC
-	  OF_DPA_SRC_MAC_MASK		6	source MAC mask
-	  OF_DPA_DST_MAC		6	destination MAC
-	  OF_DPA_DST_MAC_MASK		6	destination MAC mask
+	  OF_DPA_ETHERTYPE		2 (N)	ethertype
+	  OF_DPA_VLAN_ID		2 (N)	vlan ID
+	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
+	  OF_DPA_VLAN_PCP		2 (N)	vlan Priority Code Point
+	  OF_DPA_VLAN_PCP_MASK		2 (N)	vlan Priority Code Point mask
+	  OF_DPA_SRC_MAC		6 (N)	source MAC
+	  OF_DPA_SRC_MAC_MASK		6 (N)	source MAC mask
+	  OF_DPA_DST_MAC		6 (N)	destination MAC
+	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
 	  OF_DPA_TUNNEL_ID		4	tunnel ID
-	  OF_DPA_SRC_IP			4	source IPv4 address stored
-						in host byte order. Optional,
+	  OF_DPA_SRC_IP			4 (N)	source IPv4. Optional,
 						can contain IPv4 address,
 						must be completely masked
 						if not used
-	  OF_DPA_SRC_IP_MASK		4	IP Mask stored in host byte
-						order
-	  OF_DPA_DST_IP			4	destination IPv4 address
-						stored in host byte order.
+	  OF_DPA_SRC_IP_MASK		4 (N)	IP Mask
+	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
 						Must be multicast address
-	  OF_DPA_DST_IP_MASK		4	IP Mask stored in host byte
-						order
-	  OF_DPA_SRC_IPV6		16	source IPv6 Address. Optional.
+	  OF_DPA_DST_IP_MASK		4 (N)	IP Mask
+	  OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
 						Can contain IPv6 address,
 						must be completely masked
 						if not used
-	  OF_DPA_SRC_IPV6_MASK		16	IPv6 mask stored in host byte
-	  OF_DPA_DST_IPV6		16	destination IPv6 Address. Must
-						be multicast address
-						Must be multicast address
-	  OF_DPA_DST_IPV6_MASK		16	IPv6 mask stored in host byte
-	  OF_DPA_SRC_ARP_IP		4	source IPv4 address in the ARP
+	  OF_DPA_SRC_IPV6_MASK		16 (N)	IPv6 mask
+	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
+						be multicast address.
+	  OF_DPA_DST_IPV6_MASK		16 (N)	IPv6 mask
+	  OF_DPA_SRC_ARP_IP		4 (N)	source IPv4 address in the ARP
 						payload.  Only used if ethertype
 						== 0x0806.
-	  OF_DPA_SRC_ARP_IP_MASK	4	IP Mask stored in host byte
-						order
-	  OF_DPA_IP_PROTO		2	IP protocol
-	  OF_DPA_IP_PROTO_MASK		2	IP protocol mask
-	  OF_DPA_DSCP			2	DSCP
-	  OF_DPA_DSCP_MASK		2	DSCP mask
-	  OF_DPA_ECN			2	ECN
-	  OF_DPA_ECN_MASK		2	ECN mask
-	  OF_DPA_L4_SRC_PORT		2	L4 source port, only for
+	  OF_DPA_SRC_ARP_IP_MASK	4 (N)	IP Mask
+	  OF_DPA_IP_PROTO		2 (N)	IP protocol
+	  OF_DPA_IP_PROTO_MASK		2 (N)	IP protocol mask
+	  OF_DPA_DSCP			2 (N)	DSCP
+	  OF_DPA_DSCP_MASK		2 (N)	DSCP mask
+	  OF_DPA_ECN			2 (N)	ECN
+	  OF_DPA_ECN_MASK		2 (N)	ECN mask
+	  OF_DPA_L4_SRC_PORT		2 (N)	L4 source port, only for
 						TCP, UDP, or SCTP
-	  OF_DPA_L4_SRC_PORT_MASK	2	L4 source port mask
-	  OF_DPA_L4_DST_PORT		2	L4 source port, only for
+	  OF_DPA_L4_SRC_PORT_MASK	2 (N)	L4 source port mask
+	  OF_DPA_L4_DST_PORT		2 (N)	L4 source port, only for
 						TCP, UDP, or SCTP
-	  OF_DPA_L4_DST_PORT_MASK	2	L4 source port mask
+	  OF_DPA_L4_DST_PORT_MASK	2 (N)	L4 source port mask
 	  OF_DPA_ICMP_TYPE		1	ICMP type, only if IP
 						protocol is 1
 	  OF_DPA_ICMP_TYPE_MASK		1	ICMP type mask
 	  OF_DPA_ICMP_CODE		1	ICMP code
 	  OF_DPA_ICMP_CODE_MASK		1	ICMP code mask
-	  OF_DPA_IPV6_LABEL		4	IPv6 flow label
-	  OF_DPA_IPV6_LABEL_MASK	4	IPv6 flow label mask
+	  OF_DPA_IPV6_LABEL		4 (N)	IPv6 flow label
+	  OF_DPA_IPV6_LABEL_MASK	4 (N)	IPv6 flow label mask
 	  OF_DPA_GROUP_ID		4	data for GROUP action
 	  OF_DPA_QUEUE_ID_ACTION	1	write the queue ID
 	  OF_DPA_NEW_QUEUE_ID		1	queue ID
