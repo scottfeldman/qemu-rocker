@@ -94,5 +94,6 @@ void hmp_object_add(Monitor *mon, const QDict *qdict);
 void hmp_object_del(Monitor *mon, const QDict *qdict);
 void hmp_rocker(Monitor *mon, const QDict *qdict);
 void hmp_rocker_ports(Monitor *mon, const QDict *qdict);
+void hmp_rocker_flows(Monitor *mon, const QDict *qdict);
 
 #endif

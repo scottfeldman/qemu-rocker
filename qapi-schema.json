@@ -4704,3 +4704,24 @@
 { 'command': 'rocker-ports',
   'data': { 'name': 'str' },
   'returns': ['RockerPort'] }
+
+{ 'type': 'RockerFlowKey',
+  'data' : { 'priority': 'uint32', 'tbl_id': 'uint32', '*in_lport': 'uint32',
+             '*tunnel_id': 'uint32', '*vlan_id': 'uint16', '*eth_dst': 'str' } }
+
+{ 'type': 'RockerFlowMask',
+  'data' : { '*in_lport': 'uint32', '*tunnel_id': 'uint32',
+             '*vlan_id': 'uint16', '*eth_dst': 'str' } }
+
+{ 'type': 'RockerFlowAction',
+  'data' : { '*goto_tbl': 'uint32', '*group_id': 'uint16',
+             '*tun_log_lport': 'uint32', '*vlan_id': 'uint16',
+             '*new_vlan_id': 'uint16', '*out_lport': 'uint32' } }
+
+{ 'type': 'RockerFlow',
+  'data': { 'cookie': 'uint64', 'hits': 'uint64', 'key': 'RockerFlowKey',
+            'mask': 'RockerFlowMask', 'action': 'RockerFlowAction' } }
+
+{ 'command': 'rocker-flows',
+  'data': { 'name': 'str', '*world': 'str', '*tbl_id': 'uint32' },
+  'returns': ['RockerFlow'] }

@@ -35,14 +35,18 @@ typedef ssize_t (world_ig)(struct world *world, uint32_t lport,
 typedef int (world_cmd)(struct world *world, struct desc_info *info,
                         char *buf, uint16_t cmd,
                         struct rocker_tlv *cmd_info_tlv);
+typedef RockerFlowList *(world_flow_fill)(struct world *world,
+                                          uint32_t tbl_id);
 
 struct world_ops {
     world_init *init;
     world_uninit *uninit;
     world_ig *ig;
     world_cmd *cmd;
+    world_flow_fill *flow_fill;
 };
 
+RockerFlowList *world_do_flow_fill(struct world *world, uint32_t tbl_id);
 ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt);
 int world_do_cmd(struct world *world, struct desc_info *info,

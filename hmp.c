@@ -1695,3 +1695,78 @@ void hmp_rocker_ports(Monitor *mon, const QDict *qdict)
 
     qapi_free_RockerPortList(list);
 }
+
+void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
+{
+    RockerFlowList *list, *info;
+    const char *name = qdict_get_str(qdict, "name");
+    const char *world = qdict_get_try_str(qdict, "world");
+    uint32_t tbl_id = qdict_get_try_int(qdict, "tbl_id", -1);
+    Error *errp = NULL;
+
+    list = qmp_rocker_flows(name, !!world, world,
+                            tbl_id != -1, tbl_id, &errp);
+    if (error_is_set(&errp)) {
+        monitor_printf(mon, "%s\n", error_get_pretty(errp));
+        error_free(errp);
+        return;
+    }
+
+    monitor_printf(mon, "prio tbl hits key(mask) --> actions\n");
+        
+    for (info = list; info; info = info->next) {
+        RockerFlow *flow = info->value;
+        RockerFlowKey *key = flow->key;
+        RockerFlowMask *mask = flow->mask;
+        RockerFlowAction *action = flow->action;
+
+        if (flow->hits)
+            monitor_printf(mon, "%-4d %-3d %-4ld",
+                           key->priority, key->tbl_id, flow->hits);
+        else
+            monitor_printf(mon, "%-4d %-3d     ",
+                           key->priority, key->tbl_id);
+
+        if (key->has_in_lport) {
+            monitor_printf(mon, " lport %d", key->in_lport);
+            if (mask->has_in_lport)
+                monitor_printf(mon, "(0x%x)", mask->in_lport);
+        }
+
+        if (key->has_vlan_id) {
+            monitor_printf(mon, " vlan %d", key->vlan_id);
+            if (mask->has_vlan_id)
+                monitor_printf(mon, "(0x%x)", mask->vlan_id);
+        }
+
+        if (key->has_tunnel_id) {
+            monitor_printf(mon, " tunnel %d", key->tunnel_id);
+            if (mask->has_tunnel_id)
+                monitor_printf(mon, "(0x%x)", mask->tunnel_id);
+        }
+
+        if (key->has_eth_dst) {
+            monitor_printf(mon, " eth dst %s", key->eth_dst);
+            if (mask->has_eth_dst)
+                monitor_printf(mon, "(%s)", mask->eth_dst);
+        }
+
+        if (action->has_goto_tbl || action->has_group_id ||
+            action->has_new_vlan_id)
+            monitor_printf(mon, " -->");
+
+        if (action->has_new_vlan_id)
+            monitor_printf(mon, " apply new vlan %d",
+                           ntohs(action->new_vlan_id));
+
+        if (action->has_group_id)
+            monitor_printf(mon, " write group %d", action->group_id);
+
+        if (action->has_goto_tbl)
+            monitor_printf(mon, " goto tbl %d", action->goto_tbl);
+
+        monitor_printf(mon, "\n");
+    }
+
+    qapi_free_RockerFlowList(list);
+}

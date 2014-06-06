@@ -15,6 +15,7 @@
  */
 
 #include "qemu/iov.h"
+#include "qmp-commands.h"
 
 #include "rocker.h"
 #include "rocker_world.h"
@@ -26,6 +27,14 @@ struct world {
     enum rocker_world_type type;
     struct world_ops *ops;
 };
+
+RockerFlowList *world_do_flow_fill(struct world *world, uint32_t tbl_id)
+{
+    if (world->ops->flow_fill)
+        return world->ops->flow_fill(world, tbl_id);
+
+    return NULL;
+}
 
 ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt)
