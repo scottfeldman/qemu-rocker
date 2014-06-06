@@ -3852,3 +3852,9 @@ Move mouse pointer to absolute coordinates (20000, 400).
 <- { "return": {} }
 
 EQMP
+
+    {
+        .name       = "rocker",
+        .args_type  = "name:s",
+        .mhandler.cmd_new = qmp_marshal_input_rocker,
+    },

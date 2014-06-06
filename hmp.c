@@ -1758,3 +1758,23 @@ void hmp_info_memory_devices(Monitor *mon, const QDict *qdict)
 
     qapi_free_MemoryDeviceInfoList(info_list);
 }
+
+void hmp_rocker(Monitor *mon, const QDict *qdict)
+{
+    const char *name = qdict_get_str(qdict, "name");
+    Rocker *rocker;
+    Error *errp = NULL;
+
+    rocker = qmp_rocker(name, &errp);
+    if (error_is_set(&errp)) {
+        monitor_printf(mon, "%s\n", error_get_pretty(errp));
+        error_free(errp);
+        return;
+    }
+
+    monitor_printf(mon, "name: %s\n", rocker->name);
+    monitor_printf(mon, "id: 0x%016lx\n", rocker->id);
+    monitor_printf(mon, "ports: %d\n", rocker->ports);
+
+    qapi_free_Rocker(rocker);
+}
