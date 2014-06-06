@@ -209,6 +209,13 @@ static struct flow_tbl_ops l2l3_tbl_ops[] = {
     },
 };
 
+static RockerFlowList *l2l3_flow_fill(struct world *world, uint32_t tbl_id)
+{
+    struct l2l3_world *lw = world_private(world);
+
+    return flow_sys_flow_fill(lw->fs, tbl_id);
+}
+
 static ssize_t l2l3_ig(struct world *world, uint32_t lport,
                        const struct iovec *iov, int iovcnt)
 {
@@ -261,11 +268,12 @@ static void l2l3_default_bridging(struct l2l3_world *lw)
 
 static void l2l3_default_vlan(struct l2l3_world *lw)
 {
+    uint32_t fp_ports = rocker_fp_ports(world_rocker(lw->world));
     struct flow *flow;
     uint32_t lport;
 
     /* untagged pkts from physical ports goto VLAN 100 */
-    for (lport = 1; lport <= ROCKER_FP_PORTS_MAX; lport++) {
+    for (lport = 1; lport <= fp_ports; lport++) {
         flow = flow_alloc(lw->fs, flow_sys_another_cookie(lw->fs), 0, 0, 0);
         flow->key.tbl_id = L2L3_TABLE_VLAN;
         flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
@@ -319,6 +327,7 @@ static struct world_ops l2l3_ops = {
     .uninit = l2l3_world_uninit,
     .ig = l2l3_ig,
     .cmd = l2l3_cmd,
+    .flow_fill = l2l3_flow_fill,
 };
 
 struct world *l2l3_world_alloc(struct rocker *r)

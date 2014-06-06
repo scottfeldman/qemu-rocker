@@ -1814,6 +1814,20 @@ STEXI
 Show Rocker ports
 ETEXI
 
+    {
+        .name       = "rocker-flows",
+        .args_type  = "name:s,world:s?,tbl_id:i?",
+        .params     = "rocker_flows name [world] [tbl_id]",
+        .help       = "Show Rocker flow tables",
+        .mhandler.cmd = hmp_rocker_flows,
+    },
+
+STEXI
+@item rocker_flows @var{name} [@var{world}]
+@findex rocker_flows
+Show Rocker flow tables
+ETEXI
+
 STEXI
 @end table
 ETEXI

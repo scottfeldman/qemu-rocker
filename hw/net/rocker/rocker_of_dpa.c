@@ -207,6 +207,13 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
 };
 
+static RockerFlowList *of_dpa_flow_fill(struct world *world, uint32_t tbl_id)
+{
+    struct of_dpa_world *lw = world_private(world);
+
+    return flow_sys_flow_fill(lw->fs, tbl_id);
+}
+
 static ssize_t of_dpa_ig(struct world *world, uint32_t lport,
                          const struct iovec *iov, int iovcnt)
 {
@@ -954,6 +961,7 @@ static struct world_ops of_dpa_ops = {
     .uninit = of_dpa_world_uninit,
     .ig = of_dpa_ig,
     .cmd = of_dpa_cmd,
+    .flow_fill = of_dpa_flow_fill,
 };
 
 struct world *of_dpa_world_alloc(struct rocker *r)

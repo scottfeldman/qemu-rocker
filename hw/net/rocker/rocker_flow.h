@@ -190,6 +190,7 @@ struct group *group_alloc(struct flow_sys *fs);
 int group_add(struct group *group);
 size_t group_tbl_size(struct flow_sys *fs);
 
+RockerFlowList *flow_sys_flow_fill(struct flow_sys *fs, uint32_t tbl_id);
 uint64_t flow_sys_another_cookie(struct flow_sys *fs);
 struct flow_sys *flow_sys_alloc(struct world *world,
                                 struct flow_tbl_ops *tbl_ops);

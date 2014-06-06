@@ -346,6 +346,109 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
         flow_exec_action_set(fs, fc, ops);
 }
 
+struct flow_fill_context {
+    RockerFlowList *list;
+    uint32_t tbl_id;
+};
+
+static void flow_fill(void *key, void *value, void *user_data)
+{
+    struct flow *flow = value;
+    struct flow_fill_context *flow_context = user_data;
+    RockerFlowList *new;
+    RockerFlow *nflow;
+    RockerFlowKey *nkey;
+    RockerFlowMask *nmask;
+    RockerFlowAction *naction;
+    const MACAddr zero_mac =  { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
+    if (flow_context->tbl_id != -1 &&
+        flow_context->tbl_id != flow->key.tbl_id)
+        return;
+
+    new = g_malloc0(sizeof(*new));
+    nflow = new->value = g_malloc0(sizeof(*nflow));
+    nkey = nflow->key = g_malloc0(sizeof(*nkey));
+    nmask = nflow->mask = g_malloc0(sizeof(*nmask));
+    naction = nflow->action = g_malloc0(sizeof(*naction));
+
+    nflow->cookie = flow->cookie;
+    nflow->hits = flow->stats.hits;
+    nkey->priority = flow->priority;
+    nkey->tbl_id = flow->key.tbl_id;
+
+    if (flow->key.in_lport || flow->mask.in_lport) {
+        nkey->has_in_lport = true;
+        nkey->in_lport = flow->key.in_lport;
+    }
+
+    if (flow->mask.in_lport) {
+        nmask->has_in_lport = true;
+        nmask->in_lport = flow->mask.in_lport;
+    }
+
+    if (flow->key.eth.vlan_id || flow->mask.eth.vlan_id) {
+        nkey->has_vlan_id = true;
+        nkey->vlan_id = ntohs(flow->key.eth.vlan_id);
+    }
+
+    if (flow->mask.eth.vlan_id) {
+        nmask->has_vlan_id = true;
+        nmask->vlan_id = ntohs(flow->mask.eth.vlan_id);
+    }
+
+    if (flow->key.tunnel_id || flow->mask.tunnel_id) {
+        nkey->has_tunnel_id = true;
+        nkey->tunnel_id = flow->key.tunnel_id;
+    }
+
+    if (flow->mask.tunnel_id) {
+        nmask->has_tunnel_id = true;
+        nmask->tunnel_id = flow->mask.tunnel_id;
+    }
+
+    if (memcmp(flow->key.eth.dst.a, zero_mac.a, ETH_ALEN) ||
+        memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
+        nkey->has_eth_dst = true;
+        nkey->eth_dst = qemu_mac_strdup_printf(flow->key.eth.dst.a);
+    }
+
+    if (memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
+        nmask->has_eth_dst = true;
+        nmask->eth_dst = qemu_mac_strdup_printf(flow->mask.eth.dst.a);
+    }
+
+    if (flow->action.goto_tbl) {
+        naction->has_goto_tbl = true;
+        naction->goto_tbl = flow->action.goto_tbl;
+    }
+
+    if (flow->action.write.group_id) {
+        naction->has_group_id = true;
+        naction->group_id = flow->action.write.group_id;
+    }
+
+    if (flow->action.apply.new_vlan_id) {
+        naction->has_new_vlan_id = true;
+        naction->new_vlan_id = flow->action.apply.new_vlan_id;
+    }
+
+    new->next = flow_context->list;
+    flow_context->list = new;
+}
+
+RockerFlowList *flow_sys_flow_fill(struct flow_sys *fs, uint32_t tbl_id)
+{
+    struct flow_fill_context fill_context = {
+        .list = NULL,
+        .tbl_id = tbl_id,
+    };
+
+    g_hash_table_foreach(fs->flow_tbl, flow_fill, &fill_context);
+
+    return fill_context.list;
+}
+
 uint64_t flow_sys_another_cookie(struct flow_sys *fs)
 {
     uint64_t cookie;
