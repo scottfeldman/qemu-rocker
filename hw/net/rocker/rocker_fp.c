@@ -15,6 +15,7 @@
  */
 
 #include "net/clients.h"
+#include "qmp-commands.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -43,6 +44,16 @@ struct fp_port {
 bool fp_port_get_link_up(struct fp_port *port)
 {
     return !qemu_get_queue(port->nic)->link_down;
+}
+
+void fp_port_get_info(struct fp_port *port, RockerPortList *info)
+{
+    info->value->name = g_strdup(port->name);
+    info->value->enabled = port->enabled;
+    info->value->link_up = fp_port_get_link_up(port);
+    info->value->speed = port->speed;
+    info->value->duplex = port->duplex;
+    info->value->autoneg = port->autoneg;
 }
 
 void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr)

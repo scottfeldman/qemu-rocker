@@ -3858,3 +3858,9 @@ EQMP
         .args_type  = "name:s",
         .mhandler.cmd_new = qmp_marshal_input_rocker,
     },
+
+    {
+        .name       = "rocker-ports",
+        .args_type  = "name:s",
+        .mhandler.cmd_new = qmp_marshal_input_rocker_ports,
+    },

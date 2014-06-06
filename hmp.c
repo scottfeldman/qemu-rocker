@@ -1778,3 +1778,31 @@ void hmp_rocker(Monitor *mon, const QDict *qdict)
 
     qapi_free_Rocker(rocker);
 }
+
+void hmp_rocker_ports(Monitor *mon, const QDict *qdict)
+{
+    RockerPortList *list, *port;
+    const char *name = qdict_get_str(qdict, "name");
+    Error *errp = NULL;
+
+    list = qmp_rocker_ports(name, &errp);
+    if (error_is_set(&errp)) {
+        monitor_printf(mon, "%s\n", error_get_pretty(errp));
+        error_free(errp);
+        return;
+    }
+
+    monitor_printf(mon, "            ena/    speed/ auto\n");
+    monitor_printf(mon, "      port  link    duplex neg?\n");
+
+    for (port = list; port; port = port->next)
+        monitor_printf(mon, "%10s  %-4s   %-3s  %2s  %-3s\n",
+                       port->value->name,
+                       port->value->enabled ? port->value->link_up ?
+                       "up" : "down" : "!ena",
+                       port->value->speed == 10000 ? "10G" : "??",
+                       port->value->duplex ? "FD" : "HD",
+                       port->value->autoneg ? "Yes" : "No");
+
+    qapi_free_RockerPortList(list);
+}

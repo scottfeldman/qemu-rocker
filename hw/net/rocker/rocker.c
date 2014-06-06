@@ -103,6 +103,32 @@ Rocker *qmp_rocker(const char *name, Error **errp)
     return rocker;
 }
 
+RockerPortList *qmp_rocker_ports(const char *name, Error **errp)
+{
+    RockerPortList *list = NULL;
+    struct rocker *r;
+    int i;
+
+    r = rocker_find(name);
+    if (!r) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s not found", name);
+        return NULL;
+    }
+
+    for (i = r->fp_ports - 1; i >= 0; i--) {
+        RockerPortList *info = g_malloc0(sizeof(*info));
+        info->value = g_malloc0(sizeof(*info->value));
+        struct fp_port *port = r->fp_port[i];
+
+        fp_port_get_info(port, info);
+        info->next = list;
+        list = info;
+    }
+
+    return list;
+}
+
 uint32_t rocker_fp_ports(struct rocker *r)
 {
     return r->fp_ports;

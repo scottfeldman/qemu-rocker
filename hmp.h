@@ -117,5 +117,6 @@ void host_net_remove_completion(ReadLineState *rs, int nb_args,
 void delvm_completion(ReadLineState *rs, int nb_args, const char *str);
 void loadvm_completion(ReadLineState *rs, int nb_args, const char *str);
 void hmp_rocker(Monitor *mon, const QDict *qdict);
+void hmp_rocker_ports(Monitor *mon, const QDict *qdict);
 
 #endif
