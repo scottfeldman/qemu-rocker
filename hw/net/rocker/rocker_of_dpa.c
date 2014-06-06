@@ -332,7 +332,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
     mask->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
-    if (key->eth.type != 0x0800 || key->eth.type != 0x86dd)
+    if (key->eth.type != htons(0x0800) || key->eth.type != htons(0x86dd))
         return -EINVAL;
 
     memcpy(key->eth.dst.a, rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_MAC]),
@@ -515,7 +515,7 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
-    switch (key->eth.type) {
+    switch (ntohs(key->eth.type)) {
     case 0x0800:
         mode = UNICAST_ROUTING_MODE_IPV4;
         break;
@@ -591,7 +591,7 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
-    switch (key->eth.type) {
+    switch (ntohs(key->eth.type)) {
     case 0x0800:
         mode = MULTICAST_ROUTING_MODE_IPV4;
         break;
