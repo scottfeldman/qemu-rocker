@@ -332,6 +332,8 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
         return;
     }
 
+    flow->stats.hits++;
+
     if (ops->action_apply)
         ops->action_apply(fc, flow);
 
