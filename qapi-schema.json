@@ -4696,3 +4696,11 @@
 { 'command': 'rocker',
   'data': { 'name': 'str' },
   'returns': 'Rocker' }
+
+{ 'type': 'RockerPort',
+  'data': { 'name': 'str', 'enabled': 'bool', 'link_up': 'bool',
+            'speed': 'uint32', 'duplex': 'uint8', 'autoneg': 'uint8' } }
+
+{ 'command': 'rocker-ports',
+  'data': { 'name': 'str' },
+  'returns': ['RockerPort'] }

@@ -1776,6 +1776,20 @@ STEXI
 Show Rocker(s)
 ETEXI
 
+    {
+        .name       = "rocker-ports",
+        .args_type  = "name:s",
+        .params     = "rocker_ports name",
+        .help       = "Show Rocker ports",
+        .mhandler.cmd = hmp_rocker_ports,
+    },
+
+STEXI
+@item rocker_ports @var{name}
+@findex rocker_ports
+Show Rocker ports
+ETEXI
+
 STEXI
 @end table
 ETEXI

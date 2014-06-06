@@ -29,6 +29,7 @@ struct world;
 int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt);
 
 bool fp_port_get_link_up(struct fp_port *port);
+void fp_port_get_info(struct fp_port *port, RockerPortList *info);
 void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr);
 void fp_port_set_macaddr(struct fp_port *port, MACAddr *macaddr);
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
