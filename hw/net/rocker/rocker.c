@@ -61,12 +61,27 @@ struct rocker {
     /* switch worlds */
     struct world *worlds[ROCKER_WORLD_TYPE_MAX];
     struct world *world_dflt;
+
+    QLIST_ENTRY(rocker) next;
 };
 
 #define ROCKER "rocker"
 
 #define to_rocker(obj) \
     OBJECT_CHECK(struct rocker, (obj), ROCKER)
+
+static QLIST_HEAD(, rocker) rockers;
+
+static struct rocker *rocker_find(const char *name)
+{
+    struct rocker *r;
+
+    QLIST_FOREACH(r, &rockers, next)
+        if (strcmp(r->name, name) == 0)
+            return r;
+
+    return NULL;
+}
 
 static uint32_t rocker_get_lport_by_tx_ring(struct rocker *r,
                                             struct desc_ring *ring)
@@ -1044,7 +1059,10 @@ static int pci_rocker_init(PCIDevice *dev)
     if (!r->name)
         r->name = g_strdup(ROCKER);
 
-    // XXX validate r->name is unique switch name
+    if (rocker_find(r->name)) {
+        err = -EEXIST;
+        goto err_duplicate;
+    }
 
     if (memcmp(&r->fp_start_macaddr, &zero, sizeof(zero)) == 0) {
         memcpy(&r->fp_start_macaddr, &dflt, sizeof(dflt));
@@ -1100,6 +1118,8 @@ static int pci_rocker_init(PCIDevice *dev)
         fp_port_set_world(port, r->world_dflt);
     }
 
+    QLIST_INSERT_HEAD(&rockers, r, next);
+
     return 0;
 
 err_port_alloc:
@@ -1113,6 +1133,7 @@ err_ring_alloc:
         desc_ring_free(r->rings[i]);
     g_free(r->rings);
 err_rings_alloc:
+err_duplicate:
     rocker_msix_uninit(r);
 err_msix_init:
     memory_region_destroy(&r->msix_bar);
@@ -1129,6 +1150,8 @@ static void pci_rocker_uninit(PCIDevice *dev)
 {
     struct rocker *r = to_rocker(dev);
     int i;
+
+    QLIST_REMOVE(r, next);
 
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
