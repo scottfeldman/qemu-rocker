@@ -83,6 +83,11 @@ static struct rocker *rocker_find(const char *name)
     return NULL;
 }
 
+uint32_t rocker_fp_ports(struct rocker *r)
+{
+    return r->fp_ports;
+}
+
 static uint32_t rocker_get_lport_by_tx_ring(struct rocker *r,
                                             struct desc_ring *ring)
 {
