@@ -239,17 +239,17 @@ static int of_dpa_cmd_add_ig_port(struct flow *flow, struct rocker_tlv **info)
     struct flow_action *action = &flow->action;
     bool overlay_tunnel;
 
-    if (!info[ROCKER_TLV_OF_DPA_IN_LPORT] ||
-        !info[ROCKER_TLV_OF_DPA_GOTO_TBL])
+    if (!info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL])
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_INGRESS_PORT;
     key->width = FLOW_KEY_WIDTH(tbl_id);
 
-    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
     overlay_tunnel = !!(key->in_lport & ROCKER_TUNNEL_LPORT);
 
-    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
 
     if (!overlay_tunnel && action->goto_tbl != OF_DPA_TABLE_VLAN)
         return -EINVAL;
@@ -267,23 +267,23 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **info)
     struct flow_action *action = &flow->action;
     bool untagged;
 
-    if (!info[ROCKER_TLV_OF_DPA_IN_LPORT] ||
-        !info[ROCKER_TLV_OF_DPA_VLAN_ID] ||
-        !info[ROCKER_TLV_OF_DPA_VLAN_ID_MASK] ||
-        !info[ROCKER_TLV_OF_DPA_GOTO_TBL])
+    if (!info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL])
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_VLAN;
     key->width = FLOW_KEY_WIDTH(eth.vlan_id);
 
-    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
     if (1 < key->in_lport || key->in_lport > 63)
         return -EINVAL;
     mask->in_lport = 0x0000003f;
 
-    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID]);
     mask->eth.vlan_id =
-        rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
+        rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK]);
     if (mask->eth.vlan_id == htons(0x1fff))
         untagged = false; /* filtering */
     else if (mask->eth.vlan_id == htons(0x0fff))
@@ -291,16 +291,16 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **info)
     else
         return -EINVAL;
 
-    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
 
     if (action->goto_tbl != OF_DPA_TABLE_TERMINATION_MAC)
         return -EINVAL;
 
     if (untagged) {
-        if (!info[ROCKER_TLV_OF_DPA_NEW_VLAN_ID])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_NEW_VLAN_ID])
             return -EINVAL;
         action->apply.new_vlan_id =
-            rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_NEW_VLAN_ID]);
+            rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_NEW_VLAN_ID]);
         if (1 < ntohs(action->apply.new_vlan_id) ||
             ntohs(action->apply.new_vlan_id) > 4094)
             return -EINVAL;
@@ -321,31 +321,31 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
     bool unicast = false;
     bool multicast = false;
 
-    if (!info[ROCKER_TLV_OF_DPA_IN_LPORT] ||
-        !info[ROCKER_TLV_OF_DPA_IN_LPORT_MASK] ||
-        !info[ROCKER_TLV_OF_DPA_ETHERTYPE] ||
-        !info[ROCKER_TLV_OF_DPA_DST_MAC] ||
-        !info[ROCKER_TLV_OF_DPA_DST_MAC_MASK] ||
-        !info[ROCKER_TLV_OF_DPA_VLAN_ID] ||
-        !info[ROCKER_TLV_OF_DPA_VLAN_ID_MASK])
+    if (!info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT_MASK] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_DST_MAC] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_DST_MAC_MASK] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK])
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_TERMINATION_MAC;
     key->width = FLOW_KEY_WIDTH(eth.type);
 
-    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
     if (1 < key->in_lport || key->in_lport > 63)
         return -EINVAL;
-    mask->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
+    mask->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT_MASK]);
 
-    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
+    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE]);
     if (key->eth.type != htons(0x0800) || key->eth.type != htons(0x86dd))
         return -EINVAL;
 
-    memcpy(key->eth.dst.a, rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_MAC]),
+    memcpy(key->eth.dst.a, rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_MAC]),
            sizeof(key->eth.dst.a));
     memcpy(mask->eth.dst.a,
-           rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_MAC_MASK]),
+           rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_MAC_MASK]),
            sizeof(mask->eth.dst.a));
 
     if ((key->eth.dst.a[5] & 0x01) == 0x00)
@@ -362,13 +362,13 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
     if (!unicast && !multicast)
         return -EINVAL;
 
-    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID]);
     mask->eth.vlan_id =
-        rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
+        rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK]);
 
-    if (info[ROCKER_TLV_OF_DPA_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
     
         if (action->goto_tbl != OF_DPA_TABLE_UNICAST_ROUTING ||
             action->goto_tbl != OF_DPA_TABLE_MULTICAST_ROUTING)
@@ -381,9 +381,9 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
             return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_OUT_LPORT])
+    if (info[ROCKER_TLV_OF_DPA_INFO_OUT_LPORT])
         action->apply.out_lport =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_OUT_LPORT]);
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_OUT_LPORT]);
 
     return 0;
 }
@@ -409,26 +409,26 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
     key->tbl_id = OF_DPA_TABLE_BRIDGING;
     key->width = FLOW_KEY_WIDTH(eth.dst);
 
-    if (info[ROCKER_TLV_OF_DPA_VLAN_ID])
-        key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    if (info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID])
+        key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID]);
 
-    if (info[ROCKER_TLV_OF_DPA_TUNNEL_ID])
-        key->tunnel_id = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_TUNNEL_ID]);
+    if (info[ROCKER_TLV_OF_DPA_INFO_TUNNEL_ID])
+        key->tunnel_id = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_TUNNEL_ID]);
 
     /* can't do VLAN bridging and tunnel bridging at same time */
     if (key->eth.vlan_id && key->tunnel_id)
         return -EINVAL;
 
-    if (info[ROCKER_TLV_OF_DPA_DST_MAC]) {
-        memcpy(key->eth.dst.a, rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_MAC]),
+    if (info[ROCKER_TLV_OF_DPA_INFO_DST_MAC]) {
+        memcpy(key->eth.dst.a, rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_MAC]),
                sizeof(key->eth.dst.a));
         dst_mac = true;
         unicast = (key->eth.dst.a[5] & 0x01) == 0x00;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_DST_MAC_MASK]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_DST_MAC_MASK]) {
         memcpy(mask->eth.dst.a,
-               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_MAC_MASK]),
+               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_MAC_MASK]),
                sizeof(mask->eth.dst.a));
         dst_mac_mask = true;
     }
@@ -452,36 +452,36 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
     if (mode == BRIDGING_MODE_UNKNOWN)
         return -EINVAL;
 
-    if (info[ROCKER_TLV_OF_DPA_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
         if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
             return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_GROUP_ID]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]) {
         action->write.group_id =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_GROUP_ID]);
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]);
         switch (mode) {
         case BRIDGING_MODE_VLAN_UCAST:
-            if (action->write.group_id != GROUP_TYPE_L2_INTERFACE)
+            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_VLAN_MCAST:
-            if (action->write.group_id != GROUP_TYPE_L2_MCAST)
+            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_MCAST)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_VLAN_DFLT:
-            if (action->write.group_id != GROUP_TYPE_L2_FLOOD)
+            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_FLOOD)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_TUNNEL_MCAST:
-            if (action->write.group_id != GROUP_TYPE_L2_OVERLAY)
+            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_OVERLAY)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_TUNNEL_DFLT:
             // XXX need L2 overlay flood type
-            if (action->write.group_id != GROUP_TYPE_L2_OVERLAY)
+            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_OVERLAY)
                 return -EINVAL;
             break;
         default:
@@ -489,16 +489,16 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
         }
     }
 
-    if (info[ROCKER_TLV_OF_DPA_TUN_LOG_LPORT]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_TUN_LOG_LPORT]) {
         action->write.tun_log_lport =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_TUN_LOG_LPORT]);
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_TUN_LOG_LPORT]);
         if (mode != BRIDGING_MODE_TUNNEL_UCAST)
             return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_OUT_LPORT])
+    if (info[ROCKER_TLV_OF_DPA_INFO_OUT_LPORT])
         action->apply.out_lport =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_OUT_LPORT]);
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_OUT_LPORT]);
 
     return 0;
 }
@@ -515,13 +515,13 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
         UNICAST_ROUTING_MODE_IPV6,
     } mode = UNICAST_ROUTING_MODE_UNKNOWN;
 
-    if (!info[ROCKER_TLV_OF_DPA_ETHERTYPE])
+    if (!info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE])
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_UNICAST_ROUTING;
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
-    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
+    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE]);
     switch (ntohs(key->eth.type)) {
     case 0x0800:
         mode = UNICAST_ROUTING_MODE_IPV4;
@@ -535,43 +535,43 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
 
     switch (mode) {
     case UNICAST_ROUTING_MODE_IPV4:
-        if (!info[ROCKER_TLV_OF_DPA_DST_IP])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_DST_IP])
             return -EINVAL;
-        key->ipv4.addr.dst = rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_DST_IP]);
+        key->ipv4.addr.dst = rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_INFO_DST_IP]);
         if (ipv4_addr_is_multicast(key->ipv4.addr.dst))
             return -EINVAL;
-        if (info[ROCKER_TLV_OF_DPA_DST_IP_MASK])
+        if (info[ROCKER_TLV_OF_DPA_INFO_DST_IP_MASK])
             mask->ipv4.addr.dst =
-                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_DST_IP_MASK]);
+                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_INFO_DST_IP_MASK]);
         break;
     case UNICAST_ROUTING_MODE_IPV6:
-        if (!info[ROCKER_TLV_OF_DPA_DST_IPV6])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6])
             return -EINVAL;
         memcpy(&key->ipv6.addr.dst,
-               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_IPV6]),
+               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6]),
                sizeof(key->ipv6.addr.dst));
         if (ipv6_addr_is_multicast(&key->ipv6.addr.dst))
             return -EINVAL;
-        if (info[ROCKER_TLV_OF_DPA_DST_IPV6_MASK])
+        if (info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6_MASK])
             memcpy(&mask->ipv6.addr.dst,
-                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_IPV6_MASK]),
+                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6_MASK]),
                    sizeof(mask->ipv6.addr.dst));
         break;
     default:
         return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
         if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
             return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_GROUP_ID]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]) {
         action->write.group_id =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_GROUP_ID]);
-        if (action->write.group_id != GROUP_TYPE_L3_UCAST)
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]);
+        if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L3_UCAST)
             return -EINVAL;
     }
 
@@ -590,14 +590,14 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         MULTICAST_ROUTING_MODE_IPV6,
     } mode = MULTICAST_ROUTING_MODE_UNKNOWN;
 
-    if (!info[ROCKER_TLV_OF_DPA_ETHERTYPE] ||
-        !info[ROCKER_TLV_OF_DPA_VLAN_ID])
+    if (!info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE] ||
+        !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID])
         return -EINVAL;
 
     key->tbl_id = OF_DPA_TABLE_MULTICAST_ROUTING;
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
-    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_ETHERTYPE]);
+    key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE]);
     switch (ntohs(key->eth.type)) {
     case 0x0800:
         mode = MULTICAST_ROUTING_MODE_IPV4;
@@ -609,26 +609,26 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         return -EINVAL;
     }
 
-    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    key->eth.vlan_id = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID]);
 
     switch (mode) {
     case MULTICAST_ROUTING_MODE_IPV4:
 
-        if (info[ROCKER_TLV_OF_DPA_SRC_IP])
+        if (info[ROCKER_TLV_OF_DPA_INFO_SRC_IP])
             key->ipv4.addr.src =
-                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_SRC_IP]);
+                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_INFO_SRC_IP]);
 
-        if (info[ROCKER_TLV_OF_DPA_SRC_IP_MASK])
+        if (info[ROCKER_TLV_OF_DPA_INFO_SRC_IP_MASK])
             mask->ipv4.addr.src =
-                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_SRC_IP_MASK]);
+                rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_INFO_SRC_IP_MASK]);
 
-        if (!info[ROCKER_TLV_OF_DPA_SRC_IP])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_SRC_IP])
             if (mask->ipv4.addr.src != 0xffffffff)
                 return -EINVAL;
 
-        if (!info[ROCKER_TLV_OF_DPA_DST_IP])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_DST_IP])
             return -EINVAL;
-        key->ipv4.addr.dst = rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_DST_IP]);
+        key->ipv4.addr.dst = rocker_tlv_get_u32(info[ROCKER_TLV_OF_DPA_INFO_DST_IP]);
         if (!ipv4_addr_is_multicast(key->ipv4.addr.dst))
             return -EINVAL;
 
@@ -636,27 +636,27 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
 
     case MULTICAST_ROUTING_MODE_IPV6:
 
-        if (info[ROCKER_TLV_OF_DPA_SRC_IPV6])
+        if (info[ROCKER_TLV_OF_DPA_INFO_SRC_IPV6])
             memcpy(&key->ipv6.addr.src,
-                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_SRC_IPV6]),
+                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_SRC_IPV6]),
                    sizeof(key->ipv6.addr.src));
 
-        if (info[ROCKER_TLV_OF_DPA_SRC_IPV6_MASK])
+        if (info[ROCKER_TLV_OF_DPA_INFO_SRC_IPV6_MASK])
             memcpy(&mask->ipv6.addr.src,
-                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_SRC_IPV6_MASK]),
+                   rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_SRC_IPV6_MASK]),
                    sizeof(mask->ipv6.addr.src));
 
-        if (!info[ROCKER_TLV_OF_DPA_SRC_IPV6])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_SRC_IPV6])
             if (mask->ipv6.addr.src.addr32[0] != 0xffffffff &&
                 mask->ipv6.addr.src.addr32[1] != 0xffffffff &&
                 mask->ipv6.addr.src.addr32[2] != 0xffffffff &&
                 mask->ipv6.addr.src.addr32[3] != 0xffffffff)
                 return -EINVAL;
 
-        if (!info[ROCKER_TLV_OF_DPA_DST_IPV6])
+        if (!info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6])
             return -EINVAL;
         memcpy(&key->ipv6.addr.dst,
-               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_DST_IPV6]),
+               rocker_tlv_data(info[ROCKER_TLV_OF_DPA_INFO_DST_IPV6]),
                sizeof(key->ipv6.addr.dst));
         if (!ipv6_addr_is_multicast(&key->ipv6.addr.dst))
             return -EINVAL;
@@ -667,17 +667,17 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_GOTO_TBL]);
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
         if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
             return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_GROUP_ID]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]) {
         action->write.group_id =
-            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_GROUP_ID]);
-        if (action->write.group_id != GROUP_TYPE_L3_MCAST)
+            rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_GROUP_ID]);
+        if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L3_MCAST)
             return -EINVAL;
         action->write.vlan_id = key->eth.vlan_id;
     }
@@ -876,7 +876,7 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
 
     group = group_alloc(ow->fs);
     group->id = 1;
-//    group->type = GROUP_TYPE_L2_INTERFACE;
+//    group->type = ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE;
     group->action.out_lport = 0x00000002;
     group->action.pop_vlan_tag = true;
     group_add(group);

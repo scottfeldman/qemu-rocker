@@ -248,6 +248,7 @@ enum {
 
 /* cmd info nested for flow msgs */
 enum {
+    ROCKER_TLV_OF_DPA_UNSPEC,
     ROCKER_TLV_OF_DPA_TBL,              /* u16 */
     ROCKER_TLV_OF_DPA_PRIORITY,         /* u32 */
     ROCKER_TLV_OF_DPA_HARDTIME,         /* u32 */
@@ -267,56 +268,57 @@ enum {
 
 /* OF_DPA_xxx nest */
 enum {
-    ROCKER_TLV_OF_DPA_IN_LPORT,         /* u16 */
-    ROCKER_TLV_OF_DPA_IN_LPORT_MASK,    /* u16 */
-    ROCKER_TLV_OF_DPA_OUT_LPORT,        /* u16 */
-    ROCKER_TLV_OF_DPA_GOTO_TBL,         /* u16 */
-    ROCKER_TLV_OF_DPA_GROUP_ID,         /* u32 */
-    ROCKER_TLV_OF_DPA_VLAN_ID,          /* u16 */
-    ROCKER_TLV_OF_DPA_VLAN_ID_MASK,     /* u16 */
-    ROCKER_TLV_OF_DPA_VLAN_PCP,         /* u16 */
-    ROCKER_TLV_OF_DPA_VLAN_PCP_MASK,    /* u16 */
-    ROCKER_TLV_OF_DPA_VLAN_PCP_ACTION,  /* u8 */
-    ROCKER_TLV_OF_DPA_NEW_VLAN_ID,      /* u16 */
-    ROCKER_TLV_OF_DPA_NEW_VLAN_PCP,     /* u8 */
-    ROCKER_TLV_OF_DPA_TUNNEL_ID,        /* u32 */
-    ROCKER_TLV_OF_DPA_TUN_LOG_LPORT,    /* u32 */
-    ROCKER_TLV_OF_DPA_ETHERTYPE,        /* u16 */
-    ROCKER_TLV_OF_DPA_DST_MAC,          /* binary */
-    ROCKER_TLV_OF_DPA_DST_MAC_MASK,     /* binary */
-    ROCKER_TLV_OF_DPA_SRC_MAC,          /* binary */
-    ROCKER_TLV_OF_DPA_SRC_MAC_MASK,     /* binary */
-    ROCKER_TLV_OF_DPA_IP_PROTO,         /* u16 */
-    ROCKER_TLV_OF_DPA_IP_PROTO_MASK,    /* u16 */
-    ROCKER_TLV_OF_DPA_DSCP,             /* u16 */
-    ROCKER_TLV_OF_DPA_DSCP_MASK,        /* u16 */
-    ROCKER_TLV_OF_DPA_DSCP_ACTION,      /* u8 */
-    ROCKER_TLV_OF_DPA_NEW_DSCP,         /* u8 */
-    ROCKER_TLV_OF_DPA_ECN,              /* u16 */
-    ROCKER_TLV_OF_DPA_ECN_MASK,         /* u16 */
-    ROCKER_TLV_OF_DPA_DST_IP,           /* binary */
-    ROCKER_TLV_OF_DPA_DST_IP_MASK,      /* binary */
-    ROCKER_TLV_OF_DPA_SRC_IP,           /* binary */
-    ROCKER_TLV_OF_DPA_SRC_IP_MASK,      /* binary */
-    ROCKER_TLV_OF_DPA_DST_IPV6,         /* binary */
-    ROCKER_TLV_OF_DPA_DST_IPV6_MASK,    /* binary */
-    ROCKER_TLV_OF_DPA_SRC_IPV6,         /* binary */
-    ROCKER_TLV_OF_DPA_SRC_IPV6_MASK,    /* binary */
-    ROCKER_TLV_OF_DPA_SRC_ARP_IP,       /* u32 */
-    ROCKER_TLV_OF_DPA_SRC_ARP_IP_MASK,  /* u32 */
-    ROCKER_TLV_OF_DPA_L4_DST_PORT,      /* u16 */
-    ROCKER_TLV_OF_DPA_L4_DST_PORT_MASK, /* u16 */
-    ROCKER_TLV_OF_DPA_L4_SRC_PORT,      /* u16 */
-    ROCKER_TLV_OF_DPA_L4_SRC_PORT_MASK, /* u16 */
-    ROCKER_TLV_OF_DPA_ICMP_TYPE,        /* u8 */
-    ROCKER_TLV_OF_DPA_ICMP_TYPE_MASK,   /* u8 */
-    ROCKER_TLV_OF_DPA_ICMP_CODE,        /* u8 */
-    ROCKER_TLV_OF_DPA_ICMP_CODE_MASK,   /* u8 */
-    ROCKER_TLV_OF_DPA_IPV6_LABEL,       /* u32 */
-    ROCKER_TLV_OF_DPA_IPV6_LABEL_MASK,  /* u32 */
-    ROCKER_TLV_OF_DPA_QUEUE_ID_ACTION,  /* u8 */
-    ROCKER_TLV_OF_DPA_NEW_QUEUE_ID,     /* u8 */
-    ROCKER_TLV_OF_DPA_CLEAR_ACTIONS,    /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_UNSPEC,
+    ROCKER_TLV_OF_DPA_INFO_IN_LPORT,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_IN_LPORT_MASK,       /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_OUT_LPORT,           /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_GOTO_TBL,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_GROUP_ID,            /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_VLAN_ID,             /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK,        /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_VLAN_PCP,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_VLAN_PCP_MASK,       /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_VLAN_PCP_ACTION,     /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_NEW_VLAN_ID,         /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_NEW_VLAN_PCP,        /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_TUNNEL_ID,           /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_TUN_LOG_LPORT,       /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_ETHERTYPE,           /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_DST_MAC,             /* binary */
+    ROCKER_TLV_OF_DPA_INFO_DST_MAC_MASK,        /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_MAC,             /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_MAC_MASK,        /* binary */
+    ROCKER_TLV_OF_DPA_INFO_IP_PROTO,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_IP_PROTO_MASK,       /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_DSCP,                /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_DSCP_MASK,           /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_DSCP_ACTION,         /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_NEW_DSCP,            /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_ECN,                 /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_ECN_MASK,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_DST_IP,              /* binary */
+    ROCKER_TLV_OF_DPA_INFO_DST_IP_MASK,         /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_IP,              /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_IP_MASK,         /* binary */
+    ROCKER_TLV_OF_DPA_INFO_DST_IPV6,            /* binary */
+    ROCKER_TLV_OF_DPA_INFO_DST_IPV6_MASK,       /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_IPV6,            /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_IPV6_MASK,       /* binary */
+    ROCKER_TLV_OF_DPA_INFO_SRC_ARP_IP,          /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_SRC_ARP_IP_MASK,     /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_L4_DST_PORT,         /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_L4_DST_PORT_MASK,    /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_L4_SRC_PORT,         /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_L4_SRC_PORT_MASK,    /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_ICMP_TYPE,           /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_ICMP_TYPE_MASK,      /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_ICMP_CODE,           /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_ICMP_CODE_MASK,      /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_IPV6_LABEL,          /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_IPV6_LABEL_MASK,     /* u32 */
+    ROCKER_TLV_OF_DPA_INFO_QUEUE_ID_ACTION,     /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_NEW_QUEUE_ID,        /* u8 */
+    ROCKER_TLV_OF_DPA_INFO_CLEAR_ACTIONS,       /* u32 */
 
     __ROCKER_TLV_OF_DPA_INFO_MAX,
     ROCKER_TLV_OF_DPA_INFO_MAX = __ROCKER_TLV_OF_DPA_INFO_MAX - 1,
@@ -324,6 +326,7 @@ enum {
 
 /* of_dpa flow stats */
 enum {
+    ROCKER_TLV_OF_DPA_STAT_UNSPEC,
     ROCKER_TLV_OF_DPA_STAT_DURATION,    /* u32 */
     ROCKER_TLV_OF_DPA_STAT_RX_PKTS,     /* u64 */
     ROCKER_TLV_OF_DPA_STAT_TX_PKTS,     /* u64 */
@@ -337,15 +340,15 @@ enum {
  */
 
 enum flow_group_type {
-    GROUP_TYPE_L2_INTERFACE = 0,
-    GROUP_TYPE_L2_REWRITE,
-    GROUP_TYPE_L3_UCAST,
-    GROUP_TYPE_L2_MCAST,
-    GROUP_TYPE_L2_FLOOD,
-    GROUP_TYPE_L3_INTERFACE,
-    GROUP_TYPE_L3_MCAST,
-    GROUP_TYPE_L3_ECMP,
-    GROUP_TYPE_L2_OVERLAY,
+    ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE = 0,
+    ROCKER_FLOW_GROUP_TYPE_L2_REWRITE,
+    ROCKER_FLOW_GROUP_TYPE_L3_UCAST,
+    ROCKER_FLOW_GROUP_TYPE_L2_MCAST,
+    ROCKER_FLOW_GROUP_TYPE_L2_FLOOD,
+    ROCKER_FLOW_GROUP_TYPE_L3_INTERFACE,
+    ROCKER_FLOW_GROUP_TYPE_L3_MCAST,
+    ROCKER_FLOW_GROUP_TYPE_L3_ECMP,
+    ROCKER_FLOW_GROUP_TYPE_L2_OVERLAY,
 };
 
 /*
@@ -353,10 +356,10 @@ enum flow_group_type {
  */
 
 enum flow_overlay_type {
-    OVERLAY_TYPE_FLOOD_UCAST = 0,
-    OVERLAY_TYPE_FLOOD_MCAST,
-    OVERLAY_TYPE_MCAST_UCAST,
-    OVERLAY_TYPE_MCAST_MCAST,
+    ROCKER_FLOW_OVERLAY_TYPE_FLOOD_UCAST = 0,
+    ROCKER_FLOW_OVERLAY_TYPE_FLOOD_MCAST,
+    ROCKER_FLOW_OVERLAY_TYPE_MCAST_UCAST,
+    ROCKER_FLOW_OVERLAY_TYPE_MCAST_MCAST,
 };
 
 /*
