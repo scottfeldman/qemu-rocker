@@ -160,6 +160,7 @@ struct world *fp_port_get_world(struct fp_port *port)
 
 void fp_port_set_world(struct fp_port *port, struct world *world)
 {
+    DPRINTF("port %d setting world \"%s\"\n", port->index, world_name(world));
     port->world = world;
 }
 
