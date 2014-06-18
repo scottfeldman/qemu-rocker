@@ -62,5 +62,6 @@ void *world_private(struct world *world);
 struct rocker *world_rocker(struct world *world);
 
 enum rocker_world_type world_type(struct world *world);
+const char *world_name(struct world *world);
 
 #endif /* _ROCKER_WORLD_H_ */
