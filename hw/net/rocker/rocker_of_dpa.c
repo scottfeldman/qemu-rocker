@@ -169,7 +169,11 @@ static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
 static void of_dpa_eg(struct world *world, struct flow_context *fc,
                       uint32_t out_lport)
 {
-    rocker_port_eg(world_rocker(world), out_lport, fc->iov, fc->iovcnt);
+    if (out_lport == 0)
+        rx_produce(world, fc->in_lport, fc->iov, fc->iovcnt);
+    else
+        rocker_port_eg(world_rocker(world), out_lport,
+                       fc->iov, fc->iovcnt);
 }
 
 static struct flow_tbl_ops of_dpa_tbl_ops[] = {
@@ -877,7 +881,7 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
     group = group_alloc(ow->fs);
     group->id = 1;
 //    group->type = ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE;
-    group->action.out_lport = 0x00000002;
+    group->action.out_lport = 0x00000000;
     group->action.pop_vlan_tag = true;
     group_add(group);
 
@@ -893,17 +897,21 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
 
 static void of_dpa_default_vlan(struct of_dpa_world *ow)
 {
+    uint32_t fp_ports = rocker_fp_ports(world_rocker(ow->world));
     struct flow *flow;
+    uint32_t lport;
 
-    /* untagged pkt on port 0 to VLAN 100 */
-    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = OF_DPA_TABLE_VLAN;
-    flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
-    flow->key.in_lport = 0x00000001;
-    flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
-    flow->action.goto_tbl = OF_DPA_TABLE_TERMINATION_MAC;
-    flow->action.apply.new_vlan_id = htons(100);
-    flow_add(flow);
+    /* untagged pkts from physical ports goto VLAN 100 */
+    for (lport = 1; lport <= fp_ports; lport++) {
+        flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
+        flow->key.tbl_id = OF_DPA_TABLE_VLAN;
+        flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
+        flow->key.in_lport = lport;
+        flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
+        flow->action.goto_tbl = OF_DPA_TABLE_TERMINATION_MAC;
+        flow->action.apply.new_vlan_id = htons(100);
+        flow_add(flow);
+    }
 }
 
 static void of_dpa_default_ig_port(struct of_dpa_world *ow)
