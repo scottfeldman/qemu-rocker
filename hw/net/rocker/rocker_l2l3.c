@@ -219,9 +219,6 @@ static RockerFlowList *l2l3_flow_fill(struct world *world, uint32_t tbl_id)
 static ssize_t l2l3_ig(struct world *world, uint32_t lport,
                        const struct iovec *iov, int iovcnt)
 {
-    // XXX for now just sent every packet received up on same port
-    rx_produce(world, lport, iov, iovcnt);
-
     struct l2l3_world *lw = world_private(world);
     struct iovec iov_copy[iovcnt + 2];
     struct flow_context fc = {
