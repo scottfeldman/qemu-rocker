@@ -258,7 +258,6 @@ static void l2l3_default_bridging(struct l2l3_world *lw)
     flow->key.width = FLOW_KEY_WIDTH(eth.dst);
     flow->key.eth.vlan_id = htons(100);
     memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
-    flow->action.goto_tbl = L2L3_TABLE_ACL_POLICY;
     flow->action.write.group_id = 1;
     flow_add(flow);
 }
