@@ -26,16 +26,6 @@
 #include "rocker_flow.h"
 #include "rocker_of_dpa.h"
 
-enum of_dpa_tbl_id {
-    OF_DPA_TABLE_INGRESS_PORT = 0,
-    OF_DPA_TABLE_VLAN = 10,
-    OF_DPA_TABLE_TERMINATION_MAC = 20,
-    OF_DPA_TABLE_UNICAST_ROUTING = 30,
-    OF_DPA_TABLE_MULTICAST_ROUTING = 40,
-    OF_DPA_TABLE_BRIDGING = 50,
-    OF_DPA_TABLE_ACL_POLICY = 60,
-};
-
 struct of_dpa_world {
     struct world *world;
     struct flow_sys *fs;
@@ -46,7 +36,7 @@ struct of_dpa_world {
 static void of_dpa_ig_port_build_match(struct flow_context *fc,
                                        struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
     match->value.in_lport = fc->in_lport;
     match->value.width = FLOW_KEY_WIDTH(tbl_id);
 }
@@ -54,7 +44,7 @@ static void of_dpa_ig_port_build_match(struct flow_context *fc,
 static void of_dpa_vlan_build_match(struct flow_context *fc,
                                     struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_VLAN;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
     match->value.in_lport = fc->in_lport;
     if (fc->fields.vlanhdr)
         match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
@@ -73,7 +63,7 @@ static void of_dpa_vlan_insert(struct flow_context *fc, struct flow *flow)
 static void of_dpa_term_mac_build_match(struct flow_context *fc,
                                         struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_TERMINATION_MAC;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC;
     match->value.in_lport = fc->in_lport;
     match->value.eth.type = *fc->fields.h_proto;
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
@@ -84,7 +74,7 @@ static void of_dpa_term_mac_build_match(struct flow_context *fc,
 
 static void of_dpa_term_mac_miss(struct flow_sys *fs, struct flow_context *fc)
 {
-    flow_ig_tbl(fs, fc, OF_DPA_TABLE_BRIDGING);
+    flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_BRIDGING);
 }
 
 static void of_dpa_copy_to_controller(struct flow_context *fc,
@@ -99,7 +89,7 @@ static void of_dpa_copy_to_controller(struct flow_context *fc,
 static void of_dpa_bridging_build_match(struct flow_context *fc,
                                         struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_BRIDGING;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
     if (fc->fields.vlanhdr)
         match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     else if (fc->tunnel_id)
@@ -111,7 +101,7 @@ static void of_dpa_bridging_build_match(struct flow_context *fc,
 
 static void of_dpa_bridging_miss(struct flow_sys *fs, struct flow_context *fc)
 {
-    flow_ig_tbl(fs, fc, OF_DPA_TABLE_ACL_POLICY);
+    flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_ACL_POLICY);
 }
 
 static void of_dpa_bridging_action_write(struct flow_context *fc,
@@ -124,7 +114,7 @@ static void of_dpa_bridging_action_write(struct flow_context *fc,
 static void of_dpa_unicast_routing_build_match(struct flow_context *fc,
                                                struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_UNICAST_ROUTING;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING;
     match->value.eth.type = *fc->fields.h_proto;
     if (fc->fields.ipv4hdr)
         match->value.ipv4.addr.dst = fc->fields.ipv4hdr->ip_dst;
@@ -143,7 +133,7 @@ static void of_dpa_unicast_routing_action_write(struct flow_context *fc,
 static void of_dpa_multicast_routing_build_match(struct flow_context *fc,
                                                  struct flow_match *match)
 {
-    match->value.tbl_id = OF_DPA_TABLE_MULTICAST_ROUTING;
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING;
     match->value.eth.type = *fc->fields.h_proto;
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     if (fc->fields.ipv4hdr) {
@@ -177,36 +167,36 @@ static void of_dpa_eg(struct world *world, struct flow_context *fc,
 }
 
 static struct flow_tbl_ops of_dpa_tbl_ops[] = {
-    [OF_DPA_TABLE_INGRESS_PORT] = {
+    [ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT] = {
         .build_match = of_dpa_ig_port_build_match,
     },
-    [OF_DPA_TABLE_VLAN] = {
+    [ROCKER_OF_DPA_TABLE_ID_VLAN] = {
         .build_match = of_dpa_vlan_build_match,
         .action_apply = of_dpa_vlan_insert,
     },
-    [OF_DPA_TABLE_TERMINATION_MAC] = {
+    [ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC] = {
         .build_match = of_dpa_term_mac_build_match,
         .miss = of_dpa_term_mac_miss,
         .action_apply = of_dpa_copy_to_controller,
     },
-    [OF_DPA_TABLE_BRIDGING] = {
+    [ROCKER_OF_DPA_TABLE_ID_BRIDGING] = {
         .build_match = of_dpa_bridging_build_match,
         .miss = of_dpa_bridging_miss,
         .action_apply = of_dpa_copy_to_controller,
         .action_write = of_dpa_bridging_action_write,
         .eg = of_dpa_eg,
     },
-    [OF_DPA_TABLE_UNICAST_ROUTING] = {
+    [ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING] = {
         .build_match = of_dpa_unicast_routing_build_match,
         .action_write = of_dpa_unicast_routing_action_write,
         .eg = of_dpa_eg,
     },
-    [OF_DPA_TABLE_MULTICAST_ROUTING] = {
+    [ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING] = {
         .build_match = of_dpa_multicast_routing_build_match,
         .action_write = of_dpa_multicast_routing_action_write,
         .eg = of_dpa_eg,
     },
-    [OF_DPA_TABLE_ACL_POLICY] = {
+    [ROCKER_OF_DPA_TABLE_ID_ACL_POLICY] = {
         // XXX implement this
     },
 };
@@ -230,7 +220,7 @@ static ssize_t of_dpa_ig(struct world *world, uint32_t lport,
     };
 
     flow_pkt_parse(&fc, iov, iovcnt);
-    flow_ig_tbl(ow->fs, &fc, OF_DPA_TABLE_INGRESS_PORT);
+    flow_ig_tbl(ow->fs, &fc, ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT);
 
     return iov_size(iov, iovcnt);
 }
@@ -244,21 +234,21 @@ static int of_dpa_cmd_add_ig_port(struct flow *flow, struct rocker_tlv **info)
     bool overlay_tunnel;
 
     if (!info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT] ||
-        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL])
+        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID])
         return -EINVAL;
 
-    key->tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
     key->width = FLOW_KEY_WIDTH(tbl_id);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
     overlay_tunnel = !!(key->in_lport & ROCKER_TUNNEL_LPORT);
 
-    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
+    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
 
-    if (!overlay_tunnel && action->goto_tbl != OF_DPA_TABLE_VLAN)
+    if (!overlay_tunnel && action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_VLAN)
         return -EINVAL;
 
-    if (overlay_tunnel && action->goto_tbl != OF_DPA_TABLE_BRIDGING)
+    if (overlay_tunnel && action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_BRIDGING)
         return -EINVAL;
 
     return 0;
@@ -274,10 +264,10 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **info)
     if (!info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT] ||
         !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID] ||
         !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK] ||
-        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL])
+        !info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID])
         return -EINVAL;
 
-    key->tbl_id = OF_DPA_TABLE_VLAN;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
     key->width = FLOW_KEY_WIDTH(eth.vlan_id);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
@@ -295,9 +285,9 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **info)
     else
         return -EINVAL;
 
-    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
+    action->goto_tbl = rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
 
-    if (action->goto_tbl != OF_DPA_TABLE_TERMINATION_MAC)
+    if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC)
         return -EINVAL;
 
     if (untagged) {
@@ -334,7 +324,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
         !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK])
         return -EINVAL;
 
-    key->tbl_id = OF_DPA_TABLE_TERMINATION_MAC;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC;
     key->width = FLOW_KEY_WIDTH(eth.type);
 
     key->in_lport = rocker_tlv_get_le32(info[ROCKER_TLV_OF_DPA_INFO_IN_LPORT]);
@@ -370,18 +360,20 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow, struct rocker_tlv **info)
     mask->eth.vlan_id =
         rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK]);
 
-    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
-    
-        if (action->goto_tbl != OF_DPA_TABLE_UNICAST_ROUTING ||
-            action->goto_tbl != OF_DPA_TABLE_MULTICAST_ROUTING)
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
+
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING ||
+            action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING)
             return -EINVAL;
 
-        if (unicast && action->goto_tbl != OF_DPA_TABLE_UNICAST_ROUTING)
+        if (unicast &&
+            action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING)
             return -EINVAL;
 
-        if (multicast && action->goto_tbl != OF_DPA_TABLE_MULTICAST_ROUTING)
+        if (multicast &&
+            action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING)
             return -EINVAL;
     }
 
@@ -410,7 +402,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
         BRIDGING_MODE_TUNNEL_DFLT,
     } mode = BRIDGING_MODE_UNKNOWN;
 
-    key->tbl_id = OF_DPA_TABLE_BRIDGING;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
     key->width = FLOW_KEY_WIDTH(eth.dst);
 
     if (info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID])
@@ -456,10 +448,10 @@ static int of_dpa_cmd_add_bridging(struct flow *flow, struct rocker_tlv **info)
     if (mode == BRIDGING_MODE_UNKNOWN)
         return -EINVAL;
 
-    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
-        if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_ACL_POLICY)
             return -EINVAL;
     }
 
@@ -522,7 +514,7 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
     if (!info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE])
         return -EINVAL;
 
-    key->tbl_id = OF_DPA_TABLE_UNICAST_ROUTING;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING;
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE]);
@@ -565,10 +557,10 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
         return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
-        if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_ACL_POLICY)
             return -EINVAL;
     }
 
@@ -598,7 +590,7 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         !info[ROCKER_TLV_OF_DPA_INFO_VLAN_ID])
         return -EINVAL;
 
-    key->tbl_id = OF_DPA_TABLE_MULTICAST_ROUTING;
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING;
     key->width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 
     key->eth.type = rocker_tlv_get_u16(info[ROCKER_TLV_OF_DPA_INFO_ETHERTYPE]);
@@ -671,10 +663,10 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
         return -EINVAL;
     }
 
-    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]) {
+    if (info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]) {
         action->goto_tbl =
-            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TBL]);
-        if (action->goto_tbl != OF_DPA_TABLE_ACL_POLICY)
+            rocker_tlv_get_le16(info[ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID]);
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_ACL_POLICY)
             return -EINVAL;
     }
 
@@ -701,8 +693,7 @@ static int of_dpa_cmd_add(struct of_dpa_world *ow, uint64_t cookie,
     struct flow_sys *fs = ow->fs;
     struct flow *flow = flow_find(fs, cookie);
     struct rocker_tlv *info[ROCKER_TLV_OF_DPA_INFO_MAX + 1];
-    struct rocker_tlv *nest = NULL;
-    enum of_dpa_tbl_id tbl;
+    enum rocker_of_dpa_table_id tbl;
     uint32_t priority;
     uint32_t hardtime;
     uint32_t idletime = 0;
@@ -711,70 +702,51 @@ static int of_dpa_cmd_add(struct of_dpa_world *ow, uint64_t cookie,
     if (flow)
         return -EEXIST;
 
-    if (!tlvs[ROCKER_TLV_OF_DPA_TBL] ||
+    if (!tlvs[ROCKER_TLV_OF_DPA_TABLE_ID] ||
         !tlvs[ROCKER_TLV_OF_DPA_PRIORITY] ||
-        !tlvs[ROCKER_TLV_OF_DPA_HARDTIME])
+        !tlvs[ROCKER_TLV_OF_DPA_HARDTIME] ||
+        !tlvs[ROCKER_TLV_OF_DPA_INFO])
         return -EINVAL;
 
-    tbl = rocker_tlv_get_le16(tlvs[ROCKER_TLV_OF_DPA_TBL]);
+    tbl = rocker_tlv_get_le16(tlvs[ROCKER_TLV_OF_DPA_TABLE_ID]);
     priority = rocker_tlv_get_le32(tlvs[ROCKER_TLV_OF_DPA_PRIORITY]);
     hardtime = rocker_tlv_get_le32(tlvs[ROCKER_TLV_OF_DPA_HARDTIME]);
 
     if (tlvs[ROCKER_TLV_OF_DPA_IDLETIME]) {
-        if (tlvs[ROCKER_TLV_OF_DPA_IG_PORT] ||
-            tlvs[ROCKER_TLV_OF_DPA_VLAN] ||
-            tlvs[ROCKER_TLV_OF_DPA_TERM_MAC])
+        if (tbl == ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT ||
+            tbl == ROCKER_OF_DPA_TABLE_ID_VLAN ||
+            tbl == ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC)
             return -EINVAL;
         idletime = rocker_tlv_get_le32(tlvs[ROCKER_TLV_OF_DPA_IDLETIME]);
     }
 
-    if (tlvs[ROCKER_TLV_OF_DPA_IG_PORT] && tbl == OF_DPA_TABLE_INGRESS_PORT)
-        nest = tlvs[ROCKER_TLV_OF_DPA_IG_PORT];
-    else if (tlvs[ROCKER_TLV_OF_DPA_VLAN] && tbl == OF_DPA_TABLE_VLAN)
-        nest = tlvs[ROCKER_TLV_OF_DPA_VLAN];
-    else if (tlvs[ROCKER_TLV_OF_DPA_TERM_MAC] &&
-             tbl == OF_DPA_TABLE_TERMINATION_MAC)
-        nest = tlvs[ROCKER_TLV_OF_DPA_TERM_MAC];
-    else if (tlvs[ROCKER_TLV_OF_DPA_BRIDGING] && tbl == OF_DPA_TABLE_BRIDGING)
-        nest = tlvs[ROCKER_TLV_OF_DPA_BRIDGING];
-    else if (tlvs[ROCKER_TLV_OF_DPA_UNICAST_ROUTING] &&
-             tbl == OF_DPA_TABLE_UNICAST_ROUTING)
-        nest = tlvs[ROCKER_TLV_OF_DPA_UNICAST_ROUTING];
-    else if (tlvs[ROCKER_TLV_OF_DPA_MULTICAST_ROUTING] &&
-             tbl == OF_DPA_TABLE_MULTICAST_ROUTING)
-        nest = tlvs[ROCKER_TLV_OF_DPA_MULTICAST_ROUTING];
-    else if (tlvs[ROCKER_TLV_OF_DPA_ACL] && tbl == OF_DPA_TABLE_ACL_POLICY)
-        nest = tlvs[ROCKER_TLV_OF_DPA_ACL];
-
-    if (!nest)
-        return -EINVAL;
-
-    rocker_tlv_parse_nested(info, ROCKER_TLV_OF_DPA_INFO_MAX, nest);
+    rocker_tlv_parse_nested(info, ROCKER_TLV_OF_DPA_INFO_MAX,
+                            tlvs[ROCKER_TLV_OF_DPA_INFO]);
 
     flow = flow_alloc(fs, cookie, priority, hardtime, idletime);
     if (!flow)
         return -EINVAL;
 
     switch (tbl) {
-    case OF_DPA_TABLE_INGRESS_PORT:
+    case ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT:
         err = of_dpa_cmd_add_ig_port(flow, info);
         break;
-    case OF_DPA_TABLE_VLAN:
+    case ROCKER_OF_DPA_TABLE_ID_VLAN:
         err = of_dpa_cmd_add_vlan(flow, info);
         break;
-    case OF_DPA_TABLE_TERMINATION_MAC:
+    case ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC:
         err = of_dpa_cmd_add_term_mac(flow, info);
         break;
-    case OF_DPA_TABLE_BRIDGING:
+    case ROCKER_OF_DPA_TABLE_ID_BRIDGING:
         err = of_dpa_cmd_add_bridging(flow, info);
         break;
-    case OF_DPA_TABLE_UNICAST_ROUTING:
+    case ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING:
         err = of_dpa_cmd_add_unicast_routing(flow, info);
         break;
-    case OF_DPA_TABLE_MULTICAST_ROUTING:
+    case ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING:
         err = of_dpa_cmd_add_multicast_routing(flow, info);
         break;
-    case OF_DPA_TABLE_ACL_POLICY:
+    case ROCKER_OF_DPA_TABLE_ID_ACL_POLICY:
         err = of_dpa_cmd_add_acl(flow, info);
         break;
     }
@@ -887,7 +859,7 @@ static void of_dpa_default_bridging(struct of_dpa_world *ow)
 
     /* pkts on VLAN 100 goto bridging mode VLAN dflt: group id 1 */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = OF_DPA_TABLE_BRIDGING;
+    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
     flow->key.width = FLOW_KEY_WIDTH(eth.dst);
     flow->key.eth.vlan_id = htons(100);
     memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
@@ -904,11 +876,11 @@ static void of_dpa_default_vlan(struct of_dpa_world *ow)
     /* untagged pkts from physical ports goto VLAN 100 */
     for (lport = 1; lport <= fp_ports; lport++) {
         flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-        flow->key.tbl_id = OF_DPA_TABLE_VLAN;
+        flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
         flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
         flow->key.in_lport = lport;
         flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
-        flow->action.goto_tbl = OF_DPA_TABLE_TERMINATION_MAC;
+        flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC;
         flow->action.apply.new_vlan_id = htons(100);
         flow_add(flow);
     }
@@ -920,20 +892,20 @@ static void of_dpa_default_ig_port(struct of_dpa_world *ow)
 
     /* default pkts from physical ports goto VLAN tbl */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
     flow->key.width = FLOW_KEY_WIDTH(tbl_id);
     flow->key.in_lport = 0x00000000;
     flow->mask.in_lport = ROCKER_FP_PORTS_MAX + 1;
-    flow->action.goto_tbl = OF_DPA_TABLE_VLAN;
+    flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_VLAN;
     flow_add(flow);
 
     /* default pkts from overlay tunnels goto bridging tbl */
     flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = OF_DPA_TABLE_INGRESS_PORT;
+    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
     flow->key.width = FLOW_KEY_WIDTH(tbl_id);
     flow->key.in_lport = ROCKER_TUNNEL_LPORT;
     flow->mask.in_lport = 0xffff0000;
-    flow->action.goto_tbl = OF_DPA_TABLE_BRIDGING;
+    flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
     flow_add(flow);
 }
 
