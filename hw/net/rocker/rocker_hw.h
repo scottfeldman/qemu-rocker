@@ -254,21 +254,25 @@ enum {
 /* cmd info nested for flow msgs */
 enum {
     ROCKER_TLV_OF_DPA_UNSPEC,
-    ROCKER_TLV_OF_DPA_TBL,              /* u16 */
+    ROCKER_TLV_OF_DPA_TABLE_ID,         /* u16 */
     ROCKER_TLV_OF_DPA_PRIORITY,         /* u32 */
     ROCKER_TLV_OF_DPA_HARDTIME,         /* u32 */
     ROCKER_TLV_OF_DPA_IDLETIME,         /* u32 */
     ROCKER_TLV_OF_DPA_COOKIE,           /* u64 */
-    ROCKER_TLV_OF_DPA_IG_PORT,          /* nest */
-    ROCKER_TLV_OF_DPA_VLAN,             /* nest */
-    ROCKER_TLV_OF_DPA_TERM_MAC,         /* nest */
-    ROCKER_TLV_OF_DPA_BRIDGING,         /* nest */
-    ROCKER_TLV_OF_DPA_UNICAST_ROUTING,  /* nest */
-    ROCKER_TLV_OF_DPA_MULTICAST_ROUTING,/* nest */
-    ROCKER_TLV_OF_DPA_ACL,              /* nest */
+    ROCKER_TLV_OF_DPA_INFO,             /* nest */
 
     __ROCKER_TLV_OF_DPA_MAX,
     ROCKER_TLV_OF_DPA_MAX = __ROCKER_TLV_OF_DPA_MAX - 1,
+};
+
+enum rocker_of_dpa_table_id {
+    ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT,
+    ROCKER_OF_DPA_TABLE_ID_VLAN,
+    ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC,
+    ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING,
+    ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING,
+    ROCKER_OF_DPA_TABLE_ID_BRIDGING,
+    ROCKER_OF_DPA_TABLE_ID_ACL_POLICY,
 };
 
 /* OF_DPA_xxx nest */
@@ -277,7 +281,7 @@ enum {
     ROCKER_TLV_OF_DPA_INFO_IN_LPORT,            /* u16 */
     ROCKER_TLV_OF_DPA_INFO_IN_LPORT_MASK,       /* u16 */
     ROCKER_TLV_OF_DPA_INFO_OUT_LPORT,           /* u16 */
-    ROCKER_TLV_OF_DPA_INFO_GOTO_TBL,            /* u16 */
+    ROCKER_TLV_OF_DPA_INFO_GOTO_TABLE_ID,       /* u16 */
     ROCKER_TLV_OF_DPA_INFO_GROUP_ID,            /* u32 */
     ROCKER_TLV_OF_DPA_INFO_VLAN_ID,             /* u16 */
     ROCKER_TLV_OF_DPA_INFO_VLAN_ID_MASK,        /* u16 */
