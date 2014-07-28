@@ -294,13 +294,13 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     if (!fp_port_from_lport(key->in_lport, &port))
         return -EINVAL;
 
-    if (mask->eth.vlan_id == htons(0x1fff))
     key->eth.vlan_id = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK])
         mask->eth.vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
 
+    if (mask->eth.vlan_id == htons(0x0))
         untagged = false; /* filtering */
     else if (mask->eth.vlan_id == htons(0x0fff))
         untagged = true;
