@@ -317,8 +317,8 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID])
             return -EINVAL;
         action->apply.new_vlan_id =
-        if (1 < ntohs(action->apply.new_vlan_id) ||
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID]);
+        if (1 > ntohs(action->apply.new_vlan_id) ||
             ntohs(action->apply.new_vlan_id) > 4094)
             return -EINVAL;
     }
