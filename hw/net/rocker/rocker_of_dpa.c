@@ -839,11 +839,11 @@ static int of_dpa_cmd_flow_get_stats(struct of_dpa_world *ow, uint64_t cookie,
         return -EMSGSIZE;
 
     pos = 0;
-    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_OF_DPA_STAT_DURATION,
+    rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_DURATION,
                         flow->stats.duration);
-    rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_STAT_RX_PKTS,
+    rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_RX_PKTS,
                         flow->stats.rx_pkts);
-    rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_STAT_TX_PKTS,
+    rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_TX_PKTS,
                         flow->stats.tx_pkts);
 
     return desc_set_buf(info, tlv_size);
