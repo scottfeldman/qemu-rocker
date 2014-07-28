@@ -33,7 +33,7 @@ size_t group_tbl_size(struct flow_sys *fs)
     return g_hash_table_size(fs->group_tbl);
 }
 
-static struct group *group_find(struct flow_sys *fs, uint16_t id)
+static struct group *group_find(struct flow_sys *fs, uint32_t id)
 {
     return g_hash_table_lookup(fs->group_tbl, &id);
 }
@@ -92,7 +92,7 @@ static int group_mod(struct group *group)
     return 0;
 }
 
-static int group_del(struct flow_sys *fs, uint16_t id)
+static int group_del(struct flow_sys *fs, uint32_t id)
 {
     struct group *group = group_find(fs, id);
 
@@ -107,7 +107,7 @@ static int group_del(struct flow_sys *fs, uint16_t id)
     return 0;
 }
 
-static int group_get_stats(struct flow_sys *fs, uint16_t id)
+static int group_get_stats(struct flow_sys *fs, uint32_t id)
 {
     struct group *group = group_find(fs, id);
 
