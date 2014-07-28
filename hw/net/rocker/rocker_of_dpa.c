@@ -245,6 +245,7 @@ static int of_dpa_cmd_add_ig_port(struct flow *flow,
                                   struct rocker_tlv **flow_tlvs)
 {
     struct flow_key *key = &flow->key;
+    struct flow_key *mask = &flow->mask;
     struct flow_action *action = &flow->action;
     bool overlay_tunnel;
 
@@ -256,6 +257,9 @@ static int of_dpa_cmd_add_ig_port(struct flow *flow,
     key->width = FLOW_KEY_WIDTH(tbl_id);
 
     key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    mask->in_lport =
+        rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
+
     overlay_tunnel = !!(key->in_lport & ROCKER_TUNNEL_LPORT);
 
     action->goto_tbl =
