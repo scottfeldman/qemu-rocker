@@ -654,184 +654,190 @@ commands are defined:
 
 TLVs for add and modify commands are:
 
-	field		width	description
-	--------------------------------------------------
-	OF_DPA_CMD	2	CMD_[ADD|MOD]
-	OF_DPA_TBL	2	Flow table ID
-				  0: ingress port
-				  10: vlan
-				  20: termination mac
-				  30: unicast routing
-				  40: multicast routing
-				  50: bridging
-				  60: ACL policy
-	OF_DPA_PRIORITY	4	Flow priority
-	OF_DPA_HARDTIME	4	Hard timeout for flow
-	OF_DPA_IDLETIME	4	Idle timeout for flow
-	OF_DPA_COOKIE	8	Cookie
-	OF_DPA_xxx	<var>	Nested flow entry TLVs.
-
-OF_DPA_xxx nested TLVs are defined below:
-
-	field				width	description
+	field			width	description
 	----------------------------------------------------
-	OF_DPA_IG_PORT			nest
-	  OF_DPA_IN_LPORT		4	ingress port number
-	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_CMD		2	CMD_[ADD|MOD]
+	OF_DPA_TBL		2	Flow table ID
+					  0: ingress port
+					  10: vlan
+					  20: termination mac
+					  30: unicast routing
+					  40: multicast routing
+					  50: bridging
+					  60: ACL policy
+	OF_DPA_PRIORITY		4	Flow priority
+	OF_DPA_HARDTIME		4	Hard timeout for flow
+	OF_DPA_IDLETIME		4	Idle timeout for flow
+	OF_DPA_COOKIE		8	Cookie
 
-	field				width	description
-	----------------------------------------------------
-	OF_DPA_VLAN			nest
-	  OF_DPA_IN_LPORT		4	ingress port number
-	  OF_DPA_VLAN_ID		2 (N)	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
-	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
-	  OF_DPA_NEW_VLAN_ID		2 (N)	new vlan ID
+Additional TLVs based on flow table ID:
 
-	field				width	description
-	----------------------------------------------------
-	OF_DPA_TERM_MAC			nest
-	  OF_DPA_IN_LPORT		4	ingress port number
-	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
-	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
-	  OF_DPA_DST_MAC		6 (N)	destination MAC
-	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
-	  OF_DPA_VLAN_ID		2 (N)	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
-	  OF_DPA_GOTO_TBL		2	only acceptable values are
-						unicast or multicast routing
-						table IDs
-	  OF_DPA_OUT_LPORT		2	if specified, must be
-						controller, set zero otherwise
+Table ID 0: ingress port
 
-	field				width	description
+	field			width	description
 	----------------------------------------------------
-	OF_DPA_BRIDGING			nest
-	  OF_DPA_VLAN_ID		2 (N)	vlan ID
-	  OF_DPA_TUNNEL_ID		4	tunnel ID
-	  OF_DPA_DST_MAC		6 (N)	destination MAC
-	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
-	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
-	  OF_DPA_GROUP_ID		4	data for GROUP action must
-						be a L2 Interface, L2
-						Multicast, L2 Flood,
-						or L2 Overlay group entry
-						as appropriate
-	  OF_DPA_TUN_LOG_LPORT		4	unicast Tenant Bridging
-						flows specify a tunnel
-						logical port ID
-	  OF_DPA_OUT_LPORT		2	data for OUTPUT action,
-						restricted to CONTROLLER,
-						set to 0 otherwise
+	OF_DPA_IN_LPORT		4	ingress port number
+	OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
 
-	field				width	description
-	----------------------------------------------------
-	OF_DPA_UNICAST_ROUTING		nest
-	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
-	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
-						Must be unicast address
-	  OF_DPA_DST_IP_MASK		4 (N)	IP mask.  Must be prefix mask
-	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 address.
-						Must be unicast address
-	  OF_DPA_DST_IPV6_MASK		16 (N)	IPv6 mask. Must be prefix mask
-	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
-	  OF_DPA_GROUP_ID		4	data for GROUP action must
-						be an L3 Unicast group entry
+Table ID 10: vlan
 
-	field				width	description
+	field			width	description
 	----------------------------------------------------
-	OF_DPA_MULTICAST_ROUTING	nest
-	  OF_DPA_ETHERTYPE		2 (N)	must be either 0x0800 or 0x86dd
-	  OF_DPA_VLAN_ID		2 (N)	vlan ID
-	  OF_DPA_SRC_IP			4 (N)	source IPv4. Optional,
-						can contain IPv4 address,
-						must be completely masked
-						if not used
-	  OF_DPA_SRC_IP_MASK		4 (N)	IP Mask
-	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
-						Must be multicast address
-	  OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
-						Can contain IPv6 address,
-						must be completely masked
-						if not used
-	  OF_DPA_SRC_IPV6_MASK		16 (N)	IPv6 mask.
-	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
-						be multicast address
-						Must be multicast address
-	  OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
-	  OF_DPA_GROUP_ID		4	data for GROUP action must
-						be an L3 multicast group entry
+	OF_DPA_IN_LPORT		4	ingress port number
+	OF_DPA_VLAN_ID		2 (N)	vlan ID
+	OF_DPA_VLAN_ID_MASK	2 (N)	vlan ID mask
+	OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_NEW_VLAN_ID	2 (N)	new vlan ID
 
-	field				width	description
+Table ID 20: termination mac
+
+	field			width	description
 	----------------------------------------------------
-	OF_DPA_ACL			nest
-	  OF_DPA_IN_LPORT		4	ingress port number
-	  OF_DPA_IN_LPORT_MASK		4	ingress port number mask
-	  OF_DPA_ETHERTYPE		2 (N)	ethertype
-	  OF_DPA_VLAN_ID		2 (N)	vlan ID
-	  OF_DPA_VLAN_ID_MASK		2 (N)	vlan ID mask
-	  OF_DPA_VLAN_PCP		2 (N)	vlan Priority Code Point
-	  OF_DPA_VLAN_PCP_MASK		2 (N)	vlan Priority Code Point mask
-	  OF_DPA_SRC_MAC		6 (N)	source MAC
-	  OF_DPA_SRC_MAC_MASK		6 (N)	source MAC mask
-	  OF_DPA_DST_MAC		6 (N)	destination MAC
-	  OF_DPA_DST_MAC_MASK		6 (N)	destination MAC mask
-	  OF_DPA_TUNNEL_ID		4	tunnel ID
-	  OF_DPA_SRC_IP			4 (N)	source IPv4. Optional,
-						can contain IPv4 address,
-						must be completely masked
-						if not used
-	  OF_DPA_SRC_IP_MASK		4 (N)	IP Mask
-	  OF_DPA_DST_IP			4 (N)	destination IPv4 address.
-						Must be multicast address
-	  OF_DPA_DST_IP_MASK		4 (N)	IP Mask
-	  OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
-						Can contain IPv6 address,
-						must be completely masked
-						if not used
-	  OF_DPA_SRC_IPV6_MASK		16 (N)	IPv6 mask
-	  OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
-						be multicast address.
-	  OF_DPA_DST_IPV6_MASK		16 (N)	IPv6 mask
-	  OF_DPA_SRC_ARP_IP		4 (N)	source IPv4 address in the ARP
-						payload.  Only used if ethertype
-						== 0x0806.
-	  OF_DPA_SRC_ARP_IP_MASK	4 (N)	IP Mask
-	  OF_DPA_IP_PROTO		2 (N)	IP protocol
-	  OF_DPA_IP_PROTO_MASK		2 (N)	IP protocol mask
-	  OF_DPA_DSCP			2 (N)	DSCP
-	  OF_DPA_DSCP_MASK		2 (N)	DSCP mask
-	  OF_DPA_ECN			2 (N)	ECN
-	  OF_DPA_ECN_MASK		2 (N)	ECN mask
-	  OF_DPA_L4_SRC_PORT		2 (N)	L4 source port, only for
-						TCP, UDP, or SCTP
-	  OF_DPA_L4_SRC_PORT_MASK	2 (N)	L4 source port mask
-	  OF_DPA_L4_DST_PORT		2 (N)	L4 source port, only for
-						TCP, UDP, or SCTP
-	  OF_DPA_L4_DST_PORT_MASK	2 (N)	L4 source port mask
-	  OF_DPA_ICMP_TYPE		1	ICMP type, only if IP
-						protocol is 1
-	  OF_DPA_ICMP_TYPE_MASK		1	ICMP type mask
-	  OF_DPA_ICMP_CODE		1	ICMP code
-	  OF_DPA_ICMP_CODE_MASK		1	ICMP code mask
-	  OF_DPA_IPV6_LABEL		4 (N)	IPv6 flow label
-	  OF_DPA_IPV6_LABEL_MASK	4 (N)	IPv6 flow label mask
-	  OF_DPA_GROUP_ID		4	data for GROUP action
-	  OF_DPA_QUEUE_ID_ACTION	1	write the queue ID
-	  OF_DPA_NEW_QUEUE_ID		1	queue ID
-	  OF_DPA_VLAN_PCP_ACTION	1	write the VLAN priority
-	  OF_DPA_NEW_VLAN_PCP		1	VLAN priority
-	  OF_DPA_DSCP_ACTION		1	write the DSCP
-	  OF_DPA_NEW_DSCP		1	new DSCP
-	  OF_DPA_TUN_LOG_LPORT		4	restrct to valid tunnel
-						logical port, set to 0
-						otherwise.
-	  OF_DPA_OUT_LPORT		2	data for OUTPUT action,
-						restricted to CONTROLLER,
-						set to 0 otherwise
-	  OF_DPA_CLEAR_ACTIONS		4	if 1 packets matching flow are
-						dropped (all other instructions
-						ignored)
+	OF_DPA_IN_LPORT		4	ingress port number
+	OF_DPA_IN_LPORT_MASK	4	ingress port number mask
+	OF_DPA_ETHERTYPE	2 (N)	must be either 0x0800 or 0x86dd
+	OF_DPA_DST_MAC		6 (N)	destination MAC
+	OF_DPA_DST_MAC_MASK	6 (N)	destination MAC mask
+	OF_DPA_VLAN_ID		2 (N)	vlan ID
+	OF_DPA_VLAN_ID_MASK	2 (N)	vlan ID mask
+	OF_DPA_GOTO_TBL		2	only acceptable values are
+					unicast or multicast routing
+					table IDs
+	OF_DPA_OUT_LPORT	2	if specified, must be
+					controller, set zero otherwise
+
+Table ID 30: unicast routing
+
+	field			width	description
+	----------------------------------------------------
+	OF_DPA_ETHERTYPE	2 (N)	must be either 0x0800 or 0x86dd
+	OF_DPA_DST_IP		4 (N)	destination IPv4 address.
+					Must be unicast address
+	OF_DPA_DST_IP_MASK	4 (N)	IP mask.  Must be prefix mask
+	OF_DPA_DST_IPV6		16 (N)	destination IPv6 address.
+					Must be unicast address
+	OF_DPA_DST_IPV6_MASK	16 (N)	IPv6 mask. Must be prefix mask
+	OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_GROUP_ID		4	data for GROUP action must
+					be an L3 Unicast group entry
+
+Table ID 40: multicast routing
+
+	field			width	description
+	----------------------------------------------------
+	OF_DPA_ETHERTYPE	2 (N)	must be either 0x0800 or 0x86dd
+	OF_DPA_VLAN_ID		2 (N)	vlan ID
+	OF_DPA_SRC_IP		4 (N)	source IPv4. Optional,
+					can contain IPv4 address,
+					must be completely masked
+					if not used
+	OF_DPA_SRC_IP_MASK	4 (N)	IP Mask
+	OF_DPA_DST_IP		4 (N)	destination IPv4 address.
+					Must be multicast address
+	OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
+					Can contain IPv6 address,
+					must be completely masked
+					if not used
+	OF_DPA_SRC_IPV6_MASK	16 (N)	IPv6 mask.
+	OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
+					be multicast address
+					Must be multicast address
+	OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_GROUP_ID		4	data for GROUP action must
+					be an L3 multicast group entry
+
+Table ID 50: bridging
+
+	field			width	description
+	----------------------------------------------------
+	OF_DPA_VLAN_ID		2 (N)	vlan ID
+	OF_DPA_TUNNEL_ID	4	tunnel ID
+	OF_DPA_DST_MAC		6 (N)	destination MAC
+	OF_DPA_DST_MAC_MASK	6 (N)	destination MAC mask
+	OF_DPA_GOTO_TBL		2	goto table ID; zero to drop
+	OF_DPA_GROUP_ID		4	data for GROUP action must
+					be a L2 Interface, L2
+					Multicast, L2 Flood,
+					or L2 Overlay group entry
+					as appropriate
+	OF_DPA_TUN_LOG_LPORT	4	unicast Tenant Bridging
+					flows specify a tunnel
+					logical port ID
+	OF_DPA_OUT_LPORT	2	data for OUTPUT action,
+					restricted to CONTROLLER,
+					set to 0 otherwise
+
+Table ID 60: acl policy
+
+	field			width	description
+	----------------------------------------------------
+	OF_DPA_IN_LPORT		4	ingress port number
+	OF_DPA_IN_LPORT_MASK	4	ingress port number mask
+	OF_DPA_ETHERTYPE	2 (N)	ethertype
+	OF_DPA_VLAN_ID		2 (N)	vlan ID
+	OF_DPA_VLAN_ID_MASK	2 (N)	vlan ID mask
+	OF_DPA_VLAN_PCP		2 (N)	vlan Priority Code Point
+	OF_DPA_VLAN_PCP_MASK	2 (N)	vlan Priority Code Point mask
+	OF_DPA_SRC_MAC		6 (N)	source MAC
+	OF_DPA_SRC_MAC_MASK	6 (N)	source MAC mask
+	OF_DPA_DST_MAC		6 (N)	destination MAC
+	OF_DPA_DST_MAC_MASK	6 (N)	destination MAC mask
+	OF_DPA_TUNNEL_ID	4	tunnel ID
+	OF_DPA_SRC_IP		4 (N)	source IPv4. Optional,
+					can contain IPv4 address,
+					must be completely masked
+					if not used
+	OF_DPA_SRC_IP_MASK	4 (N)	IP Mask
+	OF_DPA_DST_IP		4 (N)	destination IPv4 address.
+					Must be multicast address
+	OF_DPA_DST_IP_MASK	4 (N)	IP Mask
+	OF_DPA_SRC_IPV6		16 (N)	source IPv6 Address. Optional.
+					Can contain IPv6 address,
+					must be completely masked
+					if not used
+	OF_DPA_SRC_IPV6_MASK	16 (N)	IPv6 mask
+	OF_DPA_DST_IPV6		16 (N)	destination IPv6 Address. Must
+					be multicast address.
+	OF_DPA_DST_IPV6_MASK	16 (N)	IPv6 mask
+	OF_DPA_SRC_ARP_IP	4 (N)	source IPv4 address in the ARP
+					payload.  Only used if ethertype
+					== 0x0806.
+	OF_DPA_SRC_ARP_IP_MASK	4 (N)	IP Mask
+	OF_DPA_IP_PROTO		2 (N)	IP protocol
+	OF_DPA_IP_PROTO_MASK	2 (N)	IP protocol mask
+	OF_DPA_DSCP		2 (N)	DSCP
+	OF_DPA_DSCP_MASK	2 (N)	DSCP mask
+	OF_DPA_ECN		2 (N)	ECN
+	OF_DPA_ECN_MASK		2 (N)	ECN mask
+	OF_DPA_L4_SRC_PORT	2 (N)	L4 source port, only for
+					TCP, UDP, or SCTP
+	OF_DPA_L4_SRC_PORT_MASK	2 (N)	L4 source port mask
+	OF_DPA_L4_DST_PORT	2 (N)	L4 source port, only for
+					TCP, UDP, or SCTP
+	OF_DPA_L4_DST_PORT_MASK	2 (N)	L4 source port mask
+	OF_DPA_ICMP_TYPE	1	ICMP type, only if IP
+					protocol is 1
+	OF_DPA_ICMP_TYPE_MASK	1	ICMP type mask
+	OF_DPA_ICMP_CODE	1	ICMP code
+	OF_DPA_ICMP_CODE_MASK	1	ICMP code mask
+	OF_DPA_IPV6_LABEL	4 (N)	IPv6 flow label
+	OF_DPA_IPV6_LABEL_MASK	4 (N)	IPv6 flow label mask
+	OF_DPA_GROUP_ID		4	data for GROUP action
+	OF_DPA_QUEUE_ID_ACTION	1	write the queue ID
+	OF_DPA_NEW_QUEUE_ID	1	queue ID
+	OF_DPA_VLAN_PCP_ACTION	1	write the VLAN priority
+	OF_DPA_NEW_VLAN_PCP	1	VLAN priority
+	OF_DPA_DSCP_ACTION	1	write the DSCP
+	OF_DPA_NEW_DSCP		1	new DSCP
+	OF_DPA_TUN_LOG_LPORT	4	restrct to valid tunnel
+					logical port, set to 0
+					otherwise.
+	OF_DPA_OUT_LPORT	2	data for OUTPUT action,
+					restricted to CONTROLLER,
+					set to 0 otherwise
+	OF_DPA_CLEAR_ACTIONS	4	if 1 packets matching flow are
+					dropped (all other instructions
+					ignored)
 
 TLVs for flow delete and get stats command are:
 
