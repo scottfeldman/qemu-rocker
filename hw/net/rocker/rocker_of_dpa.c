@@ -41,6 +41,19 @@ static void of_dpa_ig_port_build_match(struct flow_context *fc,
     match->value.width = FLOW_KEY_WIDTH(tbl_id);
 }
 
+static void of_dpa_ig_port_miss(struct flow_sys *fs, struct flow_context *fc)
+{
+    uint32_t port;
+
+    /* The default on miss is for packets from physical ports
+     * to go to the VLAN Flow Table. There is no default rule
+     * for packets from logical ports, which are dropped on miss.
+     */
+
+    if (fp_port_from_lport(fc->in_lport, &port))
+        flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_VLAN);
+}
+
 static void of_dpa_vlan_build_match(struct flow_context *fc,
                                     struct flow_match *match)
 {
@@ -169,6 +182,7 @@ static void of_dpa_eg(struct world *world, struct flow_context *fc,
 static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     [ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT] = {
         .build_match = of_dpa_ig_port_build_match,
+        .miss = of_dpa_ig_port_miss,
     },
     [ROCKER_OF_DPA_TABLE_ID_VLAN] = {
         .build_match = of_dpa_vlan_build_match,
