@@ -245,8 +245,7 @@ static void l2l3_default_bridging(struct l2l3_world *lw)
     struct flow *flow;
     struct group *group;
 
-    group = group_alloc(lw->fs);
-    group->id = 1;
+    group = group_alloc(lw->fs, 1);
 //    group->type = GROUP_TYPE_L2_INTERFACE;
     group->action.out_lport = 0x00000000;
     group->action.pop_vlan_tag = true;

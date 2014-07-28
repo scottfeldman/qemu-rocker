@@ -120,7 +120,7 @@ static int group_get_stats(struct flow_sys *fs, uint32_t id)
 }
 #endif
 
-struct group *group_alloc(struct flow_sys *fs)
+struct group *group_alloc(struct flow_sys *fs, uint32_t id)
 {
     struct group *group = g_malloc0(sizeof(struct group));
 
@@ -128,6 +128,7 @@ struct group *group_alloc(struct flow_sys *fs)
         return NULL;
 
     group->fs = fs;
+    group->id = id;
 
     return group;
 }
