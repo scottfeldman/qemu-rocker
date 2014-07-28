@@ -418,6 +418,10 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_MOD:
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_DEL:
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_GET_STATS:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_ADD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS:
         world = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
         err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
