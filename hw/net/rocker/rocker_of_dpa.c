@@ -878,70 +878,6 @@ static int of_dpa_cmd(struct world *world, struct desc_info *info,
     return -EINVAL;
 }
 
-static void of_dpa_default_bridging(struct of_dpa_world *ow)
-{
-    struct flow *flow;
-    struct group *group;
-
-    group = group_alloc(ow->fs);
-    group->id = 1;
-//    group->type = ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE;
-    group->action.out_lport = 0x00000000;
-    group->action.pop_vlan_tag = true;
-    group_add(group);
-
-    /* pkts on VLAN 100 goto bridging mode VLAN dflt: group id 1 */
-    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
-    flow->key.width = FLOW_KEY_WIDTH(eth.dst);
-    flow->key.eth.vlan_id = htons(100);
-    memset(flow->mask.eth.dst.a, 0xff, sizeof(flow->mask.eth.dst.a));
-    flow->action.write.group_id = 1;
-    flow_add(flow);
-}
-
-static void of_dpa_default_vlan(struct of_dpa_world *ow)
-{
-    uint32_t fp_ports = rocker_fp_ports(world_rocker(ow->world));
-    struct flow *flow;
-    uint32_t lport;
-
-    /* untagged pkts from physical ports goto VLAN 100 */
-    for (lport = 1; lport <= fp_ports; lport++) {
-        flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-        flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
-        flow->key.width = FLOW_KEY_WIDTH(eth.vlan_id);
-        flow->key.in_lport = lport;
-        flow->mask.eth.vlan_id = htons(VLAN_VID_MASK);
-        flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC;
-        flow->action.apply.new_vlan_id = htons(100);
-        flow_add(flow);
-    }
-}
-
-static void of_dpa_default_ig_port(struct of_dpa_world *ow)
-{
-    struct flow *flow;
-
-    /* default pkts from physical ports goto VLAN tbl */
-    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
-    flow->key.width = FLOW_KEY_WIDTH(tbl_id);
-    flow->key.in_lport = 0x00000000;
-    flow->mask.in_lport = ROCKER_FP_PORTS_MAX + 1;
-    flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_VLAN;
-    flow_add(flow);
-
-    /* default pkts from overlay tunnels goto bridging tbl */
-    flow = flow_alloc(ow->fs, flow_sys_another_cookie(ow->fs), 0, 0, 0);
-    flow->key.tbl_id = ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT;
-    flow->key.width = FLOW_KEY_WIDTH(tbl_id);
-    flow->key.in_lport = ROCKER_TUNNEL_LPORT;
-    flow->mask.in_lport = 0xffff0000;
-    flow->action.goto_tbl = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
-    flow_add(flow);
-}
-
 static int of_dpa_world_init(struct world *world)
 {
     struct of_dpa_world *ow = world_private(world);
@@ -954,10 +890,6 @@ static int of_dpa_world_init(struct world *world)
     // XXX hardcode some artificial table max values
     ow->flow_tbl_max_size = 100;
     ow->group_tbl_max_size = 100;
-
-    of_dpa_default_ig_port(ow);
-    of_dpa_default_vlan(ow);
-    of_dpa_default_bridging(ow);
 
     return 0;
 }
