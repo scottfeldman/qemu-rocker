@@ -279,6 +279,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     struct flow_key *key = &flow->key;
     struct flow_key *mask = &flow->mask;
     struct flow_action *action = &flow->action;
+    uint32_t port;
     bool untagged;
 
     if (!flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT] ||
@@ -289,10 +290,9 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     key->tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
     key->width = FLOW_KEY_WIDTH(eth.vlan_id);
 
-    if (1 < key->in_lport || key->in_lport > 63)
     key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    if (!fp_port_from_lport(key->in_lport, &port))
         return -EINVAL;
-    mask->in_lport = 0x0000003f;
 
     if (mask->eth.vlan_id == htons(0x1fff))
     key->eth.vlan_id = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
@@ -336,6 +336,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
     const MACAddr ipv4_mask =  { .a = { 0xff, 0xff, 0xff, 0x80, 0x00, 0x00 } };
     const MACAddr ipv6_mcast = { .a = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 } };
     const MACAddr ipv6_mask =  { .a = { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 } };
+    uint32_t port;
     bool unicast = false;
     bool multicast = false;
 
@@ -351,8 +352,8 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
     key->tbl_id = ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC;
     key->width = FLOW_KEY_WIDTH(eth.type);
 
-    if (1 < key->in_lport || key->in_lport > 63)
     key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    if (!fp_port_from_lport(key->in_lport, &port))
         return -EINVAL;
     mask->in_lport =
         rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
