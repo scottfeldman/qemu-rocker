@@ -809,7 +809,7 @@ static int of_dpa_cmd_flow_mod(struct of_dpa_world *ow, uint64_t cookie,
     return flow_mod(flow);
 }
 
-static int of_dpa_cmd_del(struct of_dpa_world *ow, uint64_t cookie)
+static int of_dpa_cmd_flow_del(struct of_dpa_world *ow, uint64_t cookie)
 {
     struct flow *flow = flow_find(ow->fs, cookie);
 
@@ -821,8 +821,8 @@ static int of_dpa_cmd_del(struct of_dpa_world *ow, uint64_t cookie)
     return 0;
 }
 
-static int of_dpa_cmd_get_stats(struct of_dpa_world *ow, uint64_t cookie,
-                                struct desc_info *info, char *buf)
+static int of_dpa_cmd_flow_get_stats(struct of_dpa_world *ow, uint64_t cookie,
+                                     struct desc_info *info, char *buf)
 {
     struct flow *flow = flow_find(ow->fs, cookie);
     size_t tlv_size;
@@ -865,14 +865,14 @@ static int of_dpa_cmd(struct world *world, struct desc_info *info,
     cookie = rocker_tlv_get_le64(tlvs[ROCKER_TLV_OF_DPA_COOKIE]);
 
     switch (cmd) {
-    case ROCKER_TLV_CMD_TYPE_OF_DPA_ADD:
-        return of_dpa_cmd_add(ow, cookie, tlvs);
-    case ROCKER_TLV_CMD_TYPE_OF_DPA_MOD:
-        return of_dpa_cmd_mod(ow, cookie, tlvs);
-    case ROCKER_TLV_CMD_TYPE_OF_DPA_DEL:
-        return of_dpa_cmd_del(ow, cookie);
-    case ROCKER_TLV_CMD_TYPE_OF_DPA_GET_STATS:
-        return of_dpa_cmd_get_stats(ow, cookie, info, buf);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_ADD:
+        return of_dpa_cmd_flow_add(ow, cookie, tlvs);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_MOD:
+        return of_dpa_cmd_flow_mod(ow, cookie, tlvs);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_DEL:
+        return of_dpa_cmd_flow_del(ow, cookie);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_GET_STATS:
+        return of_dpa_cmd_flow_get_stats(ow, cookie, info, buf);
     }
 
     return -EINVAL;
