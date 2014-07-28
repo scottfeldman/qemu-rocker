@@ -496,24 +496,28 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
         switch (mode) {
         case BRIDGING_MODE_VLAN_UCAST:
-            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_INTERFACE)
+            if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+                ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_VLAN_MCAST:
-            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_MCAST)
+            if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+                ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_VLAN_DFLT:
-            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_FLOOD)
+            if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+                ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_TUNNEL_MCAST:
-            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_OVERLAY)
+            if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY)
                 return -EINVAL;
             break;
         case BRIDGING_MODE_TUNNEL_DFLT:
-            // XXX need L2 overlay flood type
-            if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L2_OVERLAY)
+            if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY)
                 return -EINVAL;
             break;
         default:
@@ -603,8 +607,9 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]) {
         action->write.group_id =
-        if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L3_UCAST)
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
+        if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+            ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST)
             return -EINVAL;
     }
 
@@ -710,8 +715,9 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]) {
         action->write.group_id =
-        if (action->write.group_id != ROCKER_FLOW_GROUP_TYPE_L3_MCAST)
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
+        if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
+            ROCKER_OF_DPA_GROUP_TYPE_L3_MCAST)
             return -EINVAL;
         action->write.vlan_id = key->eth.vlan_id;
     }
