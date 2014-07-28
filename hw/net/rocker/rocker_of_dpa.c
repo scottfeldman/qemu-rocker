@@ -412,16 +412,17 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     } mode = BRIDGING_MODE_UNKNOWN;
 
     key->tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
-    key->width = FLOW_KEY_WIDTH(eth.dst);
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]) {
         key->eth.vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
+        key->width = FLOW_KEY_WIDTH(eth.vlan_id);
     }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_TUNNEL_ID]) {
         key->tunnel_id =
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_TUNNEL_ID]);
+        key->width = FLOW_KEY_WIDTH(tunnel_id);
     }
 
     /* can't do VLAN bridging and tunnel bridging at same time */
@@ -432,6 +433,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
         memcpy(key->eth.dst.a,
                rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]),
                sizeof(key->eth.dst.a));
+        key->width = FLOW_KEY_WIDTH(eth.dst);
         dst_mac = true;
         unicast = (key->eth.dst.a[5] & 0x01) == 0x00;
     }
@@ -440,6 +442,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
         memcpy(mask->eth.dst.a,
                rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC_MASK]),
                sizeof(mask->eth.dst.a));
+        key->width = FLOW_KEY_WIDTH(eth.dst);
         dst_mac_mask = true;
     }
 
