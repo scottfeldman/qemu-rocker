@@ -87,7 +87,7 @@ struct flow_key {
 struct flow_action {
     uint32_t goto_tbl;
     struct {
-        uint16_t group_id;
+        uint32_t group_id;
         uint32_t tun_log_lport;
         __be16 vlan_id;
     } write;
@@ -170,8 +170,7 @@ struct flow_tbl_ops {
 struct group {
     struct flow_sys *fs;
     int ref_count;
-    uint16_t id;
-//    enum flow_group_type type;
+    uint32_t id;
     __be16 vlan_id;
     uint32_t lport;
     uint32_t index;
