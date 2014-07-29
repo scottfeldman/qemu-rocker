@@ -3549,3 +3549,10 @@
 { 'command': 'rocker-flows',
   'data': { 'name': 'str', '*world': 'str', '*tbl_id': 'uint32' },
   'returns': ['RockerFlow'] }
+
+{ 'type': 'RockerGroup',
+  'data': { 'id': 'uint32' } }
+
+{ 'command': 'rocker-groups',
+  'data': { 'name': 'str', '*world': 'str', '*tbl_id': 'uint32' },
+  'returns': ['RockerGroup'] }

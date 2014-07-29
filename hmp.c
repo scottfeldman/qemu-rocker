@@ -1881,3 +1881,26 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
 
     qapi_free_RockerFlowList(list);
 }
+
+void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
+{
+    RockerGroupList *list, *group;
+    const char *name = qdict_get_str(qdict, "name");
+    const char *world = qdict_get_try_str(qdict, "world");
+    uint32_t tbl_id = qdict_get_try_int(qdict, "tbl_id", -1);
+    Error *errp = NULL;
+
+    list = qmp_rocker_groups(name, !!world, world,
+                             tbl_id != -1, tbl_id, &errp);
+    if (error_is_set(&errp)) {
+        monitor_printf(mon, "%s\n", error_get_pretty(errp));
+        error_free(errp);
+        return;
+    }
+
+    for (group = list; group; group = group->next)
+        monitor_printf(mon, "0x%08x\n", group->value->id);
+
+    qapi_free_RockerGroupList(list);
+}
+

@@ -119,5 +119,6 @@ void loadvm_completion(ReadLineState *rs, int nb_args, const char *str);
 void hmp_rocker(Monitor *mon, const QDict *qdict);
 void hmp_rocker_ports(Monitor *mon, const QDict *qdict);
 void hmp_rocker_flows(Monitor *mon, const QDict *qdict);
+void hmp_rocker_groups(Monitor *mon, const QDict *qdict);
 
 #endif

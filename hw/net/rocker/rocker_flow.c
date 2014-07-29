@@ -421,6 +421,43 @@ RockerFlowList *flow_sys_flow_fill(struct flow_sys *fs, uint32_t tbl_id)
     return fill_context.list;
 }
 
+struct group_fill_context {
+    RockerGroupList *list;
+    uint32_t tbl_id;
+};
+
+static void group_fill(void *key, void *value, void *user_data)
+{
+    struct group *group = value;
+    struct group_fill_context *flow_context = user_data;
+    RockerGroupList *new;
+    RockerGroup *ngroup;
+
+    if (flow_context->tbl_id != -1 &&
+        flow_context->tbl_id != (group->id >> 28 && 0xf))
+        return;
+
+    new = g_malloc0(sizeof(*new));
+    ngroup = new->value = g_malloc0(sizeof(*ngroup));
+
+    ngroup->id = group->id;
+
+    new->next = flow_context->list;
+    flow_context->list = new;
+}
+
+RockerGroupList *flow_sys_group_fill(struct flow_sys *fs, uint32_t tbl_id)
+{
+    struct group_fill_context fill_context = {
+        .list = NULL,
+        .tbl_id = tbl_id,
+    };
+
+    g_hash_table_foreach(fs->group_tbl, group_fill, &fill_context);
+
+    return fill_context.list;
+}
+
 uint64_t flow_sys_another_cookie(struct flow_sys *fs)
 {
     uint64_t cookie;
