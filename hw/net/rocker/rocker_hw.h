@@ -316,6 +316,7 @@ enum {
     ROCKER_TLV_OF_DPA_QUEUE_ID_ACTION,     /* u8 */
     ROCKER_TLV_OF_DPA_NEW_QUEUE_ID,        /* u8 */
     ROCKER_TLV_OF_DPA_CLEAR_ACTIONS,       /* u32 */
+    ROCKER_TLV_OF_DPA_POP_VLAN,            /* u8 */
 
     __ROCKER_TLV_OF_DPA_MAX,
     ROCKER_TLV_OF_DPA_MAX = __ROCKER_TLV_OF_DPA_MAX - 1,

@@ -805,7 +805,7 @@ err_cmd_add:
 }
 
 static int of_dpa_cmd_flow_mod(struct of_dpa_world *ow, uint64_t cookie,
-                          struct rocker_tlv **flow_tlvs)
+                               struct rocker_tlv **flow_tlvs)
 {
     struct flow *flow = flow_find(ow->fs, cookie);
 
@@ -855,33 +855,149 @@ static int of_dpa_cmd_flow_get_stats(struct of_dpa_world *ow, uint64_t cookie,
     return desc_set_buf(info, tlv_size);
 }
 
-static int of_dpa_cmd(struct world *world, struct desc_info *info,
-                     char *buf, uint16_t cmd,
-                     struct rocker_tlv *cmd_info_tlv)
+static int of_dpa_flow_cmd(struct of_dpa_world *ow, struct desc_info *info,
+                           char *buf, uint16_t cmd,
+                           struct rocker_tlv **flow_tlvs)
 {
-    struct of_dpa_world *ow = world_private(world);
-    struct rocker_tlv *tlvs[ROCKER_TLV_OF_DPA_MAX + 1];
     uint64_t cookie;
 
-    rocker_tlv_parse_nested(tlvs, ROCKER_TLV_OF_DPA_MAX, cmd_info_tlv);
-
-    if (!tlvs[ROCKER_TLV_OF_DPA_COOKIE])
+    if (!flow_tlvs[ROCKER_TLV_OF_DPA_COOKIE])
         return -EINVAL;
 
-    cookie = rocker_tlv_get_le64(tlvs[ROCKER_TLV_OF_DPA_COOKIE]);
+    cookie = rocker_tlv_get_le64(flow_tlvs[ROCKER_TLV_OF_DPA_COOKIE]);
 
     switch (cmd) {
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_ADD:
-        return of_dpa_cmd_flow_add(ow, cookie, tlvs);
+        return of_dpa_cmd_flow_add(ow, cookie, flow_tlvs);
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_MOD:
-        return of_dpa_cmd_flow_mod(ow, cookie, tlvs);
+        return of_dpa_cmd_flow_mod(ow, cookie, flow_tlvs);
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_DEL:
         return of_dpa_cmd_flow_del(ow, cookie);
     case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_GET_STATS:
         return of_dpa_cmd_flow_get_stats(ow, cookie, info, buf);
     }
 
-    return -EINVAL;
+    return -ENOTSUP;
+}
+
+static int of_dpa_cmd_add_l2_interface(struct group *group,
+                                       struct rocker_tlv **group_tlvs)
+{
+    if (!group_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT] ||
+        !group_tlvs[ROCKER_TLV_OF_DPA_POP_VLAN])
+        return -EINVAL;
+
+    group->l2_interface.out_lport =
+        rocker_tlv_get_le32(group_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT]);
+    group->l2_interface.pop_vlan =
+        rocker_tlv_get_u8(group_tlvs[ROCKER_TLV_OF_DPA_POP_VLAN]);
+
+    return 0;
+}
+
+static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
+                                struct rocker_tlv **group_tlvs)
+{
+    struct flow_sys *fs = ow->fs;
+    struct group *group = group_find(fs, group_id);
+    uint8_t type = ROCKER_GROUP_TYPE_GET(group_id);
+    int err = 0;
+
+    if (group)
+        return -EEXIST;
+
+    group = group_alloc(fs, group_id);
+    if (!group)
+        return -ENOMEM;
+
+    switch (type) {
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
+        err = of_dpa_cmd_add_l2_interface(group, group_tlvs);
+        break;
+    default:
+        err = -ENOTSUP;
+    }
+
+    if (err)
+        goto err_cmd_add;
+
+    err = group_add(group);
+    if (err)
+        goto err_cmd_add;
+
+    return 0;
+
+err_cmd_add:
+        g_free(group);
+        return err;
+}
+
+static int of_dpa_cmd_group_mod(struct of_dpa_world *ow, uint32_t group_id,
+                                struct rocker_tlv **group_tlvs)
+{
+    return -ENOTSUP;
+}
+
+static int of_dpa_cmd_group_del(struct of_dpa_world *ow, uint32_t group_id)
+{
+    return -ENOTSUP;
+}
+
+static int of_dpa_cmd_group_get_stats(struct of_dpa_world *ow,
+                                      uint32_t group_id,
+                                      struct desc_info *info, char *buf)
+{
+    return -ENOTSUP;
+}
+
+static int of_dpa_group_cmd(struct of_dpa_world *ow, struct desc_info *info,
+                            char *buf, uint16_t cmd,
+                            struct rocker_tlv **group_tlvs)
+{
+    uint32_t group_id;
+
+    if (!group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID])
+        return -EINVAL;
+
+    group_id = rocker_tlv_get_le32(group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
+
+    switch (cmd) {
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_ADD:
+        return of_dpa_cmd_group_add(ow, group_id, group_tlvs);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD:
+        return of_dpa_cmd_group_mod(ow, group_id, group_tlvs);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL:
+        return of_dpa_cmd_group_del(ow, group_id);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS:
+        return of_dpa_cmd_group_get_stats(ow, group_id, info, buf);
+    }
+
+    return -ENOTSUP;
+}
+
+static int of_dpa_cmd(struct world *world, struct desc_info *info,
+                     char *buf, uint16_t cmd,
+                     struct rocker_tlv *cmd_info_tlv)
+{
+    struct of_dpa_world *ow = world_private(world);
+    struct rocker_tlv *tlvs[ROCKER_TLV_OF_DPA_MAX + 1];
+
+    rocker_tlv_parse_nested(tlvs, ROCKER_TLV_OF_DPA_MAX, cmd_info_tlv);
+
+    switch (cmd) {
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_ADD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_MOD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_DEL:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_FLOW_GET_STATS:
+        return of_dpa_flow_cmd(ow, info, buf, cmd, tlvs);
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_ADD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL:
+    case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS:
+        return of_dpa_group_cmd(ow, info, buf, cmd, tlvs);
+    }
+
+    return -ENOTSUP;
 }
 
 static int of_dpa_world_init(struct world *world)

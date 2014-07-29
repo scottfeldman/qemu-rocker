@@ -169,23 +169,15 @@ struct flow_tbl_ops {
 
 struct group {
     struct flow_sys *fs;
-    int ref_count;
     uint32_t id;
-    __be16 vlan_id;
-    uint32_t lport;
-    uint32_t index;
-    uint8_t overlay_type;
     struct {
-        uint16_t next_id;
         uint32_t out_lport;
-        uint8_t pop_vlan_tag;
-        __be16 vlan_id;
-        MACAddr src_mac;
-        MACAddr dst_mac;
-    } action;
+        uint8_t pop_vlan;
+    } l2_interface;
 };
 
 struct group *group_alloc(struct flow_sys *fs, uint32_t id);
+struct group *group_find(struct flow_sys *fs, uint32_t id);
 int group_add(struct group *group);
 size_t group_tbl_size(struct flow_sys *fs);
 

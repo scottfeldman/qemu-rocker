@@ -33,48 +33,17 @@ size_t group_tbl_size(struct flow_sys *fs)
     return g_hash_table_size(fs->group_tbl);
 }
 
-static struct group *group_find(struct flow_sys *fs, uint32_t id)
+struct group *group_find(struct flow_sys *fs, uint32_t id)
 {
     return g_hash_table_lookup(fs->group_tbl, &id);
 }
 
 int group_add(struct group *group)
 {
-    struct group *next = group_find(group->fs, group->action.next_id);
-
     if (group_find(group->fs, group->id))
         return -EEXIST;
 
-    /* group's action next group can't be self */
-    if (group->action.next_id == group->id)
-        return -EINVAL;
-
-#if 0
-    /* group's action next group must exist */
-    if (group->type != GROUP_TYPE_L2_INTERFACE &&
-        group->action.next_id && !next)
-        return -ENODEV;
-
-    /* validate inputs per type */
-    switch (group->type) {
-    case GROUP_TYPE_L2_INTERFACE:
-    case GROUP_TYPE_L2_REWRITE:
-    case GROUP_TYPE_L3_UCAST:
-    case GROUP_TYPE_L2_MCAST:
-    case GROUP_TYPE_L2_FLOOD:
-    case GROUP_TYPE_L3_INTERFACE:
-    case GROUP_TYPE_L3_MCAST:
-    case GROUP_TYPE_L3_ECMP:
-    case GROUP_TYPE_L2_OVERLAY:
-        // XXX
-        break;
-    }
-#endif
-
     g_hash_table_insert(group->fs->group_tbl, &group->id, group);
-
-    if (next)
-        next->ref_count++;
 
     return 0;
 }
@@ -280,10 +249,12 @@ static void flow_exec_action_set(struct flow_sys *fs, struct flow_context *fc,
                     set->write.group_id);
             return;
         }
+#if 0
         if (group->action.pop_vlan_tag)
             flow_pkt_strip_vlan(fc);
         if (ops->eg)
             ops->eg(fs->world, fc, group->action.out_lport);
+#endif
     }
 }
 
