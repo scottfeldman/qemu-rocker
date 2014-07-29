@@ -764,7 +764,7 @@ static int of_dpa_cmd_flow_add(struct of_dpa_world *ow, uint64_t cookie,
 
     flow = flow_alloc(fs, cookie, priority, hardtime, idletime);
     if (!flow)
-        return -EINVAL;
+        return -ENOMEM;
 
     switch (tbl) {
     case ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT:
