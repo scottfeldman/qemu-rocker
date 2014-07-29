@@ -154,6 +154,31 @@ RockerFlowList *qmp_rocker_flows(const char *name, bool has_world,
     return world_do_flow_fill(w, tbl_id);
 }
 
+RockerGroupList *qmp_rocker_groups(const char *name, bool has_world,
+                                   const char *world, bool has_tbl_id,
+                                   uint32_t tbl_id, Error **errp)
+{
+    struct rocker *r;
+    struct world *w;
+
+    r = rocker_find(name);
+    if (!r) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s not found", name);
+        return NULL;
+    }
+
+    w = r->world_dflt;
+    if (has_world) {
+        if (strcmp(world, "of-dpa") == 0)
+            w = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
+        else if (strcmp(world, "l2l3") == 0)
+            w = r->worlds[ROCKER_WORLD_TYPE_L2L3];
+    }
+
+    return world_do_group_fill(w, tbl_id);
+}
+
 uint32_t rocker_fp_ports(struct rocker *r)
 {
     return r->fp_ports;

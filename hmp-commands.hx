@@ -1799,9 +1799,23 @@ ETEXI
     },
 
 STEXI
-@item rocker_flows @var{name} [@var{world}]
+@item rocker_flows @var{name} [@var{world}] [@var{tbl_id}]
 @findex rocker_flows
 Show Rocker flow tables
+ETEXI
+
+    {
+        .name       = "rocker-groups",
+        .args_type  = "name:s,world:s?,tbl_id:i?",
+        .params     = "rocker_groups name [world] [tbl_id]",
+        .help       = "Show Rocker group tables",
+        .mhandler.cmd = hmp_rocker_groups,
+    },
+
+STEXI
+@item rocker_groups @var{name} [@var{world}] [@var{tbl_id}]
+@findex rocker_groups
+Show Rocker group tables
 ETEXI
 
 STEXI

@@ -3580,3 +3580,9 @@ EQMP
         .args_type  = "name:s,world:s?,tbl_id:i?",
         .mhandler.cmd_new = qmp_marshal_input_rocker_flows,
     },
+
+    {
+        .name       = "rocker-groups",
+        .args_type  = "name:s,world:s?,tbl_id:i?",
+        .mhandler.cmd_new = qmp_marshal_input_rocker_groups,
+    },
