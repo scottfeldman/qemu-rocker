@@ -164,16 +164,6 @@ static void l2l3_multicast_routing_action_write(struct flow_context *fc,
     fc->action_set.write.vlan_id = flow->action.write.vlan_id;
 }
 
-static void l2l3_eg(struct world *world, struct flow_context *fc,
-                    uint32_t out_lport)
-{
-    if (out_lport == 0)
-        rx_produce(world, fc->in_lport, fc->iov, fc->iovcnt);
-    else
-        rocker_port_eg(world_rocker(world), out_lport,
-                       fc->iov, fc->iovcnt);
-}
-
 static struct flow_tbl_ops l2l3_tbl_ops[] = {
     [L2L3_TABLE_INGRESS_PORT] = {
         .build_match = l2l3_ig_port_build_match,
@@ -192,17 +182,14 @@ static struct flow_tbl_ops l2l3_tbl_ops[] = {
         .miss = l2l3_bridging_miss,
         .action_apply = l2l3_copy_to_controller,
         .action_write = l2l3_bridging_action_write,
-        .eg = l2l3_eg,
     },
     [L2L3_TABLE_UNICAST_ROUTING] = {
         .build_match = l2l3_unicast_routing_build_match,
         .action_write = l2l3_unicast_routing_action_write,
-        .eg = l2l3_eg,
     },
     [L2L3_TABLE_MULTICAST_ROUTING] = {
         .build_match = l2l3_multicast_routing_build_match,
         .action_write = l2l3_multicast_routing_action_write,
-        .eg = l2l3_eg,
     },
     [L2L3_TABLE_ACL_POLICY] = {
         // XXX implement this

@@ -164,8 +164,6 @@ struct flow_tbl_ops {
     void (*hit_no_goto)(struct flow_sys *fs, struct flow_context *fc);
     void (*action_apply)(struct flow_context *fc, struct flow *flow);
     void (*action_write)(struct flow_context *fc, struct flow *flow);
-    void (*eg)(struct world *world, struct flow_context *fc,
-               uint32_t out_lport);
 };
 
 struct group {
