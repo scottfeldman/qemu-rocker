@@ -1871,7 +1871,7 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
                            ntohs(action->new_vlan_id));
 
         if (action->has_group_id)
-            monitor_printf(mon, " write group %d", action->group_id);
+            monitor_printf(mon, " write group 0x%08x", action->group_id);
 
         if (action->has_goto_tbl)
             monitor_printf(mon, " goto tbl %d", action->goto_tbl);
@@ -1884,7 +1884,7 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
 
 void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
 {
-    RockerGroupList *list, *group;
+    RockerGroupList *list, *g;
     const char *name = qdict_get_str(qdict, "name");
     const char *world = qdict_get_try_str(qdict, "world");
     uint8_t type = qdict_get_try_int(qdict, "type", 9);
@@ -1898,8 +1898,55 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    for (group = list; group; group = group->next)
-        monitor_printf(mon, "0x%08x\n", group->value->id);
+    monitor_printf(mon, "id (decode) --> buckets\n");
+        
+    for (g = list; g; g = g->next) {
+        RockerGroup *group = g->value;
+
+        monitor_printf(mon, "0x%08x", group->id);
+
+        monitor_printf(mon, " (type %s", group->type == 0 ? "L2 interface" :
+                                         group->type == 1 ? "L2 rewrite" :
+                                         group->type == 2 ? "L3 unicast" :
+                                         group->type == 3 ? "L2 multicast" :
+                                         group->type == 4 ? "L2 flood" :
+                                         group->type == 5 ? "L3 interface" :
+                                         group->type == 6 ? "L3 multicast" :
+                                         group->type == 7 ? "L3 ECMP" :
+                                         group->type == 8 ? "L2 overlay" :
+                                         "unknown");
+
+        if (group->has_vlan_id)
+            monitor_printf(mon, " vlan %d", group->vlan_id);
+
+        if (group->has_lport)
+            monitor_printf(mon, " port %d", group->lport);
+
+        if (group->has_index)
+            monitor_printf(mon, " index %d", group->index);
+
+        monitor_printf(mon, ") -->");
+
+        if (group->has_pop_vlan && group->pop_vlan)
+            monitor_printf(mon, " pop vlan");
+
+        if (group->has_out_lport)
+            monitor_printf(mon, " out port %d", group->out_lport);
+
+        if (group->has_group_ids) {
+            struct uint32List *id;
+
+            monitor_printf(mon, " groups [");
+            for (id = group->group_ids; id; id = id->next) {
+                monitor_printf(mon, "0x%08x", id->value);
+                if (id->next)
+                    monitor_printf(mon, ",");
+            }
+            monitor_printf(mon, "]");
+        }
+
+        monitor_printf(mon, "\n");
+    }
 
     qapi_free_RockerGroupList(list);
 }
