@@ -174,6 +174,10 @@ struct group {
         uint32_t out_lport;
         uint8_t pop_vlan;
     } l2_interface;
+    struct {
+        uint16_t group_count;
+        uint32_t *group_ids;
+    } l2_flood;
 };
 
 struct group *group_alloc(struct flow_sys *fs, uint32_t id);

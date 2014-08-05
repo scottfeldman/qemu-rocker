@@ -898,6 +898,67 @@ static int of_dpa_cmd_add_l2_interface(struct group *group,
     return 0;
 }
 
+static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
+                                   struct group *group,
+                                   struct rocker_tlv **group_tlvs)
+{
+    struct group *l2_interface_group;
+    struct rocker_tlv **tlvs;
+    int err = 0;
+    int i;
+
+    if (!group_tlvs[ROCKER_TLV_OF_DPA_GROUP_COUNT] ||
+        !group_tlvs[ROCKER_TLV_OF_DPA_GROUP_IDS])
+        return -EINVAL;
+
+    group->l2_flood.group_count =
+        rocker_tlv_get_le16(group_tlvs[ROCKER_TLV_OF_DPA_GROUP_COUNT]);
+
+    tlvs = g_malloc0((group->l2_flood.group_count + 1) *
+                     sizeof(struct rocker_tlv *));
+    if (!tlvs)
+        return -ENOMEM;
+
+    group->l2_flood.group_ids =
+        g_malloc0(group->l2_flood.group_count * sizeof(uint32_t));
+    if (!group->l2_flood.group_ids) {
+        err = -ENOMEM;
+        goto err_out;
+    }
+
+    rocker_tlv_parse_nested(tlvs, group->l2_flood.group_count,
+                            group_tlvs[ROCKER_TLV_OF_DPA_GROUP_IDS]);
+
+    for (i = 0; i < group->l2_flood.group_count; i++)
+        group->l2_flood.group_ids[i] = rocker_tlv_get_le32(tlvs[i + 1]);
+
+    /* All of the L2 interface groups referenced by the L2 flood
+     * group must exist and must have same VLAN
+     */
+
+    for (i = 0; i < group->l2_flood.group_count; i++) {
+        l2_interface_group = group_find(fs, group->l2_flood.group_ids[i]);
+        if (!l2_interface_group) {
+            DPRINTF("l2 interface group 0x%08x doesn't exist\n",
+                    group->l2_flood.group_ids[i]);
+            err = -EINVAL;
+            goto err_out;
+        }
+        if (ROCKER_GROUP_VLAN_GET(l2_interface_group->id) !=
+            ROCKER_GROUP_VLAN_GET(group->id)) {
+            DPRINTF("l2 interface group 0x%08x VLAN doesn't match l2 flood group 0x%08x\n",
+                    group->l2_flood.group_ids[i], group->id);
+            err = -EINVAL;
+            goto err_out;
+        }
+    }
+
+err_out:
+    g_free(tlvs);
+
+    return err;
+}
+
 static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
                                 struct rocker_tlv **group_tlvs)
 {
@@ -916,6 +977,9 @@ static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
     switch (type) {
     case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
         err = of_dpa_cmd_add_l2_interface(group, group_tlvs);
+        break;
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+        err = of_dpa_cmd_add_l2_flood(fs, group, group_tlvs);
         break;
     default:
         err = -ENOTSUP;
