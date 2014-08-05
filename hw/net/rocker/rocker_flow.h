@@ -191,5 +191,6 @@ uint64_t flow_sys_another_cookie(struct flow_sys *fs);
 struct flow_sys *flow_sys_alloc(struct world *world,
                                 struct flow_tbl_ops *tbl_ops);
 void flow_sys_free(struct flow_sys *fs);
+struct world *flow_sys_world(struct flow_sys *fs);
 
 #endif /* _ROCKER_FLOW_H_ */

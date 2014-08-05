@@ -502,3 +502,8 @@ void flow_sys_free(struct flow_sys *fs)
     g_hash_table_destroy(fs->flow_tbl);
     g_free(fs);
 }
+
+struct world *flow_sys_world(struct flow_sys *fs)
+{
+    return fs->world;
+}
