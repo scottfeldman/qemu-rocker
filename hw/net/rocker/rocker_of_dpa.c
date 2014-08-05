@@ -169,49 +169,109 @@ static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
     fc->action_set.write.vlan_id = flow->action.write.vlan_id;
 }
 
-static void of_dpa_eg(struct world *world, struct flow_context *fc,
-                      uint32_t out_lport)
+static void of_dpa_acl_build_match(struct flow_context *fc,
+                                   struct flow_match *match)
 {
-    if (out_lport == 0)
-        rx_produce(world, fc->in_lport, fc->iov, fc->iovcnt);
-    else
-        rocker_port_eg(world_rocker(world), out_lport,
+    match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_ACL_POLICY;
+    // XXX fill this out and adjust value.width accordingly
+    match->value.width = FLOW_KEY_WIDTH(tbl_id);
+}
+
+static void of_dpa_drop(struct flow_sys *fs, struct flow_context *fc)
+{
+    /* drop packet */
+}
+
+static void of_dpa_output_l2_interface(struct group *group,
+                                       struct flow_sys *fs,
+                                       struct flow_context *fc)
+{
+    if (group->l2_interface.pop_vlan)
+        flow_pkt_strip_vlan(fc);
+
+    if (group->l2_interface.out_lport == 0)
+        rx_produce(flow_sys_world(fs), fc->in_lport, fc->iov, fc->iovcnt);
+    else if (group->l2_interface.out_lport != fc->in_lport)
+        rocker_port_eg(world_rocker(flow_sys_world(fs)),
+                       group->l2_interface.out_lport,
                        fc->iov, fc->iovcnt);
+}
+
+static void of_dpa_output_l2_flood(struct group *group,
+                                   struct flow_sys *fs,
+                                   struct flow_context *fc)
+{
+    struct group *l2_group;
+    int i;
+
+    for (i = 0; i < group->l2_flood.group_count; i++) {
+        l2_group = group_find(fs, group->l2_flood.group_ids[i]);
+        of_dpa_output_l2_interface(l2_group, fs, fc);
+    }
+}
+
+static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
+{
+    struct flow_action *set = &fc->action_set;
+    struct group *group;
+
+    if (!set->write.group_id)
+        return;
+
+    /* process group write actions */
+
+    group = group_find(fs, set->write.group_id);
+    if (!group)
+        return;
+
+    switch (ROCKER_GROUP_TYPE_GET(group->id)) {
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
+        of_dpa_output_l2_interface(group, fs, fc);
+        break;
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+        of_dpa_output_l2_flood(group, fs, fc);
+        break;
+    }
 }
 
 static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     [ROCKER_OF_DPA_TABLE_ID_INGRESS_PORT] = {
         .build_match = of_dpa_ig_port_build_match,
         .miss = of_dpa_ig_port_miss,
+        .hit_no_goto = of_dpa_drop,
     },
     [ROCKER_OF_DPA_TABLE_ID_VLAN] = {
         .build_match = of_dpa_vlan_build_match,
+        .hit_no_goto = of_dpa_drop,
         .action_apply = of_dpa_vlan_insert,
     },
     [ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC] = {
         .build_match = of_dpa_term_mac_build_match,
         .miss = of_dpa_term_mac_miss,
+        .hit_no_goto = of_dpa_drop,
         .action_apply = of_dpa_copy_to_controller,
     },
     [ROCKER_OF_DPA_TABLE_ID_BRIDGING] = {
         .build_match = of_dpa_bridging_build_match,
         .miss = of_dpa_bridging_miss,
+        .hit_no_goto = of_dpa_drop,
         .action_apply = of_dpa_copy_to_controller,
         .action_write = of_dpa_bridging_action_write,
-        .eg = of_dpa_eg,
     },
     [ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING] = {
         .build_match = of_dpa_unicast_routing_build_match,
+        .hit_no_goto = of_dpa_drop,
         .action_write = of_dpa_unicast_routing_action_write,
-        .eg = of_dpa_eg,
     },
     [ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING] = {
         .build_match = of_dpa_multicast_routing_build_match,
+        .hit_no_goto = of_dpa_drop,
         .action_write = of_dpa_multicast_routing_action_write,
-        .eg = of_dpa_eg,
     },
     [ROCKER_OF_DPA_TABLE_ID_ACL_POLICY] = {
-        // XXX implement this
+        .build_match = of_dpa_acl_build_match,
+        .miss = of_dpa_eg, /* XXX temp until we have ACL rules */
+        .hit_no_goto = of_dpa_eg,
     },
 };
 
