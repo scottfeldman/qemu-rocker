@@ -19,6 +19,7 @@
 #include "qemu/iov.h"
 
 #include "rocker.h"
+#include "rocker_hw.h"
 #include "rocker_flow.h"
 
 struct flow_sys {
@@ -410,15 +411,45 @@ static void group_fill(void *key, void *value, void *user_data)
     struct group_fill_context *flow_context = user_data;
     RockerGroupList *new;
     RockerGroup *ngroup;
+    struct uint32List *id;
+    int i;
 
-    if (flow_context->tbl_id != -1 &&
-        flow_context->tbl_id != (group->id >> 28 && 0xf))
+    if (flow_context->tbl_id != 9 &&
+        flow_context->tbl_id != ROCKER_GROUP_TYPE_GET(group->id))
         return;
 
     new = g_malloc0(sizeof(*new));
     ngroup = new->value = g_malloc0(sizeof(*ngroup));
 
     ngroup->id = group->id;
+
+    ngroup->type = ROCKER_GROUP_TYPE_GET(group->id);
+
+    switch (ngroup->type) {
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
+            ngroup->has_vlan_id = true;
+            ngroup->vlan_id = ntohs(ROCKER_GROUP_VLAN_GET(group->id));
+            ngroup->has_lport = true;
+            ngroup->lport = ROCKER_GROUP_PORT_GET(group->id);
+            ngroup->has_out_lport = true;
+            ngroup->out_lport = group->l2_interface.out_lport;
+            ngroup->has_pop_vlan = true;
+            ngroup->pop_vlan = group->l2_interface.pop_vlan;
+            break;
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+            ngroup->has_vlan_id = true;
+            ngroup->vlan_id = ntohs(ROCKER_GROUP_VLAN_GET(group->id));
+            ngroup->has_index = true;
+            ngroup->index = ROCKER_GROUP_INDEX_GET(group->id);
+            for (i = 0; i < group->l2_flood.group_count; i++) {
+                ngroup->has_group_ids = true;
+                id = g_malloc0(sizeof(*id));
+                id->value = group->l2_flood.group_ids[i];
+                id->next = ngroup->group_ids;
+                ngroup->group_ids = id;
+            }
+            break;
+    }
 
     new->next = flow_context->list;
     flow_context->list = new;
