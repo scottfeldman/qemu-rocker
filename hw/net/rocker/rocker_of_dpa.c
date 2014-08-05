@@ -539,10 +539,6 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
             return -EINVAL;
     }
 
-    if (flow_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT])
-        action->apply.out_lport =
-            rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT]);
-
     return 0;
 }
 
