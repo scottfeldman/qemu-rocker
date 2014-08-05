@@ -290,8 +290,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     bool untagged;
 
     if (!flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT] ||
-        !flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID] ||
-        !flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID])
+        !flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
         return -EINVAL;
 
     key->tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
@@ -314,11 +313,12 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     else
         return -EINVAL;
 
-    action->goto_tbl =
-        rocker_tlv_get_le16(flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]);
-
-    if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC)
-        return -EINVAL;
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]) {
+        action->goto_tbl =
+            rocker_tlv_get_le16(flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]);
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC)
+            return -EINVAL;
+    }
 
     if (untagged) {
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID])
