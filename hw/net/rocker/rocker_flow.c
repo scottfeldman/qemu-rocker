@@ -225,10 +225,8 @@ void flow_pkt_strip_vlan(struct flow_context *fc)
 {
     struct flow_pkt_fields *fields = &fc->fields;
 
-    if (!fields->vlanhdr) {
-        DPRINTF("flow_pkt_strip_vlan packet has no outer vlan to strip\n");
+    if (!fields->vlanhdr)
         return;
-    }
 
     fields->vlanhdr = NULL;
 
