@@ -1830,16 +1830,16 @@ ETEXI
 
     {
         .name       = "rocker-groups",
-        .args_type  = "name:s,world:s?,tbl_id:i?",
-        .params     = "rocker_groups name [world] [tbl_id]",
-        .help       = "Show Rocker group tables",
+        .args_type  = "name:s,world:s?,type:i?",
+        .params     = "rocker_groups name [world] [type]",
+        .help       = "Show Rocker groups",
         .mhandler.cmd = hmp_rocker_groups,
     },
 
 STEXI
-@item rocker_groups @var{name} [@var{world}] [@var{tbl_id}]
+@item rocker_groups @var{name} [@var{world}] [@var{type}]
 @findex rocker_groups
-Show Rocker group tables
+Show Rocker groups
 ETEXI
 
 STEXI

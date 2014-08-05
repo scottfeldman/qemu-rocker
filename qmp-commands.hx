@@ -3873,6 +3873,6 @@ EQMP
 
     {
         .name       = "rocker-groups",
-        .args_type  = "name:s,world:s?,tbl_id:i?",
+        .args_type  = "name:s,world:s?,type:i?",
         .mhandler.cmd_new = qmp_marshal_input_rocker_groups,
     },

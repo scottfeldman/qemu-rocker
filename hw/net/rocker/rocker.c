@@ -155,8 +155,8 @@ RockerFlowList *qmp_rocker_flows(const char *name, bool has_world,
 }
 
 RockerGroupList *qmp_rocker_groups(const char *name, bool has_world,
-                                   const char *world, bool has_tbl_id,
-                                   uint32_t tbl_id, Error **errp)
+                                   const char *world, bool has_type,
+                                   uint8_t type, Error **errp)
 {
     struct rocker *r;
     struct world *w;
@@ -176,7 +176,7 @@ RockerGroupList *qmp_rocker_groups(const char *name, bool has_world,
             w = r->worlds[ROCKER_WORLD_TYPE_L2L3];
     }
 
-    return world_do_group_fill(w, tbl_id);
+    return world_do_group_fill(w, type);
 }
 
 uint32_t rocker_fp_ports(struct rocker *r)
