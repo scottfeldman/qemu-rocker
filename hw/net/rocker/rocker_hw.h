@@ -271,6 +271,8 @@ enum {
     ROCKER_TLV_OF_DPA_OUT_LPORT,           /* u32 */
     ROCKER_TLV_OF_DPA_GOTO_TABLE_ID,       /* u16 */
     ROCKER_TLV_OF_DPA_GROUP_ID,            /* u32 */
+    ROCKER_TLV_OF_DPA_GROUP_COUNT,         /* u16 */
+    ROCKER_TLV_OF_DPA_GROUP_IDS,           /* u32 array */
     ROCKER_TLV_OF_DPA_VLAN_ID,             /* __be16 */
     ROCKER_TLV_OF_DPA_VLAN_ID_MASK,        /* __be16 */
     ROCKER_TLV_OF_DPA_VLAN_PCP,            /* __be16 */
