@@ -4730,5 +4730,5 @@
   'data': { 'id': 'uint32' } }
 
 { 'command': 'rocker-groups',
-  'data': { 'name': 'str', '*world': 'str', '*tbl_id': 'uint32' },
+  'data': { 'name': 'str', '*world': 'str', '*type': 'uint8' },
   'returns': ['RockerGroup'] }

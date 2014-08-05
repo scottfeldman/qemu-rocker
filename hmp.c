@@ -1776,11 +1776,11 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
     RockerGroupList *list, *group;
     const char *name = qdict_get_str(qdict, "name");
     const char *world = qdict_get_try_str(qdict, "world");
-    uint32_t tbl_id = qdict_get_try_int(qdict, "tbl_id", -1);
+    uint8_t type = qdict_get_try_int(qdict, "type", 9);
     Error *errp = NULL;
 
     list = qmp_rocker_groups(name, !!world, world,
-                             tbl_id != -1, tbl_id, &errp);
+                             type != 9, type, &errp);
     if (error_is_set(&errp)) {
         monitor_printf(mon, "%s\n", error_get_pretty(errp));
         error_free(errp);

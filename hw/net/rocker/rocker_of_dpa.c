@@ -282,11 +282,11 @@ static RockerFlowList *of_dpa_flow_fill(struct world *world, uint32_t tbl_id)
     return flow_sys_flow_fill(lw->fs, tbl_id);
 }
 
-static RockerGroupList *of_dpa_group_fill(struct world *world, uint32_t tbl_id)
+static RockerGroupList *of_dpa_group_fill(struct world *world, uint8_t type)
 {
     struct of_dpa_world *lw = world_private(world);
 
-    return flow_sys_group_fill(lw->fs, tbl_id);
+    return flow_sys_group_fill(lw->fs, type);
 }
 
 static ssize_t of_dpa_ig(struct world *world, uint32_t lport,

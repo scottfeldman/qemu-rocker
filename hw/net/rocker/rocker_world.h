@@ -40,7 +40,7 @@ typedef int (world_cmd)(struct world *world, struct desc_info *info,
 typedef RockerFlowList *(world_flow_fill)(struct world *world,
                                           uint32_t tbl_id);
 typedef RockerGroupList *(world_group_fill)(struct world *world,
-                                            uint32_t tbl_id);
+                                            uint8_t type);
 
 struct world_ops {
     world_init *init;
@@ -52,7 +52,7 @@ struct world_ops {
 };
 
 RockerFlowList *world_do_flow_fill(struct world *world, uint32_t tbl_id);
-RockerGroupList *world_do_group_fill(struct world *world, uint32_t tbl_id);
+RockerGroupList *world_do_group_fill(struct world *world, uint8_t type);
 ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt);
 int world_do_cmd(struct world *world, struct desc_info *info,
