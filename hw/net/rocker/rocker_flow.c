@@ -234,28 +234,6 @@ void flow_pkt_strip_vlan(struct flow_context *fc)
     fc->iov[1].iov_len = 0;
 }
 
-static void flow_exec_action_set(struct flow_sys *fs, struct flow_context *fc,
-                                 struct flow_tbl_ops *ops)
-{
-    struct flow_action *set = &fc->action_set;
-    struct group *group;
-
-    if (set->write.group_id) {
-        group = group_find(fs, set->write.group_id);
-        if (!group) {
-            DPRINTF("flow_exec_action_set group %d not found\n",
-                    set->write.group_id);
-            return;
-        }
-#if 0
-        if (group->action.pop_vlan_tag)
-            flow_pkt_strip_vlan(fc);
-        if (ops->eg)
-            ops->eg(fs->world, fc, group->action.out_lport);
-#endif
-    }
-}
-
 static void flow_match(void *key, void *value, void *user_data)
 {
     struct flow *flow = value;
@@ -312,8 +290,10 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
 
     if (flow->action.goto_tbl)
         flow_ig_tbl(fs, fc, flow->action.goto_tbl);
-    else
-        flow_exec_action_set(fs, fc, ops);
+    else if (ops->hit_no_goto)
+        ops->hit_no_goto(fs, fc);
+
+    /* drop packet */
 }
 
 struct flow_fill_context {
