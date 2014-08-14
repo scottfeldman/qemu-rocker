@@ -521,8 +521,10 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     }
 
     /* can't do VLAN bridging and tunnel bridging at same time */
-    if (key->eth.vlan_id && key->tunnel_id)
+    if (key->eth.vlan_id && key->tunnel_id) {
+        DPRINTF("can't do VLAN bridging and tunnel bridging at same time\n");
         return -EINVAL;
+    }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]) {
         memcpy(key->eth.dst.a,
@@ -557,8 +559,10 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
         }
     }
 
-    if (mode == BRIDGING_MODE_UNKNOWN)
+    if (mode == BRIDGING_MODE_UNKNOWN) {
+        DPRINTF("unknown bridging mode\n");
         return -EINVAL;
+    }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]) {
         action->goto_tbl =
