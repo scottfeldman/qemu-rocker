@@ -444,6 +444,7 @@ static void group_fill(void *key, void *value, void *user_data)
             ngroup->pop_vlan = group->l2_interface.pop_vlan;
             break;
         case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
             ngroup->has_vlan_id = true;
             ngroup->vlan_id = ntohs(ROCKER_GROUP_VLAN_GET(group->id));
             ngroup->has_index = true;

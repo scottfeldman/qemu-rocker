@@ -229,6 +229,7 @@ static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
         of_dpa_output_l2_interface(group, fs, fc);
         break;
     case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
         of_dpa_output_l2_flood(group, fs, fc);
         break;
     }
@@ -1039,6 +1040,8 @@ static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
         err = of_dpa_cmd_add_l2_interface(group, group_tlvs);
         break;
     case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+    /* Treat L2 multicast group same as a L2 flood group */
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
         err = of_dpa_cmd_add_l2_flood(fs, group, group_tlvs);
         break;
     default:
