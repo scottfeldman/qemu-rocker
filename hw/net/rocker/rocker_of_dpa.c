@@ -189,6 +189,13 @@ static void of_dpa_output_l2_interface(struct group *group,
     if (group->l2_interface.pop_vlan)
         flow_pkt_strip_vlan(fc);
 
+    /* Note: By default, and as per the OpenFlow 1.3.1
+     * specification, a packet cannot be forwarded back
+     * to the IN_PORT from which it came in. An action
+     * bucket that specifies the particular packet's
+     * egress port is not evaluated.
+     */
+
     if (group->l2_interface.out_lport == 0)
         rx_produce(flow_sys_world(fs), fc->in_lport, fc->iov, fc->iovcnt);
     else if (group->l2_interface.out_lport != fc->in_lport)
