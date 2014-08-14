@@ -25,7 +25,6 @@
  */
 
 struct flow_key {
-    uint32_t priority;               /* flow priority */
     uint32_t in_lport;               /* ingress port */
     uint32_t tunnel_id;              /* overlay tunnel id */
     uint32_t tbl_id;                 /* table id */
