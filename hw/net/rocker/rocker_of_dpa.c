@@ -120,7 +120,8 @@ static void of_dpa_bridging_miss(struct flow_sys *fs, struct flow_context *fc)
 static void of_dpa_bridging_action_write(struct flow_context *fc,
                                          struct flow *flow)
 {
-    fc->action_set.write.group_id = flow->action.write.group_id;
+    if (flow->action.write.group_id != ROCKER_GROUP_NONE)
+        fc->action_set.write.group_id = flow->action.write.group_id;
     fc->action_set.write.tun_log_lport = flow->action.write.tun_log_lport;
 }
 
@@ -140,7 +141,8 @@ static void of_dpa_unicast_routing_build_match(struct flow_context *fc,
 static void of_dpa_unicast_routing_action_write(struct flow_context *fc,
                                                 struct flow *flow)
 {
-    fc->action_set.write.group_id = flow->action.write.group_id;
+    if (flow->action.write.group_id != ROCKER_GROUP_NONE)
+        fc->action_set.write.group_id = flow->action.write.group_id;
 }
 
 static void of_dpa_multicast_routing_build_match(struct flow_context *fc,
@@ -165,7 +167,8 @@ static void of_dpa_multicast_routing_build_match(struct flow_context *fc,
 static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
                                                   struct flow *flow)
 {
-    fc->action_set.write.group_id = flow->action.write.group_id;
+    if (flow->action.write.group_id != ROCKER_GROUP_NONE)
+        fc->action_set.write.group_id = flow->action.write.group_id;
     fc->action_set.write.vlan_id = flow->action.write.vlan_id;
 }
 
