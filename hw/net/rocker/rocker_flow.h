@@ -182,6 +182,7 @@ struct group {
 struct group *group_alloc(struct flow_sys *fs, uint32_t id);
 struct group *group_find(struct flow_sys *fs, uint32_t id);
 int group_add(struct group *group);
+int group_del(struct group *group);
 size_t group_tbl_size(struct flow_sys *fs);
 
 RockerFlowList *flow_sys_flow_fill(struct flow_sys *fs, uint32_t tbl_id);
