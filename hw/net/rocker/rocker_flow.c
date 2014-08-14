@@ -226,6 +226,40 @@ void flow_pkt_strip_vlan(struct flow_context *fc)
     fc->iov[1].iov_len = 0;
 }
 
+#if defined (DEBUG_ROCKER)
+static void flow_key_dump(struct flow_key *key)
+{
+    char buf[512], *b = buf;
+
+    if (key->width >= FLOW_KEY_WIDTH(in_lport))
+        b += sprintf(b," in_lport %d", key->in_lport);
+    if (key->width >= FLOW_KEY_WIDTH(tunnel_id))
+        b += sprintf(b," tun %d", key->tunnel_id);
+    if (key->width >= FLOW_KEY_WIDTH(tbl_id))
+        b += sprintf(b," tbl %d", key->tbl_id);
+    if (key->width >= FLOW_KEY_WIDTH(eth.vlan_id))
+        b += sprintf(b," vlan %d", ntohs(key->eth.vlan_id));
+    if (key->width >= FLOW_KEY_WIDTH(eth.src)) {
+        char *mac = qemu_mac_strdup_printf(key->eth.src.a);
+        b += sprintf(b," src %s", mac);
+        g_free(mac);
+    }
+    if (key->width >= FLOW_KEY_WIDTH(eth.dst)) {
+        char *mac = qemu_mac_strdup_printf(key->eth.dst.a);
+        b += sprintf(b," dst %s", mac);
+        g_free(mac);
+    }
+    if (key->width >= FLOW_KEY_WIDTH(eth.tci))
+        b += sprintf(b," tci %d", ntohs(key->eth.tci));
+    if (key->width >= FLOW_KEY_WIDTH(eth.type))
+        b += sprintf(b," type 0x%04x", ntohs(key->eth.type));
+
+    DPRINTF("%s\n", buf);
+}
+#else
+#define flow_key_dump(k)
+#endif
+
 static void flow_match(void *key, void *value, void *user_data)
 {
     struct flow *flow = value;
@@ -235,15 +269,15 @@ static void flow_match(void *key, void *value, void *user_data)
     uint64_t *v = (uint64_t *)&match->value;
     int i;
 
+    flow_key_dump(&flow->key);
+
     if (flow->key.width > match->value.width)
         return;
 
-    for (i = 0; i < flow->key.width; i++, k++, m++, v++) {
-        DPRINTF("key 0x%016lx mask 0x%016lx value 0x%016lx\n", *k, *m, *v);
-        if ((~*k & ~*m & *v) | (*k & ~*m & ~*v)) {
+    for (i = 0; i < flow->key.width; i++, k++, m++, v++)
+        if ((~*k & ~*m & *v) | (*k & ~*m & ~*v))
             return;
-        }
-    }
+
     DPRINTF("match\n");
 
     if (!match->best || flow->priority > match->best->priority)
@@ -261,6 +295,9 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
         ops->build_match(fc, &match);
     else
         return;
+
+    DPRINTF("\nnew search\n");
+    flow_key_dump(&match.value);
 
     g_hash_table_foreach(fs->flow_tbl, flow_match, &match);
 
