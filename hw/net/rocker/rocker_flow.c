@@ -358,6 +358,17 @@ static void flow_fill(void *key, void *value, void *user_data)
         nmask->tunnel_id = flow->mask.tunnel_id;
     }
 
+    if (memcmp(flow->key.eth.src.a, zero_mac.a, ETH_ALEN) ||
+        memcmp(flow->mask.eth.src.a, zero_mac.a, ETH_ALEN)) {
+        nkey->has_eth_src = true;
+        nkey->eth_src = qemu_mac_strdup_printf(flow->key.eth.src.a);
+    }
+
+    if (memcmp(flow->mask.eth.src.a, zero_mac.a, ETH_ALEN)) {
+        nmask->has_eth_src = true;
+        nmask->eth_src = qemu_mac_strdup_printf(flow->mask.eth.src.a);
+    }
+
     if (memcmp(flow->key.eth.dst.a, zero_mac.a, ETH_ALEN) ||
         memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
         nkey->has_eth_dst = true;
@@ -367,6 +378,11 @@ static void flow_fill(void *key, void *value, void *user_data)
     if (memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
         nmask->has_eth_dst = true;
         nmask->eth_dst = qemu_mac_strdup_printf(flow->mask.eth.dst.a);
+    }
+
+    if (flow->key.eth.type) {
+        nkey->has_eth_type = true;
+        nkey->eth_type = ntohs(flow->key.eth.type);
     }
 
     if (flow->action.goto_tbl) {

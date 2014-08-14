@@ -1745,6 +1745,32 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
                 monitor_printf(mon, "(0x%x)", mask->tunnel_id);
         }
 
+        if (key->has_eth_type) {
+            switch (key->eth_type) {
+            case 0x0806:
+                monitor_printf(mon, " ARP");
+                break;
+            case 0x0800:
+                monitor_printf(mon, " IP");
+                break;
+            case 0x86dd:
+                monitor_printf(mon, " IPv6");
+                break;
+            case 0x88cc:
+                monitor_printf(mon, " LLDP");
+                break;
+            default:
+                monitor_printf(mon, " eth type 0x%04x", key->eth_type);
+                break;
+            }
+        }
+
+        if (key->has_eth_src) {
+            monitor_printf(mon, " eth src %s", key->eth_src);
+            if (mask->has_eth_src)
+                monitor_printf(mon, "(%s)", mask->eth_src);
+        }
+
         if (key->has_eth_dst) {
             monitor_printf(mon, " eth dst %s", key->eth_dst);
             if (mask->has_eth_dst)
@@ -1809,7 +1835,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
             monitor_printf(mon, " vlan %d", group->vlan_id);
 
         if (group->has_lport)
-            monitor_printf(mon, " port %d", group->lport);
+            monitor_printf(mon, " lport %d", group->lport);
 
         if (group->has_index)
             monitor_printf(mon, " index %d", group->index);
@@ -1820,7 +1846,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
             monitor_printf(mon, " pop vlan");
 
         if (group->has_out_lport)
-            monitor_printf(mon, " out port %d", group->out_lport);
+            monitor_printf(mon, " out lport %d", group->out_lport);
 
         if (group->has_group_ids) {
             struct uint32List *id;

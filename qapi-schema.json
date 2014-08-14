@@ -4707,11 +4707,12 @@
 
 { 'type': 'RockerFlowKey',
   'data' : { 'priority': 'uint32', 'tbl_id': 'uint32', '*in_lport': 'uint32',
-             '*tunnel_id': 'uint32', '*vlan_id': 'uint16', '*eth_dst': 'str' } }
+             '*tunnel_id': 'uint32', '*vlan_id': 'uint16',
+             '*eth_type': 'uint16', '*eth_src': 'str', '*eth_dst': 'str' } }
 
 { 'type': 'RockerFlowMask',
   'data' : { '*in_lport': 'uint32', '*tunnel_id': 'uint32',
-             '*vlan_id': 'uint16', '*eth_dst': 'str' } }
+             '*vlan_id': 'uint16', '*eth_src': 'str', '*eth_dst': 'str' } }
 
 { 'type': 'RockerFlowAction',
   'data' : { '*goto_tbl': 'uint32', '*group_id': 'uint32',
