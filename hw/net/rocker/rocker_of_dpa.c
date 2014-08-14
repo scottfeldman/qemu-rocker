@@ -173,8 +173,21 @@ static void of_dpa_acl_build_match(struct flow_context *fc,
                                    struct flow_match *match)
 {
     match->value.tbl_id = ROCKER_OF_DPA_TABLE_ID_ACL_POLICY;
-    // XXX fill this out and adjust value.width accordingly
-    match->value.width = FLOW_KEY_WIDTH(tbl_id);
+    match->value.in_lport = fc->in_lport;
+    memcpy(match->value.eth.src.a, fc->fields.ethhdr->h_source,
+           sizeof(match->value.eth.src.a));
+    memcpy(match->value.eth.dst.a, fc->fields.ethhdr->h_dest,
+           sizeof(match->value.eth.dst.a));
+    match->value.eth.type = *fc->fields.h_proto;
+    match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
+    match->value.width = FLOW_KEY_WIDTH(eth.type);
+}
+
+static void of_dpa_acl_action_write(struct flow_context *fc,
+                                    struct flow *flow)
+{
+    if (flow->action.write.group_id != ROCKER_GROUP_NONE)
+        fc->action_set.write.group_id = flow->action.write.group_id;
 }
 
 static void of_dpa_drop(struct flow_sys *fs, struct flow_context *fc)
@@ -278,8 +291,8 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
     [ROCKER_OF_DPA_TABLE_ID_ACL_POLICY] = {
         .build_match = of_dpa_acl_build_match,
-        .miss = of_dpa_eg, /* XXX temp until we have ACL rules */
         .hit_no_goto = of_dpa_eg,
+        .action_write = of_dpa_acl_action_write,
     },
 };
 
@@ -803,8 +816,80 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
 
 static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
 {
-    // XXX implement this
-    return -ENOTSUP;
+    struct flow_key *key = &flow->key;
+    struct flow_key *mask = &flow->mask;
+    struct flow_action *action = &flow->action;
+    enum {
+        ACL_MODE_UNKNOWN,
+        ACL_MODE_IPV4_VLAN,
+        ACL_MODE_IPV6_VLAN,
+        ACL_MODE_IPV4_TENANT,
+        ACL_MODE_IPV6_TENANT,
+    } mode = ACL_MODE_UNKNOWN;
+
+    if (!flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT] ||
+        !flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE])
+        return -EINVAL;
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID] &&
+        flow_tlvs[ROCKER_TLV_OF_DPA_TUNNEL_ID])
+        return -EINVAL;
+
+    key->tbl_id = ROCKER_OF_DPA_TABLE_ID_ACL_POLICY;
+    key->width = FLOW_KEY_WIDTH(eth.type);
+
+    key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT_MASK])
+        mask->in_lport =
+            rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC])
+        memcpy(key->eth.src.a,
+               rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC]),
+               sizeof(key->eth.src.a));
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC_MASK])
+        memcpy(mask->eth.src.a,
+               rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC_MASK]),
+               sizeof(mask->eth.src.a));
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC])
+        memcpy(key->eth.dst.a,
+               rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]),
+               sizeof(key->eth.dst.a));
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC_MASK])
+        memcpy(mask->eth.dst.a,
+               rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC_MASK]),
+               sizeof(mask->eth.dst.a));
+
+    key->eth.type = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE]);
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
+        key->eth.vlan_id =
+            rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK])
+        mask->eth.vlan_id =
+            rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
+
+    switch (ntohs(key->eth.type)) {
+    case 0x86dd:
+        mode = (key->eth.vlan_id) ? ACL_MODE_IPV6_VLAN : ACL_MODE_IPV6_TENANT;
+        break;
+    default:
+	/* weirdness: any ethertype other than 0x86dd (IPv6) is
+         * considered IPv4 mode */
+        mode = (key->eth.vlan_id) ? ACL_MODE_IPV4_VLAN : ACL_MODE_IPV4_TENANT;
+        break;
+    }
+
+    /* XXX only supporting IPv4 VLAN mode for now */
+    if (mode != ACL_MODE_IPV4_VLAN)
+        return -EINVAL;
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID])
+        action->write.group_id =
+            rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
+
+    return 0;
 }
 
 static int of_dpa_cmd_flow_add(struct of_dpa_world *ow, uint64_t cookie,
