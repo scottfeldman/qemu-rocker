@@ -1067,7 +1067,13 @@ static int of_dpa_cmd_group_mod(struct of_dpa_world *ow, uint32_t group_id,
 
 static int of_dpa_cmd_group_del(struct of_dpa_world *ow, uint32_t group_id)
 {
-    return -ENOTSUP;
+    struct flow_sys *fs = ow->fs;
+    struct group *group = group_find(fs, group_id);
+
+    if (!group)
+        return -ENOENT;
+
+    return group_del(group);
 }
 
 static int of_dpa_cmd_group_get_stats(struct of_dpa_world *ow,

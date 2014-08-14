@@ -41,9 +41,6 @@ struct group *group_find(struct flow_sys *fs, uint32_t id)
 
 int group_add(struct group *group)
 {
-    if (group_find(group->fs, group->id))
-        return -EEXIST;
-
     g_hash_table_insert(group->fs->group_tbl, &group->id, group);
 
     return 0;
@@ -61,22 +58,16 @@ static int group_mod(struct group *group)
 
     return 0;
 }
+#endif
 
-static int group_del(struct flow_sys *fs, uint32_t id)
+int group_del(struct group *group)
 {
-    struct group *group = group_find(fs, id);
-
-    if (!group)
-        return -ENOENT;
-
-    if (group->ref_count)
-        return -EBUSY;
-
-    g_hash_table_remove(group->hash_all, &id);
+    g_hash_table_remove(group->fs->group_tbl, &group->id);
 
     return 0;
 }
 
+#if 0
 static int group_get_stats(struct flow_sys *fs, uint32_t id)
 {
     struct group *group = group_find(fs, id);
