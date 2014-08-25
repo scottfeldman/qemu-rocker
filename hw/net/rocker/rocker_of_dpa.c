@@ -884,8 +884,9 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
         break;
     }
 
-    /* XXX only supporting IPv4 VLAN mode for now */
-    if (mode != ACL_MODE_IPV4_VLAN)
+    /* XXX only supporting IPv4/6 VLAN mode for now */
+    if (mode != ACL_MODE_IPV4_VLAN &&
+        mode != ACL_MODE_IPV6_VLAN)
         return -EINVAL;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID])
