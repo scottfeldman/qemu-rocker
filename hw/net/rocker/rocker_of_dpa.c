@@ -461,7 +461,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
            rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC_MASK]),
            sizeof(mask->eth.dst.a));
 
-    if ((key->eth.dst.a[5] & 0x01) == 0x00)
+    if ((key->eth.dst.a[0] & 0x01) == 0x00)
         unicast = true;
 
     /* only two wildcard rules are acceptable for IPv4 and IPv6 multicast */
@@ -548,7 +548,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
                sizeof(key->eth.dst.a));
         key->width = FLOW_KEY_WIDTH(eth.dst);
         dst_mac = true;
-        unicast = (key->eth.dst.a[5] & 0x01) == 0x00;
+        unicast = (key->eth.dst.a[0] & 0x01) == 0x00;
     }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC_MASK]) {
