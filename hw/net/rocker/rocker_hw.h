@@ -287,14 +287,14 @@ enum {
     ROCKER_TLV_OF_DPA_DST_MAC_MASK,        /* binary */
     ROCKER_TLV_OF_DPA_SRC_MAC,             /* binary */
     ROCKER_TLV_OF_DPA_SRC_MAC_MASK,        /* binary */
-    ROCKER_TLV_OF_DPA_IP_PROTO,            /* __be16 */
-    ROCKER_TLV_OF_DPA_IP_PROTO_MASK,       /* __be16 */
-    ROCKER_TLV_OF_DPA_DSCP,                /* __be16 */
-    ROCKER_TLV_OF_DPA_DSCP_MASK,           /* __be16 */
-    ROCKER_TLV_OF_DPA_DSCP_ACTION,         /* u8 */
-    ROCKER_TLV_OF_DPA_NEW_DSCP,            /* u8 */
-    ROCKER_TLV_OF_DPA_ECN,                 /* __be16 */
-    ROCKER_TLV_OF_DPA_ECN_MASK,            /* __be16 */
+    ROCKER_TLV_OF_DPA_IP_PROTO,            /* u8 */
+    ROCKER_TLV_OF_DPA_IP_PROTO_MASK,       /* u8 */
+    ROCKER_TLV_OF_DPA_IP_DSCP,             /* u8 */
+    ROCKER_TLV_OF_DPA_IP_DSCP_MASK,        /* u8 */
+    ROCKER_TLV_OF_DPA_IP_DSCP_ACTION,      /* u8 */
+    ROCKER_TLV_OF_DPA_NEW_IP_DSCP,         /* u8 */
+    ROCKER_TLV_OF_DPA_IP_ECN,              /* u8 */
+    ROCKER_TLV_OF_DPA_IP_ECN_MASK,         /* u8 */
     ROCKER_TLV_OF_DPA_DST_IP,              /* __be32 */
     ROCKER_TLV_OF_DPA_DST_IP_MASK,         /* __be32 */
     ROCKER_TLV_OF_DPA_SRC_IP,              /* __be32 */

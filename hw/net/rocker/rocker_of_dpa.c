@@ -184,6 +184,17 @@ static void of_dpa_acl_build_match(struct flow_context *fc,
     match->value.eth.type = *fc->fields.h_proto;
     match->value.eth.vlan_id = fc->fields.vlanhdr->h_tci;
     match->value.width = FLOW_KEY_WIDTH(eth.type);
+    if (fc->fields.ipv4hdr) {
+        match->value.ip.proto = fc->fields.ipv4hdr->ip_p;
+        match->value.ip.tos = fc->fields.ipv4hdr->ip_tos;
+        match->value.width = FLOW_KEY_WIDTH(ip.tos);
+    }
+    else if (fc->fields.ipv6hdr) {
+        match->value.ip.proto =
+            fc->fields.ipv6hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt;
+        match->value.ip.tos = 0; // XXX what goes here?
+        match->value.width = FLOW_KEY_WIDTH(ip.tos);
+    }
 }
 
 static void of_dpa_acl_action_write(struct flow_context *fc,
@@ -817,6 +828,39 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
     return 0;
 }
 
+static int of_dpa_cmd_add_acl_ip(struct flow_key *key,
+                                 struct flow_key *mask,
+                                 struct rocker_tlv **flow_tlvs)
+{
+    key->width = FLOW_KEY_WIDTH(ip.tos);
+
+    key->ip.proto = 0;
+    key->ip.tos = 0;
+    mask->ip.proto = 0xff;
+    mask->ip.tos = 0xff;
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_PROTO])
+        key->ip.proto =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_PROTO]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_PROTO_MASK])
+        mask->ip.proto =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_PROTO_MASK]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_DSCP])
+        key->ip.tos =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_DSCP]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_DSCP_MASK])
+        mask->ip.tos =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_DSCP_MASK]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_ECN])
+        key->ip.tos |=
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_ECN]) << 6;
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_ECN_MASK])
+        mask->ip.tos |=
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_IP_ECN_MASK]) << 6;
+
+    return 0;
+}
+
 static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
 {
     struct flow_key *key = &flow->key;
@@ -829,6 +873,7 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
         ACL_MODE_IPV4_TENANT,
         ACL_MODE_IPV6_TENANT,
     } mode = ACL_MODE_UNKNOWN;
+    int err = 0;
 
     if (!flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT] ||
         !flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE])
@@ -888,6 +933,16 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
     if (mode != ACL_MODE_IPV4_VLAN &&
         mode != ACL_MODE_IPV6_VLAN)
         return -EINVAL;
+
+    switch (ntohs(key->eth.type)) {
+    case 0x0800:
+    case 0x86dd:
+        err = of_dpa_cmd_add_acl_ip(key, mask, flow_tlvs);
+        break;
+    }
+
+    if (err)
+        return err;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID])
         action->write.group_id =

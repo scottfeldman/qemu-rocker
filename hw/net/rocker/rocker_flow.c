@@ -262,6 +262,17 @@ static void flow_key_dump(struct flow_key *key)
     if (key->width >= FLOW_KEY_WIDTH(eth.type))
         b += sprintf(b," type 0x%04x", ntohs(key->eth.type));
 
+    if (key->width >= FLOW_KEY_WIDTH(ip.proto)) {
+        switch (ntohs(key->eth.type)) {
+        case 0x0800:
+        case 0x86dd:
+            b += sprintf(b, " proto %d", key->ip.proto);
+            if (key->width >= FLOW_KEY_WIDTH(ip.tos))
+                b += sprintf(b, " tos %d", key->ip.tos);
+            break;
+        }
+    }
+
     DPRINTF("%s\n", buf);
 }
 #else
