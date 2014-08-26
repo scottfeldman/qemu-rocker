@@ -1766,15 +1766,35 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
         }
 
         if (key->has_eth_src) {
-            monitor_printf(mon, " eth src %s", key->eth_src);
-            if (mask->has_eth_src)
-                monitor_printf(mon, "(%s)", mask->eth_src);
+            if (mask->has_eth_src) {
+                if ((memcmp(key->eth_src, "00:00:00:00:00:00",
+                           strlen("00:00:00:00:00:00")) == 0) &&
+                    (memcmp(mask->eth_src, "ff:ff:ff:ff:ff:ff",
+                           strlen("ff:ff:ff:ff:ff:ff")) == 0)) {
+                    monitor_printf(mon, " src <any>");
+                } else {
+                    monitor_printf(mon, " src %s(%s)", key->eth_src,
+                                   mask->eth_src);
+                }
+            } else {
+                monitor_printf(mon, " src %s", key->eth_src);
+            }
         }
 
         if (key->has_eth_dst) {
-            monitor_printf(mon, " eth dst %s", key->eth_dst);
-            if (mask->has_eth_dst)
-                monitor_printf(mon, "(%s)", mask->eth_dst);
+            if (mask->has_eth_dst) {
+                if ((memcmp(key->eth_dst, "00:00:00:00:00:00",
+                           strlen("00:00:00:00:00:00")) == 0) &&
+                    (memcmp(mask->eth_dst, "ff:ff:ff:ff:ff:ff",
+                           strlen("ff:ff:ff:ff:ff:ff")) == 0)) {
+                    monitor_printf(mon, " dst <any>");
+                } else {
+                    monitor_printf(mon, " dst %s(%s)", key->eth_dst,
+                                   mask->eth_dst);
+                }
+            } else {
+                monitor_printf(mon, " dst %s", key->eth_dst);
+            }
         }
 
         if (key->has_ip_proto) {
