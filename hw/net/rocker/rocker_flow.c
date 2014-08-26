@@ -428,8 +428,31 @@ static void flow_fill(void *key, void *value, void *user_data)
     }
 
     if (flow->key.eth.type) {
+
         nkey->has_eth_type = true;
         nkey->eth_type = ntohs(flow->key.eth.type);
+
+        switch (ntohs(flow->key.eth.type)) {
+        case 0x0800:
+        case 0x86dd:
+            if (flow->key.ip.proto) {
+                nkey->has_ip_proto = true;
+                nkey->ip_proto = flow->key.ip.proto;
+            }
+            if (flow->mask.ip.proto) {
+                nmask->has_ip_proto = true;
+                nmask->ip_proto = flow->mask.ip.proto;
+            }
+            if (flow->key.ip.tos) {
+                nkey->has_ip_tos = true;
+                nkey->ip_tos = flow->key.ip.tos;
+            }
+            if (flow->mask.ip.tos) {
+                nmask->has_ip_tos = true;
+                nmask->ip_tos = flow->mask.ip.tos;
+            }
+            break;
+        }
     }
 
     if (flow->action.goto_tbl) {

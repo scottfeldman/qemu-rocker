@@ -1888,6 +1888,18 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
                 monitor_printf(mon, "(%s)", mask->eth_dst);
         }
 
+        if (key->has_ip_proto) {
+            monitor_printf(mon, " proto %d", key->ip_proto);
+            if (mask->has_ip_proto)
+                monitor_printf(mon, "(0x%x)", mask->ip_proto);
+        }
+
+        if (key->has_ip_tos) {
+            monitor_printf(mon, " TOS %d", key->ip_tos);
+            if (mask->has_ip_tos)
+                monitor_printf(mon, "(0x%x)", mask->ip_tos);
+        }
+
         if (action->has_goto_tbl || action->has_group_id ||
             action->has_new_vlan_id)
             monitor_printf(mon, " -->");
