@@ -175,6 +175,14 @@ void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
         }
         fields->ipv4hdr = (struct ip_header *)(fields->h_proto + 1);
         break;
+    case ETH_P_IPV6:
+        sofar += sizeof(struct ip6_header);
+        if (iov->iov_len < sofar) {
+            DPRINTF("flow_pkt_parse underrun on ip6_header\n");
+            return;
+        }
+        fields->ipv6hdr = (struct ip6_header *)(fields->h_proto + 1);
+        break;
     }
 
     /* To facilitate (potential) VLAN tag insertion, Make a
