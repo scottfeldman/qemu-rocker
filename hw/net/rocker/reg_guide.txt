@@ -803,12 +803,12 @@ Table ID 60: acl policy
 					payload.  Only used if ethertype
 					== 0x0806.
 	OF_DPA_SRC_ARP_IP_MASK	4 (N)	IP Mask
-	OF_DPA_IP_PROTO		2 (N)	IP protocol
-	OF_DPA_IP_PROTO_MASK	2 (N)	IP protocol mask
-	OF_DPA_DSCP		2 (N)	DSCP
-	OF_DPA_DSCP_MASK	2 (N)	DSCP mask
-	OF_DPA_ECN		2 (N)	ECN
-	OF_DPA_ECN_MASK		2 (N)	ECN mask
+	OF_DPA_IP_PROTO		1	IP protocol
+	OF_DPA_IP_PROTO_MASK	1	IP protocol mask
+	OF_DPA_IP_DSCP		1	DSCP
+	OF_DPA_IP_DSCP_MASK	1	DSCP mask
+	OF_DPA_IP_ECN		1	ECN
+	OF_DPA_IP_ECN_MASK		1	ECN mask
 	OF_DPA_L4_SRC_PORT	2 (N)	L4 source port, only for
 					TCP, UDP, or SCTP
 	OF_DPA_L4_SRC_PORT_MASK	2 (N)	L4 source port mask
@@ -827,8 +827,8 @@ Table ID 60: acl policy
 	OF_DPA_NEW_QUEUE_ID	1	queue ID
 	OF_DPA_VLAN_PCP_ACTION	1	write the VLAN priority
 	OF_DPA_NEW_VLAN_PCP	1	VLAN priority
-	OF_DPA_DSCP_ACTION	1	write the DSCP
-	OF_DPA_NEW_DSCP		1	new DSCP
+	OF_DPA_IP_DSCP_ACTION	1	write the DSCP
+	OF_DPA_NEW_IP_DSCP	1	new DSCP
 	OF_DPA_TUN_LOG_LPORT	4	restrct to valid tunnel
 					logical port, set to 0
 					otherwise.
