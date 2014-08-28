@@ -12,8 +12,130 @@ Programmer's Reference Guide for qemu-rocker is here:
     hw/net/rocker/reg_guide.txt
 
 
+Development
+===========
+
+qemu-rocker device is located in hw/net/rocker.
+
+There is a companion development project for a Linux device driver for
+the rocker device, also on github at net-next-rocker.   net-next-rocker
+includes the device driver (rocker.ko) and proposed changes to the
+Linux kernel to support a new switch device driver model (swdev).  The
+kernel changes are currently under review.
+
+
 Building
-========
+--------
 
 $ ./configure --target-list=x86_64-softmmu --extra-cflags=-DDEBUG_ROCKER
 $ make -j16
+
+(Assuming target is x86_64; adjust --target-list accordingly for other
+targets).
+
+-DDEBUG_ROCKER is optional and is used to provide additional run-time
+debug msgs to track device operation.
+
+
+Running
+-------
+
+Verify rocker device is present:
+
+$ qemu-system-x86_64 -device help 2>&1 | grep rocker
+name "rocker", bus PCI, desc "Rocker Switch"
+
+Device options:
+
+$ qemu-system-x86_64 -device rocker,help
+rocker.name=str
+rocker.fp_start_macaddr=macaddr
+rocker.switch_id=uint64
+rocker.len-ports=uint32
+rocker.addr=pci-devfn
+rocker.romfile=str
+rocker.rombar=uint32
+rocker.multifunction=on/off
+rocker.command_serr_enable=on/off
+
+The relevant options are name, fp_start_macaddr, switch_id, len-ports.
+There is also a ports option not list above.  An example qemu command
+line option for a 4-port switch is:
+
+    -device rocker,name=sw1,len-ports=4,ports[0]=dev0,ports[1]=dev1, \
+         ports[2]=dev2,ports[3]=dev3
+
+The switch is name "sw1".  The 4 ports are connected to 4 qemu netdev
+devices, dev0-3.  The qemu netdev devices could be taps or sockets,
+for example.  A fuller example using UDP scoket netdevs would be:
+
+    -device rocker,name=sw1,len-ports=4,ports[0]=dev0,ports[1]=dev1, \
+        ports[2]=dev2,ports[3]=dev3 -netdev socket,udp=127.0.0.1:1204, \
+        localaddr=127.0.0.1:1215,id=dev0 -netdev socket, \
+        udp=127.0.0.1:1205,localaddr=127.0.0.1:1219,id=dev1 \
+        -netdev socket,udp=127.0.0.1:1206,localaddr=127.0.0.1:1211, \
+        id=dev2 -netdev socket,udp=127.0.0.1:1207, \
+        localaddr=127.0.0.1:1223,id=dev3
+
+This would connect the 4 rocker switch ports to UDP sockets on
+localhost.  Other programs (such as other VMs) can be connected to
+the other ends of the UDP sockets to create virtual "wires".
+
+Debugging
+---------
+
+qemu monitor for the VM can be used to examine qemu-rocker device's
+internal state.  This can be done at run-time while switch is operational.
+
+Examples:
+
+(qemu) rocker sw1
+name: sw1
+id: 0x0000013512005452
+ports: 4
+
+(qemu) rocker-ports sw1
+            ena/    speed/ auto
+      port  link    duplex neg?
+     sw1.1  up     10G  FD  No 
+     sw1.2  up     10G  FD  No 
+     sw1.3  !ena   10G  FD  No 
+     sw1.4  !ena   10G  FD  No 
+     
+(qemu) rocker-flows sw1 of-dpa
+prio tbl hits key(mask) --> actions
+2    60       lport 1 vlan 1 LLDP src 00:02:00:00:02:00 dst 01:80:c2:00:00:0e
+2    60       lport 1 vlan 1 ARP src 00:02:00:00:02:00 dst 00:02:00:00:03:00
+2    60       lport 2 vlan 2 IPv6 src 00:02:00:00:03:00 dst 33:33:ff:00:00:02 proto 58
+3    50       vlan 2 dst 33:33:ff:00:00:02 --> write group 0x32000001 goto tbl 60
+2    60       lport 2 vlan 2 IPv6 src 00:02:00:00:03:00 dst 33:33:ff:00:03:00 proto 58
+3    50  1    vlan 2 dst 33:33:ff:00:03:00 --> write group 0x32000001 goto tbl 60
+2    60       lport 2 vlan 2 ARP src 00:02:00:00:03:00 dst 00:02:00:00:02:00
+3    50  2    vlan 2 dst 00:02:00:00:02:00 --> write group 0x02000001 goto tbl 60
+2    60  1    lport 2 vlan 2 IP src 00:02:00:00:03:00 dst 00:02:00:00:02:00 proto 1
+3    50  2    vlan 1 dst 00:02:00:00:03:00 --> write group 0x01000002 goto tbl 60
+2    60  1    lport 1 vlan 1 IP src 00:02:00:00:02:00 dst 00:02:00:00:03:00 proto 1
+2    60       lport 1 vlan 1 IPv6 src 00:02:00:00:02:00 dst 33:33:ff:00:00:01 proto 58
+3    50       vlan 1 dst 33:33:ff:00:00:01 --> write group 0x31000000 goto tbl 60
+2    60       lport 1 vlan 1 IPv6 src 00:02:00:00:02:00 dst 33:33:ff:00:02:00 proto 58
+3    50  1    vlan 1 dst 33:33:ff:00:02:00 --> write group 0x31000000 goto tbl 60
+1    60  173  lport 2 vlan 2 LLDP src <any> dst 01:80:c2:00:00:0e --> write group 0x02000000
+1    60  6    lport 2 vlan 2 IPv6 src <any> dst <any> --> write group 0x02000000
+1    60  174  lport 1 vlan 1 LLDP src <any> dst 01:80:c2:00:00:0e --> write group 0x01000000
+1    60  174  lport 2 vlan 2 IP src <any> dst <any> --> write group 0x02000000
+1    60  6    lport 1 vlan 1 IPv6 src <any> dst <any> --> write group 0x01000000
+1    60  181  lport 2 vlan 2 ARP src <any> dst <any> --> write group 0x02000000
+1    10  715  lport 2 --> apply new vlan 2 goto tbl 20
+1    60  177  lport 1 vlan 1 ARP src <any> dst <any> --> write group 0x01000000
+1    60  174  lport 1 vlan 1 IP src <any> dst <any> --> write group 0x01000000
+1    10  717  lport 1 --> apply new vlan 1 goto tbl 20
+1    0   1432 lport 0(0xffff) --> goto tbl 10
+
+(qemu) rocker-groups sw1 of-dpa
+id (decode) --> buckets
+0x32000001 (type L2 multicast vlan 2 index 1) --> groups [0x02000001,0x02000000]
+0x02000001 (type L2 interface vlan 2 lport 1) --> pop vlan out lport 1
+0x01000002 (type L2 interface vlan 1 lport 2) --> pop vlan out lport 2
+0x02000000 (type L2 interface vlan 2 lport 0) --> pop vlan out lport 0
+0x01000000 (type L2 interface vlan 1 lport 0) --> pop vlan out lport 0
+0x31000000 (type L2 multicast vlan 1 index 0) --> groups [0x01000002,0x01000000]
