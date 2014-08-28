@@ -9,7 +9,7 @@ OF-DPA.  qemu-rocker could support other switch models in the future.
 
 Programmer's Reference Guide for qemu-rocker is here:
 
-
+    hw/net/rocker/reg_guide.txt
 
 
 Building
