@@ -1,16 +1,19 @@
-Read the documentation in qemu-doc.html or on http://wiki.qemu-project.org
+qemu-rocker is a simulated ethernet switch device.  The device supports
+up to 62 front-panel ports and supports L2 and L3 switching and routing
+functions.  The device presents a single PCI device for the switch, with
+a memory-mapped register space for device driver access.
 
-- QEMU team
+qemu-rocker currently supports a switch model based on Broadcom's OF-DPA
+switch.  See Broadcom's OF-DPA sepcification version 1.0 for more info on
+OF-DPA.  qemu-rocker could support other switch models in the future.
 
-qemu-rocker is an effort to develop a new network switch simulated device for
-qemu.  The switch is ficituos.  It doesn't exist in the real world.  It is a
-vechicle to develop a device driver and device driver model in the Linux
-kernel.  The design of the switch device's hardware interface is approximating
-existing real-world enterprise-class switches.  Being a simulation of a real
-switch device, rocker switch device attempts to function as a real switch
-would.  Functions including, for example, L2 bridging, L3 routing, ACL
-filtering, and tunneling.  Interfaces to hardware expose traditional L2/L3
-object management, such as fdb and fib objects, as well as a flow-based
-objects, such as flow table and group table.
+Programmer's Reference Guide for qemu-rocker is here:
 
--scott
+
+
+
+Building
+========
+
+$ ./configure --target-list=x86_64-softmmu --extra-cflags=-DDEBUG_ROCKER
+$ make -j16
