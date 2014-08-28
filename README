@@ -4,7 +4,7 @@ functions.  The device presents a single PCI device for the switch, with
 a memory-mapped register space for device driver access.
 
 qemu-rocker currently supports a switch model based on Broadcom's OF-DPA
-switch.  See Broadcom's OF-DPA sepcification version 1.0 for more info on
+switch.  See Broadcom's OF-DPA specification version 1.0 for more info on
 OF-DPA.  qemu-rocker could support other switch models in the future.
 
 Programmer's Reference Guide for qemu-rocker is here:
