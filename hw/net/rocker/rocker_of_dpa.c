@@ -66,11 +66,8 @@ static void of_dpa_vlan_build_match(struct flow_context *fc,
 
 static void of_dpa_vlan_insert(struct flow_context *fc, struct flow *flow)
 {
-    if (flow->action.apply.new_vlan_id) {
-        flow_pkt_insert_vlan(fc);
-        fc->fields.vlanhdr->h_proto = htons(ETH_P_VLAN);
-        fc->fields.vlanhdr->h_tci = flow->action.apply.new_vlan_id;
-    }
+    if (flow->action.apply.new_vlan_id)
+        flow_pkt_insert_vlan(fc, flow->action.apply.new_vlan_id);
 }
 
 static void of_dpa_term_mac_build_match(struct flow_context *fc,
@@ -231,6 +228,21 @@ static void of_dpa_output_l2_interface(struct group *group,
                        fc->iov, fc->iovcnt);
 }
 
+static void of_dpa_output_l2_rewrite(struct group *group,
+                                     struct flow_sys *fs,
+                                     struct flow_context *fc)
+{
+    struct group *l2_group = group_find(fs, group->l2_rewrite.group_id);
+
+    if (!l2_group)
+        return;
+
+    flow_pkt_hdr_rewrite(fc, group->l2_rewrite.src_mac.a,
+                         group->l2_rewrite.dst_mac.a,
+                         group->l2_rewrite.vlan_id);
+    of_dpa_output_l2_interface(l2_group, fs, fc);
+}
+
 static void of_dpa_output_l2_flood(struct group *group,
                                    struct flow_sys *fs,
                                    struct flow_context *fc)
@@ -239,8 +251,16 @@ static void of_dpa_output_l2_flood(struct group *group,
     int i;
 
     for (i = 0; i < group->l2_flood.group_count; i++) {
+        flow_pkt_hdr_reset(fc);
         l2_group = group_find(fs, group->l2_flood.group_ids[i]);
-        of_dpa_output_l2_interface(l2_group, fs, fc);
+        switch(ROCKER_GROUP_TYPE_GET(l2_group->id)) {
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
+            of_dpa_output_l2_interface(l2_group, fs, fc);
+            break;
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
+            of_dpa_output_l2_rewrite(l2_group, fs, fc);
+            break;
+        }
     }
 }
 
@@ -261,6 +281,9 @@ static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
     switch (ROCKER_GROUP_TYPE_GET(group->id)) {
     case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
         of_dpa_output_l2_interface(group, fs, fc);
+        break;
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
+        of_dpa_output_l2_rewrite(group, fs, fc);
         break;
     case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
     case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
@@ -1132,11 +1155,52 @@ static int of_dpa_cmd_add_l2_interface(struct group *group,
     return 0;
 }
 
+static int of_dpa_cmd_add_l2_rewrite(struct flow_sys *fs,
+                                     struct group *group,
+                                     struct rocker_tlv **group_tlvs)
+{
+    struct group *l2_interface_group;
+
+    if (!group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID_LOWER])
+        return -EINVAL;
+
+    group->l2_rewrite.group_id =
+        rocker_tlv_get_le32(group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID_LOWER]);
+
+    l2_interface_group = group_find(fs, group->l2_rewrite.group_id);
+    if (!l2_interface_group ||
+        ROCKER_GROUP_TYPE_GET(l2_interface_group->id) !=
+                              ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE) {
+        DPRINTF("l2 rewrite group needs a valid l2 interface group\n");
+        return -EINVAL;
+    }
+
+    if (group_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC])
+        memcpy(group->l2_rewrite.src_mac.a,
+               rocker_tlv_data(group_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC]),
+               sizeof(group->l2_rewrite.src_mac.a));
+    if (group_tlvs[ROCKER_TLV_OF_DPA_DST_MAC])
+        memcpy(group->l2_rewrite.dst_mac.a,
+               rocker_tlv_data(group_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]),
+               sizeof(group->l2_rewrite.dst_mac.a));
+    if (group_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]) {
+        group->l2_rewrite.vlan_id =
+            rocker_tlv_get_u16(group_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
+        if (ROCKER_GROUP_VLAN_GET(l2_interface_group->id) !=
+	    group->l2_rewrite.vlan_id) {
+		DPRINTF("Set VLAN ID must be same as L2 interface group\n");
+		return -EINVAL;
+	}
+    }
+
+    return 0;
+}
+
 static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
                                    struct group *group,
                                    struct rocker_tlv **group_tlvs)
 {
-    struct group *l2_interface_group;
+    struct group *l2_group;
     struct rocker_tlv **tlvs;
     int err = 0;
     int i;
@@ -1171,15 +1235,17 @@ static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
      */
 
     for (i = 0; i < group->l2_flood.group_count; i++) {
-        l2_interface_group = group_find(fs, group->l2_flood.group_ids[i]);
-        if (!l2_interface_group) {
+        l2_group = group_find(fs, group->l2_flood.group_ids[i]);
+        if (!l2_group) {
             DPRINTF("l2 interface group 0x%08x doesn't exist\n",
                     group->l2_flood.group_ids[i]);
             err = -EINVAL;
             goto err_out;
         }
-        if (ROCKER_GROUP_VLAN_GET(l2_interface_group->id) !=
-            ROCKER_GROUP_VLAN_GET(group->id)) {
+        if ((ROCKER_GROUP_TYPE_GET(l2_group->id) ==
+             ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE) &&
+            (ROCKER_GROUP_VLAN_GET(l2_group->id) !=
+             ROCKER_GROUP_VLAN_GET(group->id))) {
             DPRINTF("l2 interface group 0x%08x VLAN doesn't match l2 flood group 0x%08x\n",
                     group->l2_flood.group_ids[i], group->id);
             err = -EINVAL;
@@ -1211,6 +1277,9 @@ static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
     switch (type) {
     case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
         err = of_dpa_cmd_add_l2_interface(group, group_tlvs);
+        break;
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
+        err = of_dpa_cmd_add_l2_rewrite(fs, group, group_tlvs);
         break;
     case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
     /* Treat L2 multicast group same as a L2 flood group */
