@@ -585,15 +585,17 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     }
 
     if (mode == BRIDGING_MODE_UNKNOWN) {
-        DPRINTF("unknown bridging mode\n");
+        DPRINTF("Unknown bridging mode\n");
         return -EINVAL;
     }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]) {
         action->goto_tbl =
             rocker_tlv_get_le16(flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]);
-        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_ACL_POLICY)
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_ACL_POLICY) {
+            DPRINTF("Briding goto tbl must be ACL policy\n");
             return -EINVAL;
+        }
     }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]) {
@@ -602,28 +604,43 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
         switch (mode) {
         case BRIDGING_MODE_VLAN_UCAST:
             if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-                ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE)
+                ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE) {
+                DPRINTF("Bridging mode vlan ucast needs L2 interface group (0x%08x)\n",
+                        action->write.group_id);
                 return -EINVAL;
+            }
             break;
         case BRIDGING_MODE_VLAN_MCAST:
             if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-                ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST)
+                ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST) {
+                DPRINTF("Bridging mode vlan mcast needs L2 mcast group (0x%08x)\n",
+                        action->write.group_id);
                 return -EINVAL;
+            }
             break;
         case BRIDGING_MODE_VLAN_DFLT:
             if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-                ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD)
+                ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD) {
+                DPRINTF("Bridging mode vlan dflt needs L2 flood group (0x%08x)\n",
+                        action->write.group_id);
                 return -EINVAL;
+            }
             break;
         case BRIDGING_MODE_TUNNEL_MCAST:
             if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY)
+                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY) {
+                DPRINTF("Bridging mode tunnel mcast needs L2 overlay group (0x%08x)\n",
+                        action->write.group_id);
                 return -EINVAL;
+            }
             break;
         case BRIDGING_MODE_TUNNEL_DFLT:
             if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY)
+                ROCKER_OF_DPA_GROUP_TYPE_L2_OVERLAY) {
+                DPRINTF("Bridging mode tunnel dflt needs L2 overlay group (0x%08x)\n",
+                        action->write.group_id);
                 return -EINVAL;
+            }
             break;
         default:
             return -EINVAL;
@@ -633,8 +650,10 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     if (flow_tlvs[ROCKER_TLV_OF_DPA_TUN_LOG_LPORT]) {
         action->write.tun_log_lport =
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_TUN_LOG_LPORT]);
-        if (mode != BRIDGING_MODE_TUNNEL_UCAST)
+        if (mode != BRIDGING_MODE_TUNNEL_UCAST) {
+            DPRINTF("Have tunnel log lport but not in bridging tunnel mode\n");
             return -EINVAL;
+        }
     }
 
     return 0;
