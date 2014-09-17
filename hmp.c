@@ -15,6 +15,7 @@
 
 #include "hmp.h"
 #include "net/net.h"
+#include "net/eth.h"
 #include "sysemu/char.h"
 #include "qemu/option.h"
 #include "qemu/timer.h"
@@ -1864,7 +1865,9 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
                                          "unknown");
 
         if (group->has_vlan_id)
-            monitor_printf(mon, " vlan %d", group->vlan_id);
+            monitor_printf(mon, " vlan %s%d",
+                           group->vlan_id & ~VLAN_VID_MASK ? "*" : "",
+                           group->vlan_id & VLAN_VID_MASK);
 
         if (group->has_lport)
             monitor_printf(mon, " lport %d", group->lport);
