@@ -162,8 +162,8 @@ void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
             DPRINTF("flow_pkt_parse underrun on vlan_header\n");
             return;
         }
-        fields->vlanhdr = (struct vlan_header *)fields->h_proto;
-        fields->h_proto = (__be16 *)(fields->vlanhdr + 1);
+        fields->vlanhdr = (struct vlan_header *)(fields->ethhdr + 1);
+        fields->h_proto = &fields->vlanhdr->h_proto;
     }
 
     switch (ntohs(*fields->h_proto)) {
@@ -197,7 +197,7 @@ void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
     fc->iov[1].iov_base = fields->vlanhdr;
     fc->iov[1].iov_len = fields->vlanhdr ? sizeof(struct vlan_header) : 0;
 
-    fc->iov[2].iov_base = fields->h_proto;
+    fc->iov[2].iov_base = fields->h_proto + 1;
     fc->iov[2].iov_len = iov->iov_len - fc->iov[0].iov_len - fc->iov[1].iov_len;
 
     for (i = 1; i < iovcnt; i++)
