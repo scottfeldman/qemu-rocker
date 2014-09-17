@@ -1988,6 +1988,14 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
 
         monitor_printf(mon, ") -->");
 
+        if (group->has_set_vlan_id && group->set_vlan_id)
+            monitor_printf(mon, " set vlan %s%d",
+                           group->set_vlan_id & ~VLAN_VID_MASK ? "*" : "",
+                           group->set_vlan_id & VLAN_VID_MASK);
+
+        if (group->has_group_id && group->group_id)
+            monitor_printf(mon, " group id 0x%08x", group->group_id);
+
         if (group->has_pop_vlan && group->pop_vlan)
             monitor_printf(mon, " pop vlan");
 
