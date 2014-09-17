@@ -61,11 +61,8 @@ static void l2l3_vlan_build_match(struct flow_context *fc,
 
 static void l2l3_vlan_insert(struct flow_context *fc, struct flow *flow)
 {
-    if (flow->action.apply.new_vlan_id) {
-        flow_pkt_insert_vlan(fc);
-        fc->fields.vlanhdr->h_proto = htons(ETH_P_VLAN);
-        fc->fields.vlanhdr->h_tci = flow->action.apply.new_vlan_id;
-    }
+    if (flow->action.apply.new_vlan_id)
+        flow_pkt_insert_vlan(fc, flow->action.apply.new_vlan_id);
 }
 
 static void l2l3_term_mac_build_match(struct flow_context *fc,

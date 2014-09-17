@@ -271,6 +271,7 @@ enum {
     ROCKER_TLV_OF_DPA_OUT_LPORT,           /* u32 */
     ROCKER_TLV_OF_DPA_GOTO_TABLE_ID,       /* u16 */
     ROCKER_TLV_OF_DPA_GROUP_ID,            /* u32 */
+    ROCKER_TLV_OF_DPA_GROUP_ID_LOWER,      /* u32 */
     ROCKER_TLV_OF_DPA_GROUP_COUNT,         /* u16 */
     ROCKER_TLV_OF_DPA_GROUP_IDS,           /* u32 array */
     ROCKER_TLV_OF_DPA_VLAN_ID,             /* __be16 */
@@ -425,6 +426,9 @@ enum rocker_of_dpa_overlay_type {
 #define ROCKER_GROUP_L2_INTERFACE(vlan_id, port) \
     (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE) |\
      ROCKER_GROUP_VLAN_SET(vlan_id) | ROCKER_GROUP_PORT_SET(port))
+#define ROCKER_GROUP_L2_REWRITE(index) \
+    (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE) |\
+     ROCKER_GROUP_INDEX_LONG_SET(index))
 #define ROCKER_GROUP_L2_MCAST(vlan_id, index) \
     (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST) |\
      ROCKER_GROUP_VLAN_SET(vlan_id) | ROCKER_GROUP_INDEX_SET(index))

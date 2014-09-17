@@ -132,6 +132,8 @@ struct flow_context {
     uint32_t tunnel_id;
     struct iovec *iov;
     int iovcnt;
+    struct eth_header ethhdr_rewrite;
+    struct vlan_header vlanhdr_rewrite;
     struct vlan_header vlanhdr;
     struct flow_pkt_fields fields;
     struct flow_action action_set;
@@ -151,8 +153,11 @@ void flow_del(struct flow *flow);
 struct flow *flow_find(struct flow_sys *fs, uint64_t cookie);
 void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
                     int iovcnt);
-void flow_pkt_insert_vlan(struct flow_context *fc);
+void flow_pkt_insert_vlan(struct flow_context *fc, __be16 vlan_id);
 void flow_pkt_strip_vlan(struct flow_context *fc);
+void flow_pkt_hdr_reset(struct flow_context *fc);
+void flow_pkt_hdr_rewrite(struct flow_context *fc, uint8_t *src_mac,
+                          uint8_t *dst_mac, __be16 vlan_id);
 void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
                  uint32_t tbl_id);
 size_t flow_tbl_size(struct flow_sys *fs);
@@ -173,6 +178,12 @@ struct group {
             uint32_t out_lport;
             uint8_t pop_vlan;
         } l2_interface;
+        struct {
+            uint32_t group_id;
+            MACAddr src_mac;
+            MACAddr dst_mac;
+            __be16 vlan_id;
+        } l2_rewrite;
         struct {
             uint16_t group_count;
             uint32_t *group_ids;

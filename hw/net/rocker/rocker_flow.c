@@ -140,6 +140,16 @@ struct flow *flow_alloc(struct flow_sys *fs, uint64_t cookie,
     return flow;
 }
 
+void flow_pkt_hdr_reset(struct flow_context *fc)
+{
+    struct flow_pkt_fields *fields = &fc->fields;
+
+    fc->iov[0].iov_base = fields->ethhdr;
+    fc->iov[0].iov_len = sizeof(struct eth_header);
+    fc->iov[1].iov_base = fields->vlanhdr;
+    fc->iov[1].iov_len = fields->vlanhdr ? sizeof(struct vlan_header) : 0;
+}
+
 void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
                     int iovcnt)
 {
@@ -191,11 +201,7 @@ void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
      * just the vectors.
      */
 
-    fc->iov[0].iov_base = fields->ethhdr;
-    fc->iov[0].iov_len = ETH_ALEN * 2;
-
-    fc->iov[1].iov_base = fields->vlanhdr;
-    fc->iov[1].iov_len = fields->vlanhdr ? sizeof(struct vlan_header) : 0;
+    flow_pkt_hdr_reset(fc);
 
     fc->iov[2].iov_base = fields->h_proto + 1;
     fc->iov[2].iov_len = iov->iov_len - fc->iov[0].iov_len - fc->iov[1].iov_len;
@@ -206,16 +212,21 @@ void flow_pkt_parse(struct flow_context *fc, const struct iovec *iov,
     fc->iovcnt = iovcnt + 2;
 }
 
-void flow_pkt_insert_vlan(struct flow_context *fc)
+void flow_pkt_insert_vlan(struct flow_context *fc, __be16 vlan_id)
 {
     struct flow_pkt_fields *fields = &fc->fields;
+    uint16_t h_proto = fields->ethhdr->h_proto;
 
     if (fields->vlanhdr) {
-        DPRINTF("flow_pkt_insert_vlan packet already has outer vlan\n");
+        DPRINTF("flow_pkt_insert_vlan packet already has vlan\n");
         return;
     }
 
+    fields->ethhdr->h_proto = htons(ETH_P_VLAN);
     fields->vlanhdr = &fc->vlanhdr;
+    fields->vlanhdr->h_tci = vlan_id;
+    fields->vlanhdr->h_proto = h_proto;
+    fields->h_proto = &fields->vlanhdr->h_proto;
 
     fc->iov[1].iov_base = fields->vlanhdr;
     fc->iov[1].iov_len = sizeof(struct vlan_header);
@@ -228,10 +239,31 @@ void flow_pkt_strip_vlan(struct flow_context *fc)
     if (!fields->vlanhdr)
         return;
 
-    fields->vlanhdr = NULL;
+    fc->iov[0].iov_len -= sizeof(fields->ethhdr->h_proto);
+    fc->iov[1].iov_base = fields->h_proto;
+    fc->iov[1].iov_len = sizeof(fields->ethhdr->h_proto);
+}
 
-    fc->iov[1].iov_base = fields->vlanhdr;
-    fc->iov[1].iov_len = 0;
+void flow_pkt_hdr_rewrite(struct flow_context *fc, uint8_t *src_mac,
+                          uint8_t *dst_mac, __be16 vlan_id)
+{
+    struct flow_pkt_fields *fields = &fc->fields;
+    const MACAddr zero_mac = { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
+    if (src_mac || dst_mac) {
+        memcpy(&fc->ethhdr_rewrite, fields->ethhdr, sizeof(struct eth_header));
+        if (src_mac && memcmp(src_mac, zero_mac.a, ETH_ALEN))
+            memcpy(fc->ethhdr_rewrite.h_source, src_mac, ETH_ALEN);
+        if (dst_mac && memcmp(dst_mac, zero_mac.a, ETH_ALEN))
+            memcpy(fc->ethhdr_rewrite.h_dest, dst_mac, ETH_ALEN);
+        fc->iov[0].iov_base = &fc->ethhdr_rewrite;
+    }
+
+    if (vlan_id && fields->vlanhdr) {
+        fc->vlanhdr_rewrite = fc->vlanhdr;
+        fc->vlanhdr_rewrite.h_tci = vlan_id;
+        fc->iov[1].iov_base = &fc->vlanhdr_rewrite;
+    }
 }
 
 #if defined (DEBUG_ROCKER)
@@ -521,6 +553,16 @@ static void group_fill(void *key, void *value, void *user_data)
             ngroup->out_lport = group->l2_interface.out_lport;
             ngroup->has_pop_vlan = true;
             ngroup->pop_vlan = group->l2_interface.pop_vlan;
+            break;
+        case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
+            ngroup->has_index = true;
+            ngroup->index = ROCKER_GROUP_INDEX_LONG_GET(group->id);
+            ngroup->has_group_id = true;
+            ngroup->group_id = group->l2_rewrite.group_id;
+            if (group->l2_rewrite.vlan_id) {
+                ngroup->has_set_vlan_id = true;
+                ngroup->set_vlan_id = ntohs(group->l2_rewrite.vlan_id);
+            }
             break;
         case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
         case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
