@@ -402,12 +402,10 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
         mask->eth.vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
 
-    if (mask->eth.vlan_id == htons(0x1fff))
+    if (ntohs(key->eth.vlan_id) & 0x1000)
         untagged = false; /* filtering */
-    else if (mask->eth.vlan_id == htons(0x0fff))
-        untagged = true;
     else
-        return -EINVAL;
+        untagged = true;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]) {
         action->goto_tbl =
