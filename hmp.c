@@ -1846,7 +1846,8 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
         }
 
         if (key->has_vlan_id) {
-            monitor_printf(mon, " vlan %d", key->vlan_id);
+            monitor_printf(mon, " vlan %d",
+                           key->vlan_id & VLAN_VID_MASK);
             if (mask->has_vlan_id)
                 monitor_printf(mon, "(0x%x)", mask->vlan_id);
         }
@@ -1976,9 +1977,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
                                          "unknown");
 
         if (group->has_vlan_id)
-            monitor_printf(mon, " vlan %s%d",
-                           group->vlan_id & ~VLAN_VID_MASK ? "*" : "",
-                           group->vlan_id & VLAN_VID_MASK);
+            monitor_printf(mon, " vlan %d", group->vlan_id);
 
         if (group->has_lport)
             monitor_printf(mon, " lport %d", group->lport);
@@ -1989,8 +1988,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, ") -->");
 
         if (group->has_set_vlan_id && group->set_vlan_id)
-            monitor_printf(mon, " set vlan %s%d",
-                           group->set_vlan_id & ~VLAN_VID_MASK ? "*" : "",
+            monitor_printf(mon, " set vlan %d",
                            group->set_vlan_id & VLAN_VID_MASK);
 
         if (group->has_group_id && group->group_id)
