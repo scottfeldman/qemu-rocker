@@ -1187,7 +1187,7 @@ static int of_dpa_cmd_add_l2_rewrite(struct flow_sys *fs,
         group->l2_rewrite.vlan_id =
             rocker_tlv_get_u16(group_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
         if (ROCKER_GROUP_VLAN_GET(l2_interface_group->id) !=
-	    group->l2_rewrite.vlan_id) {
+	    (ntohs(group->l2_rewrite.vlan_id) & VLAN_VID_MASK)) {
 		DPRINTF("Set VLAN ID must be same as L2 interface group\n");
 		return -EINVAL;
 	}

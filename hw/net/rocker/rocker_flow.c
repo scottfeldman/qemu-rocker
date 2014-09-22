@@ -546,7 +546,7 @@ static void group_fill(void *key, void *value, void *user_data)
     switch (ngroup->type) {
         case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
             ngroup->has_vlan_id = true;
-            ngroup->vlan_id = ntohs(ROCKER_GROUP_VLAN_GET(group->id));
+            ngroup->vlan_id = ROCKER_GROUP_VLAN_GET(group->id);
             ngroup->has_lport = true;
             ngroup->lport = ROCKER_GROUP_PORT_GET(group->id);
             ngroup->has_out_lport = true;
@@ -567,7 +567,7 @@ static void group_fill(void *key, void *value, void *user_data)
         case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
         case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
             ngroup->has_vlan_id = true;
-            ngroup->vlan_id = ntohs(ROCKER_GROUP_VLAN_GET(group->id));
+            ngroup->vlan_id = ROCKER_GROUP_VLAN_GET(group->id);
             ngroup->has_index = true;
             ngroup->index = ROCKER_GROUP_INDEX_GET(group->id);
             for (i = 0; i < group->l2_flood.group_count; i++) {
