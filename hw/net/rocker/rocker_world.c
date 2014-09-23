@@ -85,6 +85,14 @@ void world_free(struct world *world)
     g_free(world);
 }
 
+void world_reset(struct world *world)
+{
+    if (world->ops->uninit)
+        world->ops->uninit(world);
+    if (world->ops->init)
+        world->ops->init(world);
+}
+
 void *world_private(struct world *world)
 {
     return world + 1;
