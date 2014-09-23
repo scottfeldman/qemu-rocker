@@ -141,8 +141,6 @@ enum {
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD,
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL,
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS,
-    ROCKER_TLV_CMD_TYPE_TRUNK, /* to be changed to ... */
-    ROCKER_TLV_CMD_TYPE_BRIDGE, /* to be changed to ... */
 
     __ROCKER_TLV_CMD_TYPE_MAX,
     ROCKER_TLV_CMD_TYPE_MAX = __ROCKER_TLV_CMD_TYPE_MAX - 1,
@@ -164,7 +162,6 @@ enum {
 
 enum {
     ROCKER_PORT_MODE_OF_DPA,
-    ROCKER_PORT_MODE_L2L3,
 };
 
 /* event msg */

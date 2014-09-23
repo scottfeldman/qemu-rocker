@@ -38,4 +38,4 @@ obj-$(CONFIG_ETSEC) += fsl_etsec/etsec.o fsl_etsec/registers.o \
 
 common-obj-y += rocker/rocker.o rocker/rocker_fp.o rocker/rocker_flow.o \
                         rocker/rocker_desc.o rocker/rocker_world.o \
-                        rocker/rocker_l2l3.o rocker/rocker_of_dpa.o
+                        rocker/rocker_of_dpa.o
