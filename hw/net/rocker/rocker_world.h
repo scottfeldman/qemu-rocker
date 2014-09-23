@@ -61,6 +61,7 @@ int world_do_cmd(struct world *world, struct desc_info *info,
 struct world *world_alloc(struct rocker *r, size_t sizeof_private,
                           enum rocker_world_type type, struct world_ops *ops);
 void world_free(struct world *world);
+void world_reset(struct world *world);
 
 void *world_private(struct world *world);
 struct rocker *world_rocker(struct world *world);

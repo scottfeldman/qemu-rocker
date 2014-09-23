@@ -1285,6 +1285,10 @@ static void rocker_reset(DeviceState *dev)
     struct rocker *r = to_rocker(dev);
     int i;
 
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
+        if (r->worlds[i])
+            world_reset(r->worlds[i]);
+
     for (i = 0; i < r->fp_ports; i++) {
         fp_port_reset(r->fp_port[i]);
         fp_port_set_world(r->fp_port[i], r->world_dflt);
