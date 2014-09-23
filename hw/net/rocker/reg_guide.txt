@@ -380,12 +380,10 @@ The switch only uses logical port references.  To summarize the mapping:
 Physical Port Mode
 ------------------
 
-Switch front-panel ports operate in a mode.  Current modes are OF-DPA and
-L2/L3.  OF-DPA[1] mode is based on OpenFlow Data Plane Abstraction (OF-DPA)
-Abstract Switch Specification, Version 1.0, from Broadcom Corporation.  L2/L3
-mode is traditional switch/router model.  Across the switch, a mix of port
-modes is allowed for hybrid operation.  To set/get the mode for front-panel
-ports, see port settings, below.
+Switch front-panel ports operate in a mode.  Current, only mode is OF-DPA.
+OF-DPA[1] mode is based on OpenFlow Data Plane Abstraction (OF-DPA) Abstract
+Switch Specification, Version 1.0, from Broadcom Corporation.  To set/get the
+mode for front-panel ports, see port settings, below.
 
 Port Settings
 -------------
@@ -416,7 +414,6 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
 		MODE		1	0 = OF-DPA
-					1 = L2/L3
 
 	Set PORT_SETTINGS descriptor:
 
@@ -429,7 +426,6 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		AUTONEG		1	1 = enabled, 0 = disabled
 		MACADDR		6	Port MAC address
 		MODE		1	0 = OF-DPA
-					1 = L2/L3
 
 Port Enable
 -----------
@@ -954,107 +950,6 @@ Possible status return codes in descriptor on completion are:
 	EBUSY		DEL			group reference count non-zero
 	ENODEV		ADD			next group ID doesn't exist
 
-SECTION 10: L2/L3 Mode
-============================
-
-Trunking
---------
-
-Trunking is a method by which front-panel ports (members) can be bundled
-together to form a trunk, a new virtual port.  The switch supports commands to
-add, modify, and delete trunks and trunk members.  Trunk commands are issued
-using the DMA CMD descriptor ring.
-
-TLVs for CMD_ADD and CMD_MOD are:
-
-	field		width	description
-	---------------------------------------------------
-	CMD		2	CMD_[ADD|MOD]
-	TRUNK_LPORT	2	(MOD command only) Existing trunk logical
-				port number
-	TRUNK_HASH	2	Trunk egress hashing algorithm:
-				  0: distribute based on source MAC address
-				  1: distribute based on destination MAC address
-				  2: distribute based on source and
-				     destination MAC addresses
-				  3: distribute based on source IP address
-				  4: distribute based on destination IP address
-				  5: distribute based on source and
-				     destination IP addresses
-	TRUNK_MEMBER	8	Trunk member lport bitmap; only
-				front-panel port bits should be set.
-				Ports must be in L2/L3 mode.
-	TRUNK_ACTIVE	8	Trunk member lport active bitmap; only
-				front-panel port bits should be set,
-				and must be a subset of TRUNK_MEMBERS.
-				Non-active members are excluded from
-				egress hash distribution.  Non-active
-				members will still be able to send
-				and receive control protocol packets.
-	
-On completion of CMD_ADD comamnd, the descriptor buffer is written back
-with the logical port number of the new trunk:
-
-	field		width	description
-	---------------------------------------------------
-	TRUNK_LPORT	2	Trunk logical port
-
-TLVs for CMD_DEL are:
-
-	field		width	description
-	---------------------------------------------------
-	CMD		2	CMD_DEL
-	TRUNK_LPORT	2	Existing trunk logical port number
-
-Possible status return codes in descriptor on completion are:
-
-	DESC_COMP_ERR	command			reason
-	--------------------------------------------------------------------
-	0		all			OK
-	EINVAL		ADD|MOD			invalid parameters passed in
-	EEXIST		ADD|MOD			another trunk already has
-						one or more of the member ports
-	ENOSPC		ADD			no space left for new trunk
-	ENOENT		MOD|DEL			trunk lport does not exists
-
-Bridging
---------
-
-A bridge groups logical ports into a L2 network.  The switch supports multiple
-bridges and each bridge is new logical port.  A bridge may optionally have a
-VLAN ID assigned, but only one bridge for a given VLAN ID  (or no VLAN ID) is
-allowed.  Bridge member ports can include trunk logical ports and physical
-front-panel ports.  The switch supports command to add, modify, and delete
-bridges and bridge members.  Bridge commands are issued using DMA CMD
-descriptor ring.
-
-TLVs for CMD_ADD and CMD_MOD are:
-
-	field		width	description
-	---------------------------------------------------
-	CMD		2	CMD_[ADD|MOD]
-	BRIDGE_LPORT	2	(MOD command only) Existing bridge logical
-				port number
-	BRIDGE_MEMBER	8	Bridge member lport bitmap;
-				Front-panel ports must be in L2/L3
-				mode.
-
-xxx add DEL cmd
-
-Tunneling
----------
-
-xxx TODO
-
-L3 Routing
-----------
-
-xxx TODO
-
-ACL
----
-
-xxx TODO
 
 
 References

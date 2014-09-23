@@ -30,7 +30,6 @@
 #include "rocker_tlv.h"
 #include "rocker_world.h"
 #include "rocker_of_dpa.h"
-#include "rocker_l2l3.h"
 
 struct rocker {
     /* private */
@@ -147,8 +146,6 @@ RockerFlowList *qmp_rocker_flows(const char *name, bool has_world,
     if (has_world) {
         if (strcmp(world, "of-dpa") == 0)
             w = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-        else if (strcmp(world, "l2l3") == 0)
-            w = r->worlds[ROCKER_WORLD_TYPE_L2L3];
     }
 
     return world_do_flow_fill(w, tbl_id);
@@ -172,8 +169,6 @@ RockerGroupList *qmp_rocker_groups(const char *name, bool has_world,
     if (has_world) {
         if (strcmp(world, "of-dpa") == 0)
             w = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-        else if (strcmp(world, "l2l3") == 0)
-            w = r->worlds[ROCKER_WORLD_TYPE_L2L3];
     }
 
     return world_do_group_fill(w, type);
@@ -448,11 +443,6 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
     case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL:
     case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS:
         world = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-        err = world_do_cmd(world, info, buf, cmd, info_tlv);
-        break;
-    case ROCKER_TLV_CMD_TYPE_TRUNK:
-    case ROCKER_TLV_CMD_TYPE_BRIDGE:
-        world = r->worlds[ROCKER_WORLD_TYPE_L2L3];
         err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS:
@@ -1132,8 +1122,7 @@ static int pci_rocker_init(PCIDevice *dev)
     /* allocate worlds */
 
     r->worlds[ROCKER_WORLD_TYPE_OF_DPA] = of_dpa_world_alloc(r);
-    r->worlds[ROCKER_WORLD_TYPE_L2L3] = l2l3_world_alloc(r);
-    r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_L2L3];
+    r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
 
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (!r->worlds[i])
