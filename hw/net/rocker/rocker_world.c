@@ -82,6 +82,7 @@ void world_free(struct world *world)
 {
     if (world->ops->uninit)
         world->ops->uninit(world);
+    g_free(world);
 }
 
 void *world_private(struct world *world)
