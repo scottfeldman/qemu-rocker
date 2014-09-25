@@ -102,7 +102,7 @@ ports: 4
      sw1.3  !ena   10G  FD  No 
      sw1.4  !ena   10G  FD  No 
      
-(qemu) rocker-flows sw1 of-dpa
+(qemu) rocker-flows sw1
 prio tbl hits key(mask) --> actions
 2    60       lport 1 vlan 1 LLDP src 00:02:00:00:02:00 dst 01:80:c2:00:00:0e
 2    60       lport 1 vlan 1 ARP src 00:02:00:00:02:00 dst 00:02:00:00:03:00
@@ -131,7 +131,7 @@ prio tbl hits key(mask) --> actions
 1    10  717  lport 1 --> apply new vlan 1 goto tbl 20
 1    0   1432 lport 0(0xffff) --> goto tbl 10
 
-(qemu) rocker-groups sw1 of-dpa
+(qemu) rocker-groups sw1
 id (decode) --> buckets
 0x32000001 (type L2 multicast vlan 2 index 1) --> groups [0x02000001,0x02000000]
 0x02000001 (type L2 interface vlan 2 lport 1) --> pop vlan out lport 1
