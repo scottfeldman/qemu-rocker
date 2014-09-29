@@ -80,8 +80,10 @@ struct flow_key {
     int width;                       /* how many uint64_t's in key? */
 };
 
+/* Width of key which includes field 'f' in u64s, rounded up */
 #define FLOW_KEY_WIDTH(f) \
-    ((offsetof(struct flow_key, f) / sizeof(uint64_t)) + 1)
+    ((offsetof(struct flow_key, f) + sizeof(((struct flow_key *)0)->f) + \
+      sizeof(uint64_t) - 1) / sizeof(uint64_t))
 
 struct flow_action {
     uint32_t goto_tbl;
