@@ -418,6 +418,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
     if (!fp_port_from_lport(key->in_lport, &port))
         return -EINVAL;
+    mask->in_lport = 0xffffffff;
 
     key->eth.vlan_id = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
 
@@ -443,7 +444,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
         action->apply.new_vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID]);
         if (1 > ntohs(action->apply.new_vlan_id) ||
-            ntohs(action->apply.new_vlan_id) > 4094)
+            ntohs(action->apply.new_vlan_id) > 4095)
             return -EINVAL;
     }
 
@@ -544,6 +545,7 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     bool unicast = false;
     bool dst_mac = false;
     bool dst_mac_mask = false;
+    const MACAddr ff_mac = { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
     enum {
         BRIDGING_MODE_UNKNOWN,
         BRIDGING_MODE_VLAN_UCAST,
@@ -559,12 +561,14 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]) {
         key->eth.vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
+        mask->eth.vlan_id = 0xffff;
         key->width = FLOW_KEY_WIDTH(eth.vlan_id);
     }
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_TUNNEL_ID]) {
         key->tunnel_id =
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_TUNNEL_ID]);
+        mask->tunnel_id = 0xffffffff;
         key->width = FLOW_KEY_WIDTH(tunnel_id);
     }
 
@@ -589,6 +593,8 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
                sizeof(mask->eth.dst.a));
         key->width = FLOW_KEY_WIDTH(eth.dst);
         dst_mac_mask = true;
+    } else if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]) {
+        memcpy(mask->eth.dst.a, ff_mac.a, sizeof(mask->eth.dst.a));
     }
 
     if (key->eth.vlan_id) {
@@ -804,7 +810,7 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
                 rocker_tlv_get_u32(flow_tlvs[ROCKER_TLV_OF_DPA_SRC_IP_MASK]);
 
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_SRC_IP])
-            if (mask->ipv4.addr.src != 0xffffffff)
+            if (mask->ipv4.addr.src != 0)
                 return -EINVAL;
 
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_DST_IP])
@@ -829,10 +835,10 @@ static int of_dpa_cmd_add_multicast_routing(struct flow *flow,
                    sizeof(mask->ipv6.addr.src));
 
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_SRC_IPV6])
-            if (mask->ipv6.addr.src.addr32[0] != 0xffffffff &&
-                mask->ipv6.addr.src.addr32[1] != 0xffffffff &&
-                mask->ipv6.addr.src.addr32[2] != 0xffffffff &&
-                mask->ipv6.addr.src.addr32[3] != 0xffffffff)
+            if (mask->ipv6.addr.src.addr32[0] != 0 &&
+                mask->ipv6.addr.src.addr32[1] != 0 &&
+                mask->ipv6.addr.src.addr32[2] != 0 &&
+                mask->ipv6.addr.src.addr32[3] != 0)
                 return -EINVAL;
 
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_DST_IPV6])
@@ -876,8 +882,8 @@ static int of_dpa_cmd_add_acl_ip(struct flow_key *key,
 
     key->ip.proto = 0;
     key->ip.tos = 0;
-    mask->ip.proto = 0xff;
-    mask->ip.tos = 0xff;
+    mask->ip.proto = 0;
+    mask->ip.tos = 0;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_IP_PROTO])
         key->ip.proto =
@@ -950,6 +956,7 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
                sizeof(mask->eth.dst.a));
 
     key->eth.type = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE]);
+    mask->eth.type = 0xffff;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
         key->eth.vlan_id =
