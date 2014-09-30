@@ -136,6 +136,7 @@ struct flow *flow_alloc(struct flow_sys *fs, uint64_t cookie,
     flow->priority = priority;
     flow->hardtime = hardtime;
     flow->idletime = idletime;
+    flow->mask.tbl_id = 0xffffffff;
 
     return flow;
 }
@@ -326,7 +327,7 @@ static void flow_match(void *key, void *value, void *user_data)
         return;
 
     for (i = 0; i < flow->key.width; i++, k++, m++, v++)
-        if ((~*k & ~*m & *v) | (*k & ~*m & ~*v))
+        if ((~*k & *m & *v) | (*k & *m & ~*v))
             return;
 
     DPRINTF("match\n");
@@ -381,9 +382,11 @@ struct flow_fill_context {
     uint32_t tbl_id;
 };
 
-static void flow_fill(void *key, void *value, void *user_data)
+static void flow_fill(void *cookie, void *value, void *user_data)
 {
     struct flow *flow = value;
+    struct flow_key *key = &flow->key;
+    struct flow_key *mask = &flow->mask;
     struct flow_fill_context *flow_context = user_data;
     RockerFlowList *new;
     RockerFlow *nflow;
@@ -391,9 +394,10 @@ static void flow_fill(void *key, void *value, void *user_data)
     RockerFlowMask *nmask;
     RockerFlowAction *naction;
     const MACAddr zero_mac =  { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+    const MACAddr ff_mac =    { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
     if (flow_context->tbl_id != -1 &&
-        flow_context->tbl_id != flow->key.tbl_id)
+        flow_context->tbl_id != key->tbl_id)
         return;
 
     new = g_malloc0(sizeof(*new));
@@ -405,83 +409,83 @@ static void flow_fill(void *key, void *value, void *user_data)
     nflow->cookie = flow->cookie;
     nflow->hits = flow->stats.hits;
     nkey->priority = flow->priority;
-    nkey->tbl_id = flow->key.tbl_id;
+    nkey->tbl_id = key->tbl_id;
 
-    if (flow->key.in_lport || flow->mask.in_lport) {
+    if (key->in_lport || mask->in_lport) {
         nkey->has_in_lport = true;
-        nkey->in_lport = flow->key.in_lport;
+        nkey->in_lport = key->in_lport;
     }
 
-    if (flow->mask.in_lport) {
+    if (nkey->has_in_lport && mask->in_lport != 0xffffffff) {
         nmask->has_in_lport = true;
-        nmask->in_lport = flow->mask.in_lport;
+        nmask->in_lport = mask->in_lport;
     }
 
-    if (flow->key.eth.vlan_id || flow->mask.eth.vlan_id) {
+    if (key->eth.vlan_id || mask->eth.vlan_id) {
         nkey->has_vlan_id = true;
-        nkey->vlan_id = ntohs(flow->key.eth.vlan_id);
+        nkey->vlan_id = ntohs(key->eth.vlan_id);
     }
 
-    if (flow->mask.eth.vlan_id) {
+    if (nkey->has_vlan_id && mask->eth.vlan_id != 0xffff) {
         nmask->has_vlan_id = true;
-        nmask->vlan_id = ntohs(flow->mask.eth.vlan_id);
+        nmask->vlan_id = ntohs(mask->eth.vlan_id);
     }
 
-    if (flow->key.tunnel_id || flow->mask.tunnel_id) {
+    if (key->tunnel_id || mask->tunnel_id) {
         nkey->has_tunnel_id = true;
-        nkey->tunnel_id = flow->key.tunnel_id;
+        nkey->tunnel_id = key->tunnel_id;
     }
 
-    if (flow->mask.tunnel_id) {
+    if (nkey->has_tunnel_id && mask->tunnel_id != 0xffffffff) {
         nmask->has_tunnel_id = true;
-        nmask->tunnel_id = flow->mask.tunnel_id;
+        nmask->tunnel_id = mask->tunnel_id;
     }
 
-    if (memcmp(flow->key.eth.src.a, zero_mac.a, ETH_ALEN) ||
-        memcmp(flow->mask.eth.src.a, zero_mac.a, ETH_ALEN)) {
+    if (memcmp(key->eth.src.a, zero_mac.a, ETH_ALEN) ||
+        memcmp(mask->eth.src.a, zero_mac.a, ETH_ALEN)) {
         nkey->has_eth_src = true;
-        nkey->eth_src = qemu_mac_strdup_printf(flow->key.eth.src.a);
+        nkey->eth_src = qemu_mac_strdup_printf(key->eth.src.a);
     }
 
-    if (memcmp(flow->mask.eth.src.a, zero_mac.a, ETH_ALEN)) {
+    if (nkey->has_eth_src && memcmp(mask->eth.src.a, ff_mac.a, ETH_ALEN)) {
         nmask->has_eth_src = true;
-        nmask->eth_src = qemu_mac_strdup_printf(flow->mask.eth.src.a);
+        nmask->eth_src = qemu_mac_strdup_printf(mask->eth.src.a);
     }
 
-    if (memcmp(flow->key.eth.dst.a, zero_mac.a, ETH_ALEN) ||
-        memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
+    if (memcmp(key->eth.dst.a, zero_mac.a, ETH_ALEN) ||
+        memcmp(mask->eth.dst.a, zero_mac.a, ETH_ALEN)) {
         nkey->has_eth_dst = true;
-        nkey->eth_dst = qemu_mac_strdup_printf(flow->key.eth.dst.a);
+        nkey->eth_dst = qemu_mac_strdup_printf(key->eth.dst.a);
     }
 
-    if (memcmp(flow->mask.eth.dst.a, zero_mac.a, ETH_ALEN)) {
+    if (nkey->has_eth_dst && memcmp(mask->eth.dst.a, ff_mac.a, ETH_ALEN)) {
         nmask->has_eth_dst = true;
-        nmask->eth_dst = qemu_mac_strdup_printf(flow->mask.eth.dst.a);
+        nmask->eth_dst = qemu_mac_strdup_printf(mask->eth.dst.a);
     }
 
-    if (flow->key.eth.type) {
+    if (key->eth.type) {
 
         nkey->has_eth_type = true;
-        nkey->eth_type = ntohs(flow->key.eth.type);
+        nkey->eth_type = ntohs(key->eth.type);
 
-        switch (ntohs(flow->key.eth.type)) {
+        switch (ntohs(key->eth.type)) {
         case 0x0800:
         case 0x86dd:
-            if (flow->key.ip.proto) {
+            if (key->ip.proto || mask->ip.proto) {
                 nkey->has_ip_proto = true;
-                nkey->ip_proto = flow->key.ip.proto;
+                nkey->ip_proto = key->ip.proto;
             }
-            if (flow->mask.ip.proto) {
+            if (nkey->has_ip_proto && mask->ip.proto != 0xff) {
                 nmask->has_ip_proto = true;
-                nmask->ip_proto = flow->mask.ip.proto;
+                nmask->ip_proto = mask->ip.proto;
             }
-            if (flow->key.ip.tos) {
+            if (key->ip.tos || mask->ip.tos) {
                 nkey->has_ip_tos = true;
-                nkey->ip_tos = flow->key.ip.tos;
+                nkey->ip_tos = key->ip.tos;
             }
-            if (flow->mask.ip.tos) {
+            if (nkey->has_ip_tos && mask->ip.tos != 0xff) {
                 nmask->has_ip_tos = true;
-                nmask->ip_tos = flow->mask.ip.tos;
+                nmask->ip_tos = mask->ip.tos;
             }
             break;
         }
