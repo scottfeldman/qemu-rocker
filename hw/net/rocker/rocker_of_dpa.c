@@ -918,6 +918,10 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
         ACL_MODE_IPV6_VLAN,
         ACL_MODE_IPV4_TENANT,
         ACL_MODE_IPV6_TENANT,
+        ACL_MODE_NON_IP_VLAN,
+        ACL_MODE_NON_IP_TENANT,
+        ACL_MODE_ANY_VLAN,
+        ACL_MODE_ANY_TENANT,
     } mode = ACL_MODE_UNKNOWN;
     int err = 0;
 
@@ -956,7 +960,8 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
                sizeof(mask->eth.dst.a));
 
     key->eth.type = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE]);
-    mask->eth.type = 0xffff;
+    if (key->eth.type)
+        mask->eth.type = 0xffff;
 
     if (flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
         key->eth.vlan_id =
@@ -966,19 +971,26 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
 
     switch (ntohs(key->eth.type)) {
+    case 0x0000:
+        mode = (key->eth.vlan_id) ? ACL_MODE_ANY_VLAN : ACL_MODE_ANY_TENANT;
+        break;
+    case 0x0800:
+        mode = (key->eth.vlan_id) ? ACL_MODE_IPV4_VLAN : ACL_MODE_IPV4_TENANT;
+        break;
     case 0x86dd:
         mode = (key->eth.vlan_id) ? ACL_MODE_IPV6_VLAN : ACL_MODE_IPV6_TENANT;
         break;
     default:
-	/* weirdness: any ethertype other than 0x86dd (IPv6) is
-         * considered IPv4 mode */
-        mode = (key->eth.vlan_id) ? ACL_MODE_IPV4_VLAN : ACL_MODE_IPV4_TENANT;
+        mode = (key->eth.vlan_id) ? ACL_MODE_NON_IP_VLAN :
+                                    ACL_MODE_NON_IP_TENANT;
         break;
     }
 
-    /* XXX only supporting IPv4/6 VLAN mode for now */
+    /* XXX only supporting VLAN modes for now */
     if (mode != ACL_MODE_IPV4_VLAN &&
-        mode != ACL_MODE_IPV6_VLAN)
+        mode != ACL_MODE_IPV6_VLAN &&
+        mode != ACL_MODE_NON_IP_VLAN &&
+        mode != ACL_MODE_ANY_VLAN)
         return -EINVAL;
 
     switch (ntohs(key->eth.type)) {
