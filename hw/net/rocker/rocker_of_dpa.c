@@ -426,7 +426,7 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
         mask->eth.vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID_MASK]);
 
-    if (ntohs(key->eth.vlan_id) & 0x1000)
+    if (key->eth.vlan_id)
         untagged = false; /* filtering */
     else
         untagged = true;
