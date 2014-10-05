@@ -409,15 +409,19 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     bool untagged;
 
     if (!flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT] ||
-        !flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
+        !flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]) {
+        DPRINTF("Must give in_lport and vlan_id to install VLAN tbl entry\n");
         return -EINVAL;
+    }
 
     key->tbl_id = ROCKER_OF_DPA_TABLE_ID_VLAN;
     key->width = FLOW_KEY_WIDTH(eth.vlan_id);
 
     key->in_lport = rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT]);
-    if (!fp_port_from_lport(key->in_lport, &port))
+    if (!fp_port_from_lport(key->in_lport, &port)) {
+        DPRINTF("in_lport (%d) not a front-panel port\n", key->in_lport);
         return -EINVAL;
+    }
     mask->in_lport = 0xffffffff;
 
     key->eth.vlan_id = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
@@ -434,18 +438,25 @@ static int of_dpa_cmd_add_vlan(struct flow *flow, struct rocker_tlv **flow_tlvs)
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]) {
         action->goto_tbl =
             rocker_tlv_get_le16(flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]);
-        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC)
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_TERMINATION_MAC) {
+            DPRINTF("Goto tbl (%d) must be TERM_MAC\n", action->goto_tbl);
             return -EINVAL;
+        }
     }
 
     if (untagged) {
-        if (!flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID])
+        if (!flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID]) {
+            DPRINTF("Must specify new vlan_id if untagged\n");
             return -EINVAL;
+        }
         action->apply.new_vlan_id =
             rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_NEW_VLAN_ID]);
         if (1 > ntohs(action->apply.new_vlan_id) ||
-            ntohs(action->apply.new_vlan_id) > 4095)
+            ntohs(action->apply.new_vlan_id) > 4095) {
+            DPRINTF("New vlan_id (%d) must be between 1 and 4095\n",
+                    ntohs(action->apply.new_vlan_id));
             return -EINVAL;
+        }
     }
 
     return 0;
