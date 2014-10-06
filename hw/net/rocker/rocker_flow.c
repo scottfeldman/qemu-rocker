@@ -270,40 +270,71 @@ void flow_pkt_hdr_rewrite(struct flow_context *fc, uint8_t *src_mac,
 }
 
 #if defined (DEBUG_ROCKER)
-static void flow_key_dump(struct flow_key *key)
+static void flow_key_dump(struct flow_key *key, struct flow_key *mask)
 {
-    char buf[512], *b = buf;
+    char buf[512], *b = buf, *mac;
 
-    if (key->width >= FLOW_KEY_WIDTH(in_lport))
-        b += sprintf(b," in_lport %d", key->in_lport);
-    if (key->width >= FLOW_KEY_WIDTH(tunnel_id))
-        b += sprintf(b," tun %d", key->tunnel_id);
-    if (key->width >= FLOW_KEY_WIDTH(tbl_id))
-        b += sprintf(b," tbl %d", key->tbl_id);
-    if (key->width >= FLOW_KEY_WIDTH(eth.vlan_id))
-        b += sprintf(b," vlan %d", ntohs(key->eth.vlan_id));
-    if (key->width >= FLOW_KEY_WIDTH(eth.src)) {
-        char *mac = qemu_mac_strdup_printf(key->eth.src.a);
+    b += sprintf(b," tbl %2d", key->tbl_id);
+
+    if (key->in_lport || (mask && mask->in_lport)) {
+        b += sprintf(b," in_lport %2d", key->in_lport);
+        if (mask && mask->in_lport != 0xffffffff)
+            b += sprintf(b,"/0x%08x", key->in_lport);
+    }
+
+    if (key->tunnel_id || (mask && mask->tunnel_id)) {
+        b += sprintf(b," tun %8d", key->tunnel_id);
+        if (mask && mask->tunnel_id != 0xffffffff)
+            b += sprintf(b,"/0x%08x", key->tunnel_id);
+    }
+
+    if (key->eth.vlan_id || (mask && mask->eth.vlan_id)) {
+        b += sprintf(b," vlan %4d", ntohs(key->eth.vlan_id));
+        if (mask && mask->eth.vlan_id != 0xffff)
+            b += sprintf(b,"/0x%04x", ntohs(key->eth.vlan_id));
+    }
+
+    if (memcmp(key->eth.src.a, zero_mac.a, ETH_ALEN) ||
+        (mask && memcmp(mask->eth.src.a, zero_mac.a, ETH_ALEN))) {
+        mac = qemu_mac_strdup_printf(key->eth.src.a);
         b += sprintf(b," src %s", mac);
         g_free(mac);
+        if (mask && memcmp(mask->eth.src.a, ff_mac.a, ETH_ALEN)) {
+            mac = qemu_mac_strdup_printf(mask->eth.src.a);
+            b += sprintf(b,"/%s", mac);
+            g_free(mac);
+        }
     }
-    if (key->width >= FLOW_KEY_WIDTH(eth.dst)) {
-        char *mac = qemu_mac_strdup_printf(key->eth.dst.a);
+
+    if (memcmp(key->eth.dst.a, zero_mac.a, ETH_ALEN) ||
+        (mask && memcmp(mask->eth.dst.a, zero_mac.a, ETH_ALEN))) {
+        mac = qemu_mac_strdup_printf(key->eth.dst.a);
         b += sprintf(b," dst %s", mac);
         g_free(mac);
+        if (mask && memcmp(mask->eth.dst.a, ff_mac.a, ETH_ALEN)) {
+            mac = qemu_mac_strdup_printf(mask->eth.dst.a);
+            b += sprintf(b,"/%s", mac);
+            g_free(mac);
+        }
     }
-    if (key->width >= FLOW_KEY_WIDTH(eth.tci))
-        b += sprintf(b," tci %d", ntohs(key->eth.tci));
-    if (key->width >= FLOW_KEY_WIDTH(eth.type))
-        b += sprintf(b," type 0x%04x", ntohs(key->eth.type));
 
-    if (key->width >= FLOW_KEY_WIDTH(ip.proto)) {
+    if (key->eth.type || (mask && mask->eth.type)) {
+        b += sprintf(b," type 0x%04x", ntohs(key->eth.type));
+        if (mask && mask->eth.type != 0xffff)
+            b += sprintf(b,"/0x%04x", ntohs(key->eth.type));
         switch (ntohs(key->eth.type)) {
         case 0x0800:
         case 0x86dd:
-            b += sprintf(b, " proto %d", key->ip.proto);
-            if (key->width >= FLOW_KEY_WIDTH(ip.tos))
-                b += sprintf(b, " tos %d", key->ip.tos);
+            if (key->ip.proto || (mask && mask->ip.proto)) {
+                b += sprintf(b, " ip proto %2d", key->ip.proto);
+                if (mask && mask->ip.proto != 0xff)
+                    b += sprintf(b, "/0x%02x", mask->ip.proto);
+            }
+            if (key->ip.tos || (mask && mask->ip.tos)) {
+                b += sprintf(b, " ip tos %2d", key->ip.tos);
+                if (mask && mask->ip.tos != 0xff)
+                    b += sprintf(b, "/0x%02x", mask->ip.tos);
+            }
             break;
         }
     }
@@ -311,7 +342,7 @@ static void flow_key_dump(struct flow_key *key)
     DPRINTF("%s\n", buf);
 }
 #else
-#define flow_key_dump(k)
+#define flow_key_dump(k, m)
 #endif
 
 static void flow_match(void *key, void *value, void *user_data)
@@ -323,7 +354,8 @@ static void flow_match(void *key, void *value, void *user_data)
     uint64_t *v = (uint64_t *)&match->value;
     int i;
 
-    flow_key_dump(&flow->key);
+    if (flow->key.tbl_id == match->value.tbl_id)
+        flow_key_dump(&flow->key, &flow->mask);
 
     if (flow->key.width > match->value.width)
         return;
@@ -351,7 +383,7 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
         return;
 
     DPRINTF("\nnew search\n");
-    flow_key_dump(&match.value);
+    flow_key_dump(&match.value, NULL);
 
     g_hash_table_foreach(fs->flow_tbl, flow_match, &match);
 
