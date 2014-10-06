@@ -29,10 +29,9 @@ struct flow_key {
     uint32_t tunnel_id;              /* overlay tunnel id */
     uint32_t tbl_id;                 /* table id */
     struct {
-        __be16 vlan_id;              /* VLAN ID */
+        __be16 vlan_id;              /* 0 if no VLAN */
         MACAddr src;                 /* ethernet source address */
         MACAddr dst;                 /* ethernet destination address */
-        __be16 tci;                  /* 0 if no VLAN */
         __be16 type;                 /* ethernet frame type */
     } eth;
     struct {
