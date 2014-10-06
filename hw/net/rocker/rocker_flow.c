@@ -29,6 +29,9 @@ struct flow_sys {
     struct world *world;
 };
 
+static const MACAddr zero_mac = { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+static const MACAddr ff_mac =   { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+
 size_t group_tbl_size(struct flow_sys *fs)
 {
     return g_hash_table_size(fs->group_tbl);
@@ -249,7 +252,6 @@ void flow_pkt_hdr_rewrite(struct flow_context *fc, uint8_t *src_mac,
                           uint8_t *dst_mac, __be16 vlan_id)
 {
     struct flow_pkt_fields *fields = &fc->fields;
-    const MACAddr zero_mac = { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
 
     if (src_mac || dst_mac) {
         memcpy(&fc->ethhdr_rewrite, fields->ethhdr, sizeof(struct eth_header));
@@ -393,8 +395,6 @@ static void flow_fill(void *cookie, void *value, void *user_data)
     RockerFlowKey *nkey;
     RockerFlowMask *nmask;
     RockerFlowAction *naction;
-    const MACAddr zero_mac =  { .a = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
-    const MACAddr ff_mac =    { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
     if (flow_context->tbl_id != -1 &&
         flow_context->tbl_id != key->tbl_id)
