@@ -1758,6 +1758,9 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
             case 0x86dd:
                 monitor_printf(mon, " IPv6");
                 break;
+            case 0x8809:
+                monitor_printf(mon, " LACP");
+                break;
             case 0x88cc:
                 monitor_printf(mon, " LLDP");
                 break;
@@ -1768,15 +1771,35 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
         }
 
         if (key->has_eth_src) {
-            monitor_printf(mon, " src %s", key->eth_src);
-            if (mask->has_eth_src)
-                monitor_printf(mon, "(%s)", mask->eth_src);
+            if ((strcmp(key->eth_src, "01:00:00:00:00:00") == 0) &&
+                (mask->has_eth_src) &&
+                (strcmp(mask->eth_src, "01:00:00:00:00:00") == 0)) {
+                monitor_printf(mon, " src <any mcast/bcast>");
+            } else if ((strcmp(key->eth_src, "00:00:00:00:00:00") == 0) &&
+                (mask->has_eth_src) &&
+                (strcmp(mask->eth_src, "01:00:00:00:00:00") == 0)) {
+                monitor_printf(mon, " src <any ucast>");
+            } else {
+                monitor_printf(mon, " src %s", key->eth_src);
+                if (mask->has_eth_src)
+                    monitor_printf(mon, "(%s)", mask->eth_src);
+            }
         }
 
         if (key->has_eth_dst) {
-            monitor_printf(mon, " dst %s", key->eth_dst);
-            if (mask->has_eth_dst)
-                monitor_printf(mon, "(%s)", mask->eth_dst);
+            if ((strcmp(key->eth_dst, "01:00:00:00:00:00") == 0) &&
+                (mask->has_eth_dst) &&
+                (strcmp(mask->eth_dst, "01:00:00:00:00:00") == 0)) {
+                monitor_printf(mon, " dst <any mcast/bcast>");
+            } else if ((strcmp(key->eth_dst, "00:00:00:00:00:00") == 0) &&
+                (mask->has_eth_dst) &&
+                (strcmp(mask->eth_dst, "01:00:00:00:00:00") == 0)) {
+                monitor_printf(mon, " dst <any ucast>");
+            } else {
+                monitor_printf(mon, " dst %s", key->eth_dst);
+                if (mask->has_eth_dst)
+                    monitor_printf(mon, "(%s)", mask->eth_dst);
+            }
         }
 
         if (key->has_ip_proto) {
