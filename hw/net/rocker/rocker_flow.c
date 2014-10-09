@@ -345,7 +345,7 @@ static void flow_key_dump(struct flow_key *key, struct flow_key *mask)
 #define flow_key_dump(k, m)
 #endif
 
-static void flow_match(void *key, void *value, void *user_data)
+static void _flow_match(void *key, void *value, void *user_data)
 {
     struct flow *flow = value;
     struct flow_match *match = user_data;
@@ -370,6 +370,16 @@ static void flow_match(void *key, void *value, void *user_data)
         match->best = flow;
 }
 
+struct flow *flow_match(struct flow_sys *fs, struct flow_match *match)
+{
+    DPRINTF("\nnew search\n");
+    flow_key_dump(&match->value, NULL);
+
+    g_hash_table_foreach(fs->flow_tbl, _flow_match, match);
+
+    return match->best;
+}
+
 void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
                  uint32_t tbl_id)
 {
@@ -382,13 +392,7 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
     else
         return;
 
-    DPRINTF("\nnew search\n");
-    flow_key_dump(&match.value, NULL);
-
-    g_hash_table_foreach(fs->flow_tbl, flow_match, &match);
-
-    flow = match.best;
-
+    flow = flow_match(fs, &match);
     if (!flow) {
         if (ops->miss)
             ops->miss(fs, fc);

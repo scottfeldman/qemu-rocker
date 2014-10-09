@@ -26,6 +26,8 @@
 #include "rocker_flow.h"
 #include "rocker_of_dpa.h"
 
+static const MACAddr ff_mac = { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+
 struct of_dpa_world {
     struct world *world;
     struct flow_sys *fs;
@@ -109,8 +111,45 @@ static void of_dpa_bridging_build_match(struct flow_context *fc,
     match->value.width = FLOW_KEY_WIDTH(eth.dst);
 }
 
+static void of_dpa_bridging_learn(struct flow_sys *fs, struct flow_context *fc,
+                                  struct flow *dst_flow)
+{
+    struct flow_match match = { { 0, }, };
+    struct flow *flow;
+    uint8_t *addr;
+    uint16_t vlan_id;
+
+    /* Do a lookup in bridge table by src_mac/vlan */
+
+    addr = fc->fields.ethhdr->h_source;
+    vlan_id = fc->fields.vlanhdr->h_tci;
+
+    match.value.tbl_id = ROCKER_OF_DPA_TABLE_ID_BRIDGING;
+    match.value.eth.vlan_id = vlan_id;
+    memcpy(match.value.eth.dst.a, addr, sizeof(match.value.eth.dst.a));
+    match.value.width = FLOW_KEY_WIDTH(eth.dst);
+
+    flow = flow_match(fs, &match);
+    if (flow) {
+        if (!memcmp(flow->mask.eth.dst.a, ff_mac.a,
+                    sizeof(flow->mask.eth.dst.a))) {
+            /* src_mac/vlan already learned; if in_port and out_port
+             * don't match, the end station has moved and the port
+             * needs updating */
+            /* XXX implement the in_port/out_port check */
+            return;
+        }
+    }
+
+    /* New mac/vlan; learn it by sending event up to driver */
+
+    rocker_event_mac_vlan_seen(world_rocker(flow_sys_world(fs)),
+                               fc->in_lport, addr, vlan_id);
+}
+
 static void of_dpa_bridging_miss(struct flow_sys *fs, struct flow_context *fc)
 {
+    of_dpa_bridging_learn(fs, fc, NULL);
     flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_ACL_POLICY);
 }
 
@@ -311,6 +350,7 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
     [ROCKER_OF_DPA_TABLE_ID_BRIDGING] = {
         .build_match = of_dpa_bridging_build_match,
+        .hit = of_dpa_bridging_learn,
         .miss = of_dpa_bridging_miss,
         .hit_no_goto = of_dpa_drop,
         .action_apply = of_dpa_copy_to_controller,
@@ -556,7 +596,6 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
     bool unicast = false;
     bool dst_mac = false;
     bool dst_mac_mask = false;
-    const MACAddr ff_mac = { .a = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
     enum {
         BRIDGING_MODE_UNKNOWN,
         BRIDGING_MODE_VLAN_UCAST,
