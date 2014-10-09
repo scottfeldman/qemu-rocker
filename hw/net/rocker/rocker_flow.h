@@ -159,6 +159,7 @@ void flow_pkt_strip_vlan(struct flow_context *fc);
 void flow_pkt_hdr_reset(struct flow_context *fc);
 void flow_pkt_hdr_rewrite(struct flow_context *fc, uint8_t *src_mac,
                           uint8_t *dst_mac, __be16 vlan_id);
+struct flow *flow_match(struct flow_sys *fs, struct flow_match *match);
 void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
                  uint32_t tbl_id);
 size_t flow_tbl_size(struct flow_sys *fs);
