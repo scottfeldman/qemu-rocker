@@ -90,6 +90,12 @@ enum {
 #define ROCKER_DMA_DESC_CTRL_RESET      (1 << 0)
 
 /*
+ * Rocker ring indices
+ */
+#define ROCKER_RING_CMD                 0
+#define ROCKER_RING_EVENT               1
+
+/*
  * Helper macro to do convert a dma ring register
  * to its index.  Based on the fact that the register
  * group stride is 32 bytes.

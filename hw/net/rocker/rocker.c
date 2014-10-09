@@ -473,7 +473,7 @@ static void rocker_msix_irq(struct rocker *r, unsigned vector)
 
 int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up)
 {
-    struct desc_ring *ring = r->rings[1];
+    struct desc_ring *ring = r->rings[ROCKER_RING_EVENT];
     struct desc_info *info = desc_ring_fetch_desc(ring);
     struct rocker_tlv *nest;
     char *buf;
@@ -1189,9 +1189,9 @@ static int pci_rocker_init(PCIDevice *dev)
 
         if (!ring)
             goto err_ring_alloc;
-        if (i == 0)
+        if (i == ROCKER_RING_CMD)
             desc_ring_set_consume(ring, cmd_consume, ROCKER_MSIX_VEC_CMD);
-        else if (i == 1)
+        else if (i == ROCKER_RING_EVENT)
             desc_ring_set_consume(ring, NULL, ROCKER_MSIX_VEC_EVENT);
         else if (i % 2 == 0)
             desc_ring_set_consume(ring, tx_consume, ROCKER_MSIX_VEC_TX((i - 2) / 2));
