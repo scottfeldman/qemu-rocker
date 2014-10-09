@@ -61,6 +61,8 @@ struct rocker;
 
 uint32_t rocker_fp_ports(struct rocker *r);
 int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up);
+int rocker_event_mac_vlan_seen(struct rocker *r, uint32_t lport, uint8_t *addr,
+                               uint16_t vlan_id);
 int rx_produce(struct world *world, uint32_t lport,
                const struct iovec *iov, int iovcnt);
 int rocker_port_eg(struct rocker *r, uint32_t lport,
