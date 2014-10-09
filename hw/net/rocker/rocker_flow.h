@@ -165,6 +165,8 @@ size_t flow_tbl_size(struct flow_sys *fs);
 
 struct flow_tbl_ops {
     void (*build_match)(struct flow_context *fc, struct flow_match *match);
+    void (*hit)(struct flow_sys *fs, struct flow_context *fc,
+                struct flow *flow);
     void (*miss)(struct flow_sys *fs, struct flow_context *fc);
     void (*hit_no_goto)(struct flow_sys *fs, struct flow_context *fc);
     void (*action_apply)(struct flow_context *fc, struct flow *flow);
