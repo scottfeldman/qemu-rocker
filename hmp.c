@@ -1714,7 +1714,7 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
     }
 
     monitor_printf(mon, "prio tbl hits key(mask) --> actions\n");
-        
+
     for (info = list; info; info = info->next) {
         RockerFlow *flow = info->value;
         RockerFlowKey *key = flow->key;
@@ -1814,6 +1814,9 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
                 monitor_printf(mon, "(0x%x)", mask->ip_tos);
         }
 
+        if (key->has_ip_dst)
+            monitor_printf(mon, " dst %s", key->ip_dst);
+
         if (action->has_goto_tbl || action->has_group_id ||
             action->has_new_vlan_id)
             monitor_printf(mon, " -->");
@@ -1841,6 +1844,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
     const char *world = qdict_get_try_str(qdict, "world");
     uint8_t type = qdict_get_try_int(qdict, "type", 9);
     Error *errp = NULL;
+    bool set = false;
 
     list = qmp_rocker_groups(name, !!world, world,
                              type != 9, type, &errp);
@@ -1851,7 +1855,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
     }
 
     monitor_printf(mon, "id (decode) --> buckets\n");
-        
+
     for (g = list; g; g = g->next) {
         RockerGroup *group = g->value;
 
@@ -1879,9 +1883,32 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
 
         monitor_printf(mon, ") -->");
 
-        if (group->has_set_vlan_id && group->set_vlan_id)
+        if (group->has_set_vlan_id && group->set_vlan_id) {
+            set = true;
             monitor_printf(mon, " set vlan %d",
                            group->set_vlan_id & VLAN_VID_MASK);
+        }
+
+        if (group->has_set_eth_src) {
+            if (!set) {
+                set = true;
+                monitor_printf(mon, " set");
+            }
+            monitor_printf(mon, " src %s", group->set_eth_src);
+        }
+
+        if (group->has_set_eth_dst) {
+            if (!set) {
+                set = true;
+                monitor_printf(mon, " set");
+            }
+            monitor_printf(mon, " dst %s", group->set_eth_dst);
+        }
+
+        set = false;
+
+        if (group->has_ttl_check && group->ttl_check)
+            monitor_printf(mon, " check TTL");
 
         if (group->has_group_id && group->group_id)
             monitor_printf(mon, " group id 0x%08x", group->group_id);
