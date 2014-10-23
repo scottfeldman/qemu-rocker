@@ -550,7 +550,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
         rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_IN_LPORT_MASK]);
 
     key->eth.type = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE]);
-    if (key->eth.type != htons(0x0800) || key->eth.type != htons(0x86dd))
+    if (key->eth.type != htons(0x0800) && key->eth.type != htons(0x86dd))
         return -EINVAL;
 
     memcpy(key->eth.dst.a,
@@ -582,7 +582,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
         action->goto_tbl =
             rocker_tlv_get_le16(flow_tlvs[ROCKER_TLV_OF_DPA_GOTO_TABLE_ID]);
 
-        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING ||
+        if (action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING &&
             action->goto_tbl != ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING)
             return -EINVAL;
 
