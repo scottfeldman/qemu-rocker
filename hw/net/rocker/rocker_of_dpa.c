@@ -239,6 +239,13 @@ static void of_dpa_acl_build_match(struct flow_context *fc,
     }
 }
 
+static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc);
+static void of_dpa_acl_hit(struct flow_sys *fs, struct flow_context *fc,
+                           struct flow *dst_flow)
+{
+	of_dpa_eg(fs, fc);
+}
+
 static void of_dpa_acl_action_write(struct flow_context *fc,
                                     struct flow *flow)
 {
@@ -375,7 +382,8 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
     [ROCKER_OF_DPA_TABLE_ID_ACL_POLICY] = {
         .build_match = of_dpa_acl_build_match,
-        .hit_no_goto = of_dpa_eg,
+        .hit = of_dpa_acl_hit,
+        .miss = of_dpa_eg,
         .action_write = of_dpa_acl_action_write,
     },
 };
