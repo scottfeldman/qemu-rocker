@@ -200,6 +200,12 @@ static void of_dpa_multicast_routing_build_match(struct flow_context *fc,
     match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
+static void of_dpa_multicast_routing_miss(struct flow_sys *fs,
+                                          struct flow_context *fc)
+{
+    flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_ACL_POLICY);
+}
+
 static void of_dpa_multicast_routing_action_write(struct flow_context *fc,
                                                   struct flow *flow)
 {
@@ -363,6 +369,7 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
     [ROCKER_OF_DPA_TABLE_ID_MULTICAST_ROUTING] = {
         .build_match = of_dpa_multicast_routing_build_match,
+        .miss = of_dpa_multicast_routing_miss,
         .hit_no_goto = of_dpa_drop,
         .action_write = of_dpa_multicast_routing_action_write,
     },
