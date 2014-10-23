@@ -401,14 +401,14 @@ void flow_ig_tbl(struct flow_sys *fs, struct flow_context *fc,
 
     flow->stats.hits++;
 
-    if (ops->hit)
-        ops->hit(fs, fc, flow);
-
     if (ops->action_apply)
         ops->action_apply(fc, flow);
 
     if (ops->action_write)
         ops->action_write(fc, flow);
+
+    if (ops->hit)
+        ops->hit(fs, fc, flow);
 
     if (flow->action.goto_tbl)
         flow_ig_tbl(fs, fc, flow->action.goto_tbl);
