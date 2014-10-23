@@ -335,6 +335,7 @@ enum {
     ROCKER_TLV_OF_DPA_NEW_QUEUE_ID,        /* u8 */
     ROCKER_TLV_OF_DPA_CLEAR_ACTIONS,       /* u32 */
     ROCKER_TLV_OF_DPA_POP_VLAN,            /* u8 */
+    ROCKER_TLV_OF_DPA_TTL_CHECK,           /* u8 */
 
     __ROCKER_TLV_OF_DPA_MAX,
     ROCKER_TLV_OF_DPA_MAX = __ROCKER_TLV_OF_DPA_MAX - 1,
@@ -450,6 +451,9 @@ enum rocker_of_dpa_overlay_type {
 #define ROCKER_GROUP_L2_FLOOD(vlan_id, index) \
     (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD) |\
      ROCKER_GROUP_VLAN_SET(ntohs(vlan_id)) | ROCKER_GROUP_INDEX_SET(index))
+#define ROCKER_GROUP_L3_UNICAST(index) \
+    (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST) |\
+     ROCKER_GROUP_INDEX_LONG_SET(index))
 
 /*
  * Rocker general purpose registers

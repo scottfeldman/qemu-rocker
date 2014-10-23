@@ -193,6 +193,13 @@ struct group {
             uint16_t group_count;
             uint32_t *group_ids;
         } l2_flood;
+        struct {
+            uint32_t group_id;
+            MACAddr src_mac;
+            MACAddr dst_mac;
+            __be16 vlan_id;
+            uint8_t ttl_check;
+        } l3_unicast;
     };
 };
 

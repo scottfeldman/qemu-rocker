@@ -654,6 +654,30 @@ static void group_fill(void *key, void *value, void *user_data)
                 ngroup->group_ids = id;
             }
             break;
+        case ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST:
+            ngroup->has_index = true;
+            ngroup->index = ROCKER_GROUP_INDEX_LONG_GET(group->id);
+            ngroup->has_group_id = true;
+            ngroup->group_id = group->l3_unicast.group_id;
+            if (group->l3_unicast.vlan_id) {
+                ngroup->has_set_vlan_id = true;
+                ngroup->set_vlan_id = ntohs(group->l3_unicast.vlan_id);
+            }
+            if (memcmp(group->l3_unicast.src_mac.a, zero_mac.a, ETH_ALEN)) {
+                ngroup->has_set_eth_src = true;
+                ngroup->set_eth_src =
+                    qemu_mac_strdup_printf(group->l3_unicast.src_mac.a);
+            }
+            if (memcmp(group->l3_unicast.dst_mac.a, zero_mac.a, ETH_ALEN)) {
+                ngroup->has_set_eth_dst = true;
+                ngroup->set_eth_dst =
+                    qemu_mac_strdup_printf(group->l3_unicast.dst_mac.a);
+            }
+            if (group->l3_unicast.ttl_check) {
+                ngroup->has_ttl_check = true;
+                ngroup->ttl_check = group->l3_unicast.ttl_check;
+            }
+            break;
     }
 
     new->next = flow_context->list;
