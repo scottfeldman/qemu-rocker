@@ -1352,12 +1352,31 @@ err_out:
     return err;
 }
 
+static int of_dpa_cmd_group_do(struct flow_sys *fs, uint32_t group_id,
+                               struct group *group,
+                               struct rocker_tlv **group_tlvs)
+{
+    uint8_t type = ROCKER_GROUP_TYPE_GET(group_id);
+
+    switch (type) {
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
+        return of_dpa_cmd_add_l2_interface(group, group_tlvs);
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
+        return of_dpa_cmd_add_l2_rewrite(fs, group, group_tlvs);
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
+    /* Treat L2 multicast group same as a L2 flood group */
+    case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
+        return of_dpa_cmd_add_l2_flood(fs, group, group_tlvs);
+    }
+
+    return -ENOTSUP;
+}
+
 static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
                                 struct rocker_tlv **group_tlvs)
 {
     struct flow_sys *fs = ow->fs;
     struct group *group = group_find(fs, group_id);
-    uint8_t type = ROCKER_GROUP_TYPE_GET(group_id);
     int err = 0;
 
     if (group)
@@ -1367,22 +1386,7 @@ static int of_dpa_cmd_group_add(struct of_dpa_world *ow, uint32_t group_id,
     if (!group)
         return -ENOMEM;
 
-    switch (type) {
-    case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
-        err = of_dpa_cmd_add_l2_interface(group, group_tlvs);
-        break;
-    case ROCKER_OF_DPA_GROUP_TYPE_L2_REWRITE:
-        err = of_dpa_cmd_add_l2_rewrite(fs, group, group_tlvs);
-        break;
-    case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
-    /* Treat L2 multicast group same as a L2 flood group */
-    case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
-        err = of_dpa_cmd_add_l2_flood(fs, group, group_tlvs);
-        break;
-    default:
-        err = -ENOTSUP;
-    }
-
+    err = of_dpa_cmd_group_do(fs, group_id, group, group_tlvs);
     if (err)
         goto err_cmd_add;
 
@@ -1400,7 +1404,13 @@ err_cmd_add:
 static int of_dpa_cmd_group_mod(struct of_dpa_world *ow, uint32_t group_id,
                                 struct rocker_tlv **group_tlvs)
 {
-    return -ENOTSUP;
+    struct flow_sys *fs = ow->fs;
+    struct group *group = group_find(fs, group_id);
+
+    if (!group)
+        return -ENOENT;
+
+    return of_dpa_cmd_group_do(fs, group_id, group, group_tlvs);
 }
 
 static int of_dpa_cmd_group_del(struct of_dpa_world *ow, uint32_t group_id)
