@@ -552,6 +552,7 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
     key->eth.type = rocker_tlv_get_u16(flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE]);
     if (key->eth.type != htons(0x0800) && key->eth.type != htons(0x86dd))
         return -EINVAL;
+    mask->eth.type = htons(0xffff);
 
     memcpy(key->eth.dst.a,
            rocker_tlv_data(flow_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]),
@@ -782,6 +783,7 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
     default:
         return -EINVAL;
     }
+    mask->eth.type = htons(0xffff);
 
     switch (mode) {
     case UNICAST_ROUTING_MODE_IPV4:
