@@ -174,6 +174,12 @@ static void of_dpa_unicast_routing_build_match(struct flow_context *fc,
     match->value.width = FLOW_KEY_WIDTH(ipv6.addr.dst);
 }
 
+static void of_dpa_unicast_routing_miss(struct flow_sys *fs,
+                                        struct flow_context *fc)
+{
+    flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_ACL_POLICY);
+}
+
 static void of_dpa_unicast_routing_action_write(struct flow_context *fc,
                                                 struct flow *flow)
 {
@@ -318,6 +324,22 @@ static void of_dpa_output_l2_flood(struct group *group,
     }
 }
 
+static void of_dpa_output_l3_unicast(struct group *group,
+                                     struct flow_sys *fs,
+                                     struct flow_context *fc)
+{
+    struct group *l2_group = group_find(fs, group->l3_unicast.group_id);
+
+    if (!l2_group)
+        return;
+
+    flow_pkt_hdr_rewrite(fc, group->l3_unicast.src_mac.a,
+                         group->l3_unicast.dst_mac.a,
+                         group->l3_unicast.vlan_id);
+    // XXX need ttl_check
+    of_dpa_output_l2_interface(l2_group, fs, fc);
+}
+
 static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
 {
     struct flow_action *set = &fc->action_set;
@@ -342,6 +364,9 @@ static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
     case ROCKER_OF_DPA_GROUP_TYPE_L2_FLOOD:
     case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
         of_dpa_output_l2_flood(group, fs, fc);
+        break;
+    case ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST:
+        of_dpa_output_l3_unicast(group, fs, fc);
         break;
     }
 }
@@ -373,6 +398,7 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
     },
     [ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING] = {
         .build_match = of_dpa_unicast_routing_build_match,
+        .miss = of_dpa_unicast_routing_miss,
         .hit_no_goto = of_dpa_drop,
         .action_write = of_dpa_unicast_routing_action_write,
     },
@@ -767,6 +793,7 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
         UNICAST_ROUTING_MODE_IPV4,
         UNICAST_ROUTING_MODE_IPV6,
     } mode = UNICAST_ROUTING_MODE_UNKNOWN;
+    uint8_t type;
 
     if (!flow_tlvs[ROCKER_TLV_OF_DPA_ETHERTYPE])
         return -EINVAL;
@@ -829,8 +856,10 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]) {
         action->write.group_id =
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
-        if (ROCKER_GROUP_TYPE_GET(action->write.group_id) !=
-            ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST)
+        type = ROCKER_GROUP_TYPE_GET(action->write.group_id);
+        if (type != ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE &&
+            type != ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST &&
+            type != ROCKER_OF_DPA_GROUP_TYPE_L3_ECMP)
             return -EINVAL;
     }
 
@@ -1352,6 +1381,34 @@ err_out:
     return err;
 }
 
+static int of_dpa_cmd_add_l3_unicast(struct flow_sys *fs,
+                                     struct group *group,
+                                     struct rocker_tlv **group_tlvs)
+{
+    if (!group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID_LOWER])
+        return -EINVAL;
+
+    group->l3_unicast.group_id =
+        rocker_tlv_get_le32(group_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID_LOWER]);
+
+    if (group_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC])
+        memcpy(group->l3_unicast.src_mac.a,
+               rocker_tlv_data(group_tlvs[ROCKER_TLV_OF_DPA_SRC_MAC]),
+               sizeof(group->l3_unicast.src_mac.a));
+    if (group_tlvs[ROCKER_TLV_OF_DPA_DST_MAC])
+        memcpy(group->l3_unicast.dst_mac.a,
+               rocker_tlv_data(group_tlvs[ROCKER_TLV_OF_DPA_DST_MAC]),
+               sizeof(group->l3_unicast.dst_mac.a));
+    if (group_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID])
+        group->l3_unicast.vlan_id =
+            rocker_tlv_get_u16(group_tlvs[ROCKER_TLV_OF_DPA_VLAN_ID]);
+    if (group_tlvs[ROCKER_TLV_OF_DPA_TTL_CHECK])
+        group->l3_unicast.ttl_check =
+            rocker_tlv_get_u8(group_tlvs[ROCKER_TLV_OF_DPA_TTL_CHECK]);
+
+    return 0;
+}
+
 static int of_dpa_cmd_group_do(struct flow_sys *fs, uint32_t group_id,
                                struct group *group,
                                struct rocker_tlv **group_tlvs)
@@ -1367,6 +1424,8 @@ static int of_dpa_cmd_group_do(struct flow_sys *fs, uint32_t group_id,
     /* Treat L2 multicast group same as a L2 flood group */
     case ROCKER_OF_DPA_GROUP_TYPE_L2_MCAST:
         return of_dpa_cmd_add_l2_flood(fs, group, group_tlvs);
+    case ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST:
+        return of_dpa_cmd_add_l3_unicast(fs, group, group_tlvs);
     }
 
     return -ENOTSUP;
