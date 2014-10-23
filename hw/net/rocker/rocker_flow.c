@@ -364,8 +364,9 @@ static void _flow_match(void *key, void *value, void *user_data)
     uint64_t *v = (uint64_t *)&match->value;
     int i;
 
-    if (flow->key.tbl_id == match->value.tbl_id)
+    if (flow->key.tbl_id == match->value.tbl_id) {
         flow_key_dump(&flow->key, &flow->mask);
+    }
 
     if (flow->key.width > match->value.width)
         return;
