@@ -305,6 +305,8 @@ static void of_dpa_output_l2_flood(struct group *group,
     for (i = 0; i < group->l2_flood.group_count; i++) {
         flow_pkt_hdr_reset(fc);
         l2_group = group_find(fs, group->l2_flood.group_ids[i]);
+        if (!l2_group)
+            continue;
         switch(ROCKER_GROUP_TYPE_GET(l2_group->id)) {
         case ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE:
             of_dpa_output_l2_interface(l2_group, fs, fc);
