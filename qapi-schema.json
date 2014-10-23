@@ -3533,7 +3533,7 @@
   'data' : { 'priority': 'uint32', 'tbl_id': 'uint32', '*in_lport': 'uint32',
              '*tunnel_id': 'uint32', '*vlan_id': 'uint16',
              '*eth_type': 'uint16', '*eth_src': 'str', '*eth_dst': 'str',
-             '*ip_proto': 'uint8', '*ip_tos': 'uint8' } }
+             '*ip_proto': 'uint8', '*ip_tos': 'uint8', '*ip_dst': 'str' } }
 
 { 'type': 'RockerFlowMask',
   'data' : { '*in_lport': 'uint32', '*tunnel_id': 'uint32',
@@ -3557,7 +3557,9 @@
   'data': { 'id': 'uint32',  'type': 'uint8', '*vlan_id': 'uint16',
             '*lport': 'uint32', '*index': 'uint32', '*out_lport': 'uint32',
             '*group_id': 'uint32', '*set_vlan_id': 'uint16',
-            '*pop_vlan': 'uint8', '*group_ids': ['uint32'] } }
+            '*pop_vlan': 'uint8', '*group_ids': ['uint32'],
+            '*set_eth_src': 'str', '*set_eth_dst': 'str',
+            '*ttl_check': 'uint8' } }
 
 { 'command': 'rocker-groups',
   'data': { 'name': 'str', '*world': 'str', '*type': 'uint8' },
