@@ -776,9 +776,12 @@ static int of_dpa_cmd_add_unicast_routing(struct flow *flow,
             rocker_tlv_get_u32(flow_tlvs[ROCKER_TLV_OF_DPA_DST_IP]);
         if (ipv4_addr_is_multicast(key->ipv4.addr.dst))
             return -EINVAL;
-        if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_IP_MASK])
+        flow->lpm = mask2prefix(htonl(0xffffffff));
+        if (flow_tlvs[ROCKER_TLV_OF_DPA_DST_IP_MASK]) {
             mask->ipv4.addr.dst =
                 rocker_tlv_get_u32(flow_tlvs[ROCKER_TLV_OF_DPA_DST_IP_MASK]);
+            flow->lpm = mask2prefix(mask->ipv4.addr.dst);
+        }
         break;
     case UNICAST_ROUTING_MODE_IPV6:
         if (!flow_tlvs[ROCKER_TLV_OF_DPA_DST_IPV6])

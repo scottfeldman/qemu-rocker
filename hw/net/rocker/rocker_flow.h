@@ -102,6 +102,7 @@ struct flow_world;
 
 struct flow {
     struct flow_sys *fs;
+    uint32_t lpm;
     uint32_t priority;
     uint32_t hardtime;
     uint32_t idletime;
