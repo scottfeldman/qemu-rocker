@@ -321,7 +321,7 @@ static void flow_key_dump(struct flow_key *key, struct flow_key *mask)
     if (key->eth.type || (mask && mask->eth.type)) {
         b += sprintf(b," type 0x%04x", ntohs(key->eth.type));
         if (mask && mask->eth.type != 0xffff)
-            b += sprintf(b,"/0x%04x", ntohs(key->eth.type));
+            b += sprintf(b,"/0x%04x", ntohs(mask->eth.type));
         switch (ntohs(key->eth.type)) {
         case 0x0800:
         case 0x86dd:
