@@ -337,6 +337,16 @@ static void flow_key_dump(struct flow_key *key, struct flow_key *mask)
             }
             break;
         }
+        switch (ntohs(key->eth.type)) {
+        case 0x0800:
+            if (key->ipv4.addr.dst || (mask && mask->ipv4.addr.dst)) {
+                b += sprintf(b, " dst %s",
+                    inet_ntoa(*(struct in_addr *)&key->ipv4.addr.dst));
+                if (mask)
+                    b += sprintf(b, "/%d", mask2prefix(mask->ipv4.addr.dst));
+            }
+            break;
+        }
     }
 
     DPRINTF("%s\n", buf);
