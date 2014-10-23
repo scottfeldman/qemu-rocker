@@ -376,7 +376,9 @@ static void _flow_match(void *key, void *value, void *user_data)
 
     DPRINTF("match\n");
 
-    if (!match->best || flow->priority > match->best->priority)
+    if (!match->best ||
+        flow->priority > match->best->priority ||
+        flow->lpm > match->best->lpm)
         match->best = flow;
 }
 
