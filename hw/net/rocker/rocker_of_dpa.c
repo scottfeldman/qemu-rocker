@@ -1308,6 +1308,7 @@ static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
     if (!tlvs)
         return -ENOMEM;
 
+    g_free(group->l2_flood.group_ids);
     group->l2_flood.group_ids =
         g_malloc0(group->l2_flood.group_count * sizeof(uint32_t));
     if (!group->l2_flood.group_ids) {
@@ -1322,17 +1323,13 @@ static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
         group->l2_flood.group_ids[i] = rocker_tlv_get_le32(tlvs[i + 1]);
 
     /* All of the L2 interface groups referenced by the L2 flood
-     * group must exist and must have same VLAN
+     * must have same VLAN
      */
 
     for (i = 0; i < group->l2_flood.group_count; i++) {
         l2_group = group_find(fs, group->l2_flood.group_ids[i]);
-        if (!l2_group) {
-            DPRINTF("l2 interface group 0x%08x doesn't exist\n",
-                    group->l2_flood.group_ids[i]);
-            err = -EINVAL;
-            goto err_out;
-        }
+        if (!l2_group)
+            continue;
         if ((ROCKER_GROUP_TYPE_GET(l2_group->id) ==
              ROCKER_OF_DPA_GROUP_TYPE_L2_INTERFACE) &&
             (ROCKER_GROUP_VLAN_GET(l2_group->id) !=
@@ -1344,7 +1341,12 @@ static int of_dpa_cmd_add_l2_flood(struct flow_sys *fs,
         }
     }
 
+    g_free(tlvs);
+    return 0;
+
 err_out:
+    group->l2_flood.group_count = 0;
+    g_free(group->l2_flood.group_ids);
     g_free(tlvs);
 
     return err;
