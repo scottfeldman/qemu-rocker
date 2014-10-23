@@ -209,4 +209,17 @@ struct flow_sys *flow_sys_alloc(struct world *world,
 void flow_sys_free(struct flow_sys *fs);
 struct world *flow_sys_world(struct flow_sys *fs);
 
+static inline int mask2prefix(__be32 mask)
+{
+    int i;
+    int count = 32;
+
+    for (i = 0; i < 32; i++) {
+	if (!(ntohl(mask) & ((2 << i) - 1)))
+	    count--;
+    }
+
+    return count;
+}
+
 #endif /* _ROCKER_FLOW_H_ */
