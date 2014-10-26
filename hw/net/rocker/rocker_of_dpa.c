@@ -89,13 +89,10 @@ static void of_dpa_term_mac_miss(struct flow_sys *fs, struct flow_context *fc)
     flow_ig_tbl(fs, fc, ROCKER_OF_DPA_TABLE_ID_BRIDGING);
 }
 
-static void of_dpa_copy_to_controller(struct flow_context *fc,
-                                      struct flow *flow)
+static void of_dpa_apply_actions(struct flow_context *fc, struct flow *flow)
 {
-    if (flow->action.apply.out_lport) {
-        // XXX send copy of pkt to controller, out_lport must
-        // XXX be controller lport
-    }
+    fc->action_set.apply.copy_to_cpu = flow->action.apply.copy_to_cpu;
+    fc->action_set.apply.vlan_id = flow->key.eth.vlan_id;
 }
 
 static void of_dpa_bridging_build_match(struct flow_context *fc,
@@ -344,11 +341,23 @@ static void of_dpa_eg(struct flow_sys *fs, struct flow_context *fc)
 {
     struct flow_action *set = &fc->action_set;
     struct group *group;
+    uint32_t group_id;
+
+    /* send a copy of pkt to CPU (controller)? */
+
+    if (set->apply.copy_to_cpu) {
+        group_id = ROCKER_GROUP_L2_INTERFACE(set->apply.vlan_id, 0);
+        group = group_find(fs, group_id);
+        if (group) {
+            of_dpa_output_l2_interface(group, fs, fc);
+            flow_pkt_hdr_reset(fc);
+        }
+    }
+
+    /* process group write actions */
 
     if (!set->write.group_id)
         return;
-
-    /* process group write actions */
 
     group = group_find(fs, set->write.group_id);
     if (!group)
@@ -386,14 +395,14 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
         .build_match = of_dpa_term_mac_build_match,
         .miss = of_dpa_term_mac_miss,
         .hit_no_goto = of_dpa_drop,
-        .action_apply = of_dpa_copy_to_controller,
+        .action_apply = of_dpa_apply_actions,
     },
     [ROCKER_OF_DPA_TABLE_ID_BRIDGING] = {
         .build_match = of_dpa_bridging_build_match,
         .hit = of_dpa_bridging_learn,
         .miss = of_dpa_bridging_miss,
         .hit_no_goto = of_dpa_drop,
-        .action_apply = of_dpa_copy_to_controller,
+        .action_apply = of_dpa_apply_actions,
         .action_write = of_dpa_bridging_action_write,
     },
     [ROCKER_OF_DPA_TABLE_ID_UNICAST_ROUTING] = {
@@ -412,6 +421,7 @@ static struct flow_tbl_ops of_dpa_tbl_ops[] = {
         .build_match = of_dpa_acl_build_match,
         .hit = of_dpa_acl_hit,
         .miss = of_dpa_eg,
+        .action_apply = of_dpa_apply_actions,
         .action_write = of_dpa_acl_action_write,
     },
 };
@@ -624,9 +634,9 @@ static int of_dpa_cmd_add_term_mac(struct flow *flow,
             return -EINVAL;
     }
 
-    if (flow_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT])
-        action->apply.out_lport =
-            rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_OUT_LPORT]);
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION])
+        action->apply.copy_to_cpu =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION]);
 
     return 0;
 }
@@ -778,6 +788,10 @@ static int of_dpa_cmd_add_bridging(struct flow *flow,
             return -EINVAL;
         }
     }
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION])
+        action->apply.copy_to_cpu =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION]);
 
     return 0;
 }
@@ -1107,6 +1121,10 @@ static int of_dpa_cmd_add_acl(struct flow *flow, struct rocker_tlv **flow_tlvs)
     if (flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID])
         action->write.group_id =
             rocker_tlv_get_le32(flow_tlvs[ROCKER_TLV_OF_DPA_GROUP_ID]);
+
+    if (flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION])
+        action->apply.copy_to_cpu =
+            rocker_tlv_get_u8(flow_tlvs[ROCKER_TLV_OF_DPA_COPY_CPU_ACTION]);
 
     return 0;
 }

@@ -336,6 +336,7 @@ enum {
     ROCKER_TLV_OF_DPA_CLEAR_ACTIONS,       /* u32 */
     ROCKER_TLV_OF_DPA_POP_VLAN,            /* u8 */
     ROCKER_TLV_OF_DPA_TTL_CHECK,           /* u8 */
+    ROCKER_TLV_OF_DPA_COPY_CPU_ACTION,     /* u8 */
 
     __ROCKER_TLV_OF_DPA_MAX,
     ROCKER_TLV_OF_DPA_MAX = __ROCKER_TLV_OF_DPA_MAX - 1,
