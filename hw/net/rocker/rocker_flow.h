@@ -94,6 +94,8 @@ struct flow_action {
     struct {
         __be16 new_vlan_id;
         uint32_t out_lport;
+        uint8_t copy_to_cpu;
+        __be16 vlan_id;
     } apply;
 };
 
