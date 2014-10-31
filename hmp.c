@@ -1767,9 +1767,8 @@ void hmp_rocker(Monitor *mon, const QDict *qdict)
     Error *errp = NULL;
 
     rocker = qmp_rocker(name, &errp);
-    if (error_is_set(&errp)) {
-        monitor_printf(mon, "%s\n", error_get_pretty(errp));
-        error_free(errp);
+    if (errp != NULL) {
+        hmp_handle_error(mon, &errp);
         return;
     }
 
@@ -1787,9 +1786,8 @@ void hmp_rocker_ports(Monitor *mon, const QDict *qdict)
     Error *errp = NULL;
 
     list = qmp_rocker_ports(name, &errp);
-    if (error_is_set(&errp)) {
-        monitor_printf(mon, "%s\n", error_get_pretty(errp));
-        error_free(errp);
+    if (errp != NULL) {
+        hmp_handle_error(mon, &errp);
         return;
     }
 
@@ -1818,9 +1816,8 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
 
     list = qmp_rocker_flows(name, !!world, world,
                             tbl_id != -1, tbl_id, &errp);
-    if (error_is_set(&errp)) {
-        monitor_printf(mon, "%s\n", error_get_pretty(errp));
-        error_free(errp);
+    if (errp != NULL) {
+        hmp_handle_error(mon, &errp);
         return;
     }
 
@@ -1959,9 +1956,8 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
 
     list = qmp_rocker_groups(name, !!world, world,
                              type != 9, type, &errp);
-    if (error_is_set(&errp)) {
-        monitor_printf(mon, "%s\n", error_get_pretty(errp));
-        error_free(errp);
+    if (errp != NULL) {
+        hmp_handle_error(mon, &errp);
         return;
     }
 

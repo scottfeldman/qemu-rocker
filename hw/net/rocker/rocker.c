@@ -1281,8 +1281,8 @@ err_rings_alloc:
 err_duplicate:
     rocker_msix_uninit(r);
 err_msix_init:
-    memory_region_destroy(&r->msix_bar);
-    memory_region_destroy(&r->mmio);
+    object_unparent(OBJECT(&r->msix_bar));
+    object_unparent(OBJECT(&r->mmio));
 err_world_alloc:
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (r->worlds[i])
@@ -1311,8 +1311,8 @@ static void pci_rocker_uninit(PCIDevice *dev)
     g_free(r->rings);
 
     rocker_msix_uninit(r);
-    memory_region_destroy(&r->msix_bar);
-    memory_region_destroy(&r->mmio);
+    object_unparent(OBJECT(&r->msix_bar));
+    object_unparent(OBJECT(&r->mmio));
 
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
         if (r->worlds[i])
