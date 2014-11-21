@@ -17,6 +17,7 @@
 #include "net/net.h"
 #include "net/eth.h"
 #include "qemu/iov.h"
+#include "qemu/timer.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -129,6 +130,7 @@ struct flow *flow_alloc(struct flow_sys *fs, uint64_t cookie,
                         uint32_t idletime)
 {
     struct flow *flow;
+    int64_t now = qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) / 1000;
 
     flow = g_malloc0(sizeof(struct flow));
     if (!flow)
@@ -140,6 +142,8 @@ struct flow *flow_alloc(struct flow_sys *fs, uint64_t cookie,
     flow->hardtime = hardtime;
     flow->idletime = idletime;
     flow->mask.tbl_id = 0xffffffff;
+
+    flow->stats.install_time = flow->stats.refresh_time = now;
 
     return flow;
 }

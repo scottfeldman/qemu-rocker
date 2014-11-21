@@ -16,6 +16,7 @@
 
 #include "net/eth.h"
 #include "qemu/iov.h"
+#include "qemu/timer.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -115,6 +116,8 @@ static void of_dpa_bridging_learn(struct flow_sys *fs, struct flow_context *fc,
     struct flow *flow;
     uint8_t *addr;
     uint16_t vlan_id;
+    int64_t now = qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) / 1000;
+    int64_t refresh_delay = 1;
 
     /* Do a lookup in bridge table by src_mac/vlan */
 
@@ -134,11 +137,16 @@ static void of_dpa_bridging_learn(struct flow_sys *fs, struct flow_context *fc,
              * don't match, the end station has moved and the port
              * needs updating */
             /* XXX implement the in_port/out_port check */
-            return;
+            if (now - flow->stats.refresh_time < refresh_delay)
+                return;
+            flow->stats.refresh_time = now;
         }
     }
 
-    /* New mac/vlan; learn it by sending event up to driver */
+    /* Let driver know about mac/vlan.  This may be a new mac/vlan
+     * or a refresh of existing mac/vlan that's been hit after the
+     * refresh_delay.
+     */
 
     rocker_event_mac_vlan_seen(world_rocker(flow_sys_world(fs)),
                                fc->in_lport, addr, vlan_id);
@@ -1230,6 +1238,7 @@ static int of_dpa_cmd_flow_get_stats(struct of_dpa_world *ow, uint64_t cookie,
 {
     struct flow *flow = flow_find(ow->fs, cookie);
     size_t tlv_size;
+    int64_t now = qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) / 1000;
     int pos;
 
     if (!flow)
@@ -1244,7 +1253,7 @@ static int of_dpa_cmd_flow_get_stats(struct of_dpa_world *ow, uint64_t cookie,
 
     pos = 0;
     rocker_tlv_put_le32(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_DURATION,
-                        flow->stats.duration);
+                        (int32_t)(now - flow->stats.install_time));
     rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_RX_PKTS,
                         flow->stats.rx_pkts);
     rocker_tlv_put_le64(buf, &pos, ROCKER_TLV_OF_DPA_FLOW_STAT_TX_PKTS,

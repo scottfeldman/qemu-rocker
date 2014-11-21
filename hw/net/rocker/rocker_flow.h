@@ -114,7 +114,8 @@ struct flow {
     struct flow_action action;
     struct {
         uint64_t hits;
-        uint32_t duration;
+        int64_t install_time;
+        int64_t refresh_time;
         uint64_t rx_pkts;
         uint64_t tx_pkts;
     } stats;
