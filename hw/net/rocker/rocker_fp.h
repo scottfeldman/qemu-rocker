@@ -32,6 +32,8 @@ bool fp_port_get_link_up(struct fp_port *port);
 void fp_port_get_info(struct fp_port *port, RockerPortList *info);
 void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr);
 void fp_port_set_macaddr(struct fp_port *port, MACAddr *macaddr);
+uint8_t fp_port_get_learning(struct fp_port *port);
+void fp_port_set_learning(struct fp_port *port, uint8_t learning);
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
                          uint8_t *duplex, uint8_t *autoneg);
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,

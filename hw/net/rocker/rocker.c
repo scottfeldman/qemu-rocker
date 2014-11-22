@@ -301,6 +301,7 @@ static int cmd_get_port_settings(struct rocker *r,
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
+    uint8_t learning;
     MACAddr macaddr;
     enum rocker_world_type mode;
     size_t tlv_size;
@@ -324,6 +325,7 @@ static int cmd_get_port_settings(struct rocker *r,
 
     fp_port_get_macaddr(fp_port, &macaddr);
     mode = world_type(fp_port_get_world(fp_port));
+    learning = fp_port_get_learning(fp_port);
 
     tlv_size = rocker_tlv_total_size(0) +                 /* nest */
                rocker_tlv_total_size(sizeof(uint32_t)) +  /*   lport */
@@ -331,7 +333,8 @@ static int cmd_get_port_settings(struct rocker *r,
                rocker_tlv_total_size(sizeof(uint8_t)) +   /*   duplex */
                rocker_tlv_total_size(sizeof(uint8_t)) +   /*   autoneg */
                rocker_tlv_total_size(sizeof(macaddr.a)) + /*   macaddr */
-               rocker_tlv_total_size(sizeof(uint8_t));    /*   mode */
+               rocker_tlv_total_size(sizeof(uint8_t)) +   /*   mode */
+               rocker_tlv_total_size(sizeof(uint8_t));    /*   learning */
 
     if (tlv_size > desc_buf_size(info))
         return -EMSGSIZE;
@@ -345,6 +348,8 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_put(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR,
                    sizeof(macaddr.a), macaddr.a);
     rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_MODE, mode);
+    rocker_tlv_put_u8(buf, &pos, ROCKER_TLV_CMD_PORT_SETTINGS_LEARNING,
+                      learning);
     rocker_tlv_nest_end(buf, &pos, nest);
 
     return desc_set_buf(info, tlv_size);
@@ -360,6 +365,7 @@ static int cmd_set_port_settings(struct rocker *r,
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
+    uint8_t learning;
     MACAddr macaddr;
     enum rocker_world_type mode;
     int err;
@@ -401,6 +407,12 @@ static int cmd_set_port_settings(struct rocker *r,
     if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MODE]) {
         mode = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MODE]);
         fp_port_set_world(fp_port, r->worlds[mode]);
+    }
+
+    if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LEARNING]) {
+        learning =
+            rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LEARNING]);
+        fp_port_set_learning(fp_port, learning);
     }
 
     return 0;
@@ -524,13 +536,22 @@ int rocker_event_mac_vlan_seen(struct rocker *r, uint32_t lport, uint8_t *addr,
                                uint16_t vlan_id)
 {
     struct desc_ring *ring = r->rings[ROCKER_RING_EVENT];
-    struct desc_info *info = desc_ring_fetch_desc(ring);
+    struct desc_info *info;
+    struct fp_port *fp_port;
+    uint32_t port;
     struct rocker_tlv *nest;
     char *buf;
     size_t tlv_size;
     int pos;
     int err;
 
+    if (!fp_port_from_lport(lport, &port))
+        return -EINVAL;
+    fp_port = r->fp_port[port];
+    if (!fp_port_get_learning(fp_port))
+        return 0;
+
+    info = desc_ring_fetch_desc(ring);
     if (!info)
         return -ENOBUFS;
 

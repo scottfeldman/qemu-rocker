@@ -37,6 +37,7 @@ struct fp_port {
     uint32_t speed;
     uint8_t duplex;
     uint8_t autoneg;
+    uint8_t learning;
     NICState *nic;
     NICConf conf;
 };
@@ -64,6 +65,16 @@ void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr)
 void fp_port_set_macaddr(struct fp_port *port, MACAddr *macaddr)
 {
 //XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
+}
+
+uint8_t fp_port_get_learning(struct fp_port *port)
+{
+    return port->learning;
+}
+
+void fp_port_set_learning(struct fp_port *port, uint8_t learning)
+{
+    port->learning = learning;
 }
 
 int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
