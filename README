@@ -15,6 +15,10 @@ Programmer's Reference Guide for qemu-rocker is here:
 Development
 ===========
 
+Note: make sure you checkout the rocker branch once you clone the repo.
+
+$ git checkout rocker
+
 qemu-rocker device is located in hw/net/rocker.
 
 There is a companion development project for a Linux device driver for
