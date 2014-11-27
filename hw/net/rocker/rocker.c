@@ -1,7 +1,7 @@
 /*
  * QEMU rocker switch emulation - PCI device
  *
- * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
+ * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
  * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
  *
  * This program is free software; you can redistribute it and/or modify

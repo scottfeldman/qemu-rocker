@@ -1,5 +1,5 @@
 Rocker Network Switch Register Programming Guide
-Scott Feldman <sfeldma@cumulusnetworks.com>
+Scott Feldman <sfeldma@gmail.com>
 Neil Horman <nhorman@tuxdriver.com>
 Version 0.1, 4/21/2014
 

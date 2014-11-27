@@ -1,7 +1,7 @@
 /*
  * QEMU rocker switch emulation - switch worlds
  *
- * Copyright (c) 2014 Scott Feldman <sfeldma@cumulusnetworks.com>
+ * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
