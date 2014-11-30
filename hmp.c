@@ -1806,16 +1806,14 @@ void hmp_rocker_ports(Monitor *mon, const QDict *qdict)
     qapi_free_RockerPortList(list);
 }
 
-void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
+void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict)
 {
-    RockerFlowList *list, *info;
+    RockerOfDpaFlowList *list, *info;
     const char *name = qdict_get_str(qdict, "name");
-    const char *world = qdict_get_try_str(qdict, "world");
     uint32_t tbl_id = qdict_get_try_int(qdict, "tbl_id", -1);
     Error *errp = NULL;
 
-    list = qmp_rocker_flows(name, !!world, world,
-                            tbl_id != -1, tbl_id, &errp);
+    list = qmp_rocker_of_dpa_flows(name, tbl_id != -1, tbl_id, &errp);
     if (errp != NULL) {
         hmp_handle_error(mon, &errp);
         return;
@@ -1824,10 +1822,10 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
     monitor_printf(mon, "prio tbl hits key(mask) --> actions\n");
 
     for (info = list; info; info = info->next) {
-        RockerFlow *flow = info->value;
-        RockerFlowKey *key = flow->key;
-        RockerFlowMask *mask = flow->mask;
-        RockerFlowAction *action = flow->action;
+        RockerOfDpaFlow *flow = info->value;
+        RockerOfDpaFlowKey *key = flow->key;
+        RockerOfDpaFlowMask *mask = flow->mask;
+        RockerOfDpaFlowAction *action = flow->action;
 
         if (flow->hits)
             monitor_printf(mon, "%-4d %-3d %-4ld",
@@ -1942,20 +1940,18 @@ void hmp_rocker_flows(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, "\n");
     }
 
-    qapi_free_RockerFlowList(list);
+    qapi_free_RockerOfDpaFlowList(list);
 }
 
-void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
+void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict)
 {
-    RockerGroupList *list, *g;
+    RockerOfDpaGroupList *list, *g;
     const char *name = qdict_get_str(qdict, "name");
-    const char *world = qdict_get_try_str(qdict, "world");
     uint8_t type = qdict_get_try_int(qdict, "type", 9);
     Error *errp = NULL;
     bool set = false;
 
-    list = qmp_rocker_groups(name, !!world, world,
-                             type != 9, type, &errp);
+    list = qmp_rocker_of_dpa_groups(name, type != 9, type, &errp);
     if (errp != NULL) {
         hmp_handle_error(mon, &errp);
         return;
@@ -1964,7 +1960,7 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
     monitor_printf(mon, "id (decode) --> buckets\n");
 
     for (g = list; g; g = g->next) {
-        RockerGroup *group = g->value;
+        RockerOfDpaGroup *group = g->value;
 
         monitor_printf(mon, "0x%08x", group->id);
 
@@ -2041,6 +2037,6 @@ void hmp_rocker_groups(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, "\n");
     }
 
-    qapi_free_RockerGroupList(list);
+    qapi_free_RockerOfDpaGroupList(list);
 }
 

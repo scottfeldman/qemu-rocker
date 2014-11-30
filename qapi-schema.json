@@ -3524,31 +3524,31 @@
   'data': { 'name': 'str' },
   'returns': ['RockerPort'] }
 
-{ 'type': 'RockerFlowKey',
+{ 'type': 'RockerOfDpaFlowKey',
   'data' : { 'priority': 'uint32', 'tbl_id': 'uint32', '*in_lport': 'uint32',
              '*tunnel_id': 'uint32', '*vlan_id': 'uint16',
              '*eth_type': 'uint16', '*eth_src': 'str', '*eth_dst': 'str',
              '*ip_proto': 'uint8', '*ip_tos': 'uint8', '*ip_dst': 'str' } }
 
-{ 'type': 'RockerFlowMask',
+{ 'type': 'RockerOfDpaFlowMask',
   'data' : { '*in_lport': 'uint32', '*tunnel_id': 'uint32',
              '*vlan_id': 'uint16', '*eth_src': 'str', '*eth_dst': 'str',
              '*ip_proto': 'uint8', '*ip_tos': 'uint8' } }
 
-{ 'type': 'RockerFlowAction',
+{ 'type': 'RockerOfDpaFlowAction',
   'data' : { '*goto_tbl': 'uint32', '*group_id': 'uint32',
              '*tun_log_lport': 'uint32', '*vlan_id': 'uint16',
              '*new_vlan_id': 'uint16', '*out_lport': 'uint32' } }
 
-{ 'type': 'RockerFlow',
-  'data': { 'cookie': 'uint64', 'hits': 'uint64', 'key': 'RockerFlowKey',
-            'mask': 'RockerFlowMask', 'action': 'RockerFlowAction' } }
+{ 'type': 'RockerOfDpaFlow',
+  'data': { 'cookie': 'uint64', 'hits': 'uint64', 'key': 'RockerOfDpaFlowKey',
+            'mask': 'RockerOfDpaFlowMask', 'action': 'RockerOfDpaFlowAction' } }
 
-{ 'command': 'rocker-flows',
-  'data': { 'name': 'str', '*world': 'str', '*tbl_id': 'uint32' },
-  'returns': ['RockerFlow'] }
+{ 'command': 'rocker-of-dpa-flows',
+  'data': { 'name': 'str', '*tbl_id': 'uint32' },
+  'returns': ['RockerOfDpaFlow'] }
 
-{ 'type': 'RockerGroup',
+{ 'type': 'RockerOfDpaGroup',
   'data': { 'id': 'uint32',  'type': 'uint8', '*vlan_id': 'uint16',
             '*lport': 'uint32', '*index': 'uint32', '*out_lport': 'uint32',
             '*group_id': 'uint32', '*set_vlan_id': 'uint16',
@@ -3556,6 +3556,6 @@
             '*set_eth_src': 'str', '*set_eth_dst': 'str',
             '*ttl_check': 'uint8' } }
 
-{ 'command': 'rocker-groups',
-  'data': { 'name': 'str', '*world': 'str', '*type': 'uint8' },
-  'returns': ['RockerGroup'] }
+{ 'command': 'rocker-of-dpa-groups',
+  'data': { 'name': 'str', '*type': 'uint8' },
+  'returns': ['RockerOfDpaGroup'] }

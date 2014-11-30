@@ -28,22 +28,6 @@ struct world {
     struct world_ops *ops;
 };
 
-RockerFlowList *world_do_flow_fill(struct world *world, uint32_t tbl_id)
-{
-    if (world->ops->flow_fill)
-        return world->ops->flow_fill(world, tbl_id);
-
-    return NULL;
-}
-
-RockerGroupList *world_do_group_fill(struct world *world, uint8_t type)
-{
-    if (world->ops->group_fill)
-        return world->ops->group_fill(world, type);
-
-    return NULL;
-}
-
 ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt)
 {

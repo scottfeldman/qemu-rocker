@@ -20,6 +20,8 @@
 
 #include <arpa/inet.h>
 
+#include "rocker_world.h"
+
 #if defined (DEBUG_ROCKER)
 #  define DPRINTF(fmt, ...) \
     do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
@@ -59,6 +61,8 @@ static inline bool ipv6_addr_is_multicast(const ipv6_addr *addr)
 struct world;
 struct rocker;
 
+struct rocker *rocker_find(const char *name);
+struct world *rocker_get_world(struct rocker *r, enum rocker_world_type type);
 uint32_t rocker_fp_ports(struct rocker *r);
 int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up);
 int rocker_event_mac_vlan_seen(struct rocker *r, uint32_t lport, uint8_t *addr,

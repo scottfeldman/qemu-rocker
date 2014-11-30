@@ -73,7 +73,7 @@ struct rocker {
 
 static QLIST_HEAD(, rocker) rockers;
 
-static struct rocker *rocker_find(const char *name)
+struct rocker *rocker_find(const char *name)
 {
     struct rocker *r;
 
@@ -81,6 +81,13 @@ static struct rocker *rocker_find(const char *name)
         if (strcmp(r->name, name) == 0)
             return r;
 
+    return NULL;
+}
+
+struct world *rocker_get_world(struct rocker *r, enum rocker_world_type type)
+{
+    if (type < ROCKER_WORLD_TYPE_MAX)
+        return r->worlds[type];
     return NULL;
 }
 
@@ -127,52 +134,6 @@ RockerPortList *qmp_rocker_ports(const char *name, Error **errp)
     }
 
     return list;
-}
-
-RockerFlowList *qmp_rocker_flows(const char *name, bool has_world,
-                                 const char *world, bool has_tbl_id,
-                                 uint32_t tbl_id, Error **errp)
-{
-    struct rocker *r;
-    struct world *w;
-
-    r = rocker_find(name);
-    if (!r) {
-        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
-                  "rocker %s not found", name);
-        return NULL;
-    }
-
-    w = r->world_dflt;
-    if (has_world) {
-        if (strcmp(world, "of-dpa") == 0)
-            w = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-    }
-
-    return world_do_flow_fill(w, tbl_id);
-}
-
-RockerGroupList *qmp_rocker_groups(const char *name, bool has_world,
-                                   const char *world, bool has_type,
-                                   uint8_t type, Error **errp)
-{
-    struct rocker *r;
-    struct world *w;
-
-    r = rocker_find(name);
-    if (!r) {
-        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
-                  "rocker %s not found", name);
-        return NULL;
-    }
-
-    w = r->world_dflt;
-    if (has_world) {
-        if (strcmp(world, "of-dpa") == 0)
-            w = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-    }
-
-    return world_do_group_fill(w, type);
 }
 
 uint32_t rocker_fp_ports(struct rocker *r)
@@ -246,7 +207,7 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
             return -EINVAL;
 
         rocker_tlv_parse_nested(tlvs, ROCKER_TLV_TX_FRAG_ATTR_MAX, tlv_frag);
-        
+
         if (!tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR] ||
             !tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN])
             return -EINVAL;

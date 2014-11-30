@@ -1815,31 +1815,31 @@ Show Rocker ports
 ETEXI
 
     {
-        .name       = "rocker-flows",
-        .args_type  = "name:s,world:s?,tbl_id:i?",
-        .params     = "rocker_flows name [world] [tbl_id]",
-        .help       = "Show Rocker flow tables",
-        .mhandler.cmd = hmp_rocker_flows,
+        .name       = "rocker-of-dpa-flows",
+        .args_type  = "name:s,tbl_id:i?",
+        .params     = "rocker_of_dpa_flows name [tbl_id]",
+        .help       = "Show Rocker OF-DPA flow tables",
+        .mhandler.cmd = hmp_rocker_of_dpa_flows,
     },
 
 STEXI
-@item rocker_flows @var{name} [@var{world}] [@var{tbl_id}]
-@findex rocker_flows
-Show Rocker flow tables
+@item rocker_of_dpa_flows @var{name} [@var{tbl_id}]
+@findex rocker_of_dpa_flows
+Show Rocker OF-DPA flow tables
 ETEXI
 
     {
-        .name       = "rocker-groups",
-        .args_type  = "name:s,world:s?,type:i?",
-        .params     = "rocker_groups name [world] [type]",
-        .help       = "Show Rocker groups",
-        .mhandler.cmd = hmp_rocker_groups,
+        .name       = "rocker-of-dpa-groups",
+        .args_type  = "name:s,type:i?",
+        .params     = "rocker_of_dpa_groups name [type]",
+        .help       = "Show Rocker OF-DPA groups",
+        .mhandler.cmd = hmp_rocker_of_dpa_groups,
     },
 
 STEXI
-@item rocker_groups @var{name} [@var{world}] [@var{type}]
-@findex rocker_groups
-Show Rocker groups
+@item rocker_of_dpa_groups @var{name} [@var{type}]
+@findex rocker_of_dpa_groups
+Show Rocker OF-DPA groups
 ETEXI
 
 STEXI

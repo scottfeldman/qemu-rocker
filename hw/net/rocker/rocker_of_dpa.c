@@ -17,6 +17,7 @@
 #include "net/eth.h"
 #include "qemu/iov.h"
 #include "qemu/timer.h"
+#include "qmp-commands.h"
 
 #include "rocker.h"
 #include "rocker_hw.h"
@@ -2166,21 +2167,21 @@ static void of_dpa_uninit(struct world *world)
 }
 
 struct of_dpa_flow_fill_context {
-    RockerFlowList *list;
+    RockerOfDpaFlowList *list;
     uint32_t tbl_id;
 };
 
-static void __of_dpa_flow_fill(void *cookie, void *value, void *user_data)
+static void of_dpa_flow_fill(void *cookie, void *value, void *user_data)
 {
     struct of_dpa_flow *flow = value;
     struct of_dpa_flow_key *key = &flow->key;
     struct of_dpa_flow_key *mask = &flow->mask;
     struct of_dpa_flow_fill_context *flow_context = user_data;
-    RockerFlowList *new;
-    RockerFlow *nflow;
-    RockerFlowKey *nkey;
-    RockerFlowMask *nmask;
-    RockerFlowAction *naction;
+    RockerOfDpaFlowList *new;
+    RockerOfDpaFlow *nflow;
+    RockerOfDpaFlowKey *nkey;
+    RockerOfDpaFlowMask *nmask;
+    RockerOfDpaFlowAction *naction;
 
     if (flow_context->tbl_id != -1 &&
         flow_context->tbl_id != key->tbl_id)
@@ -2307,34 +2308,54 @@ static void __of_dpa_flow_fill(void *cookie, void *value, void *user_data)
     flow_context->list = new;
 }
 
-static RockerFlowList *_of_dpa_flow_fill(struct of_dpa *of_dpa, uint32_t tbl_id)
+RockerOfDpaFlowList *qmp_rocker_of_dpa_flows(const char *name, bool has_tbl_id,
+                                             uint32_t tbl_id, Error **errp)
 {
+    struct rocker *r;
+    struct world *w;
+    struct of_dpa *of_dpa;
     struct of_dpa_flow_fill_context fill_context = {
         .list = NULL,
         .tbl_id = tbl_id,
     };
 
-    g_hash_table_foreach(of_dpa->flow_tbl, __of_dpa_flow_fill, &fill_context);
+    r = rocker_find(name);
+    if (!r) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s not found", name);
+        return NULL;
+    }
+
+    w = rocker_get_world(r, ROCKER_WORLD_TYPE_OF_DPA);
+    if (!w) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s doesn't have OF-DPA world", name);
+        return NULL;
+    }
+
+    of_dpa = world_private(w);
+
+    g_hash_table_foreach(of_dpa->flow_tbl, of_dpa_flow_fill, &fill_context);
 
     return fill_context.list;
 }
 
 struct of_dpa_group_fill_context {
-    RockerGroupList *list;
-    uint32_t tbl_id;
+    RockerOfDpaGroupList *list;
+    uint8_t type;
 };
 
-static void __of_dpa_group_fill(void *key, void *value, void *user_data)
+static void of_dpa_group_fill(void *key, void *value, void *user_data)
 {
     struct of_dpa_group *group = value;
     struct of_dpa_group_fill_context *flow_context = user_data;
-    RockerGroupList *new;
-    RockerGroup *ngroup;
+    RockerOfDpaGroupList *new;
+    RockerOfDpaGroup *ngroup;
     struct uint32List *id;
     int i;
 
-    if (flow_context->tbl_id != 9 &&
-        flow_context->tbl_id != ROCKER_GROUP_TYPE_GET(group->id))
+    if (flow_context->type != 9 &&
+        flow_context->type != ROCKER_GROUP_TYPE_GET(group->id))
         return;
 
     new = g_malloc0(sizeof(*new));
@@ -2419,31 +2440,36 @@ static void __of_dpa_group_fill(void *key, void *value, void *user_data)
     flow_context->list = new;
 }
 
-static RockerGroupList *_of_dpa_group_fill(struct of_dpa *of_dpa,
-                                           uint32_t tbl_id)
+RockerOfDpaGroupList *qmp_rocker_of_dpa_groups(const char *name, bool has_type,
+                                               uint8_t type, Error **errp)
 {
+    struct rocker *r;
+    struct world *w;
+    struct of_dpa *of_dpa;
     struct of_dpa_group_fill_context fill_context = {
         .list = NULL,
-        .tbl_id = tbl_id,
+        .type = type,
     };
 
-    g_hash_table_foreach(of_dpa->group_tbl, __of_dpa_group_fill, &fill_context);
+    r = rocker_find(name);
+    if (!r) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s not found", name);
+        return NULL;
+    }
+
+    w = rocker_get_world(r, ROCKER_WORLD_TYPE_OF_DPA);
+    if (!w) {
+        error_set(errp, ERROR_CLASS_GENERIC_ERROR,
+                  "rocker %s doesn't have OF-DPA world", name);
+        return NULL;
+    }
+
+    of_dpa = world_private(w);
+
+    g_hash_table_foreach(of_dpa->group_tbl, of_dpa_group_fill, &fill_context);
 
     return fill_context.list;
-}
-
-static RockerFlowList *of_dpa_flow_fill(struct world *world, uint32_t tbl_id)
-{
-    struct of_dpa *ow = world_private(world);
-
-    return _of_dpa_flow_fill(ow, tbl_id);
-}
-
-static RockerGroupList *of_dpa_group_fill(struct world *world, uint8_t type)
-{
-    struct of_dpa *of_dpa = world_private(world);
-
-    return _of_dpa_group_fill(of_dpa, type);
 }
 
 static struct world_ops of_dpa_ops = {
@@ -2451,8 +2477,6 @@ static struct world_ops of_dpa_ops = {
     .uninit = of_dpa_uninit,
     .ig = of_dpa_ig,
     .cmd = of_dpa_cmd,
-    .flow_fill = of_dpa_flow_fill,
-    .group_fill = of_dpa_group_fill,
 };
 
 struct world *of_dpa_world_alloc(struct rocker *r)
