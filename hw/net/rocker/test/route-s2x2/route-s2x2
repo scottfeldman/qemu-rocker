@@ -1,5 +1,5 @@
 simp destroy ".*"
-simp create -o top0:bin:/home/sfeldma/qemu-rocker/x86_64-softmmu/qemu-system-x86_64 -o top0:rocker:sw1 s2x2 ./route-s2x2/s2x2.dot
+simp create -o top0:rocker:sw1 s2x2 ./route-s2x2/s2x2.dot
 simp start s2x2
 sleep 10
 for node in top0 top1 bottom0 bottom1; do

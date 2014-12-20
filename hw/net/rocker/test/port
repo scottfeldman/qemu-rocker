@@ -1,5 +1,5 @@
 simp destroy ".*"
-simp create -o sw1:bin:/home/sfeldma/qemu-rocker/x86_64-softmmu/qemu-system-x86_64 -o sw1:rocker:sw1 tut tut.dot
+simp create -o sw1:rocker:sw1 tut tut.dot
 simp start tut
 while ! simp ssh tut sw1 --cmd "ping -c 1 localhost >/dev/null"; do sleep 1; done
 while ! simp ssh tut h1 --cmd "ping -c 1 localhost >/dev/null"; do sleep 1; done
