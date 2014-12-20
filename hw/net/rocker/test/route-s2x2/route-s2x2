@@ -1,0 +1,21 @@
+simp destroy ".*"
+simp create -o top0:bin:/home/sfeldma/qemu-rocker/x86_64-softmmu/qemu-system-x86_64 -o top0:rocker:sw1 s2x2 ./route-s2x2/s2x2.dot
+simp start s2x2
+sleep 10
+for node in top0 top1 bottom0 bottom1; do
+	simp ssh s2x2 $node --cmd "ping -c 1 localhost >/dev/null"
+
+	simp put s2x2 $node ./route-s2x2/$node.interfaces /tmp/interfaces
+	simp ssh s2x2 $node --cmd "sudo cp /tmp/interfaces /etc/network/interfaces"
+
+	simp put s2x2 $node ./route-s2x2/$node.daemons /tmp/daemons
+	simp ssh s2x2 $node --cmd "sudo cp /tmp/daemons /etc/quagga/daemons"
+
+	simp put s2x2 $node ./route-s2x2/$node.zebra.conf /tmp/zebra.conf
+	simp ssh s2x2 $node --cmd "sudo cp /tmp/zebra.conf /etc/quagga/zebra.conf"
+
+	simp put s2x2 $node ./route-s2x2/$node.ospfd.conf /tmp/ospfd.conf
+	simp ssh s2x2 $node --cmd "sudo cp /tmp/ospfd.conf /etc/quagga/ospfd.conf"
+
+	simp ssh s2x2 $node --cmd "sudo reboot"
+done

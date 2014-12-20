@@ -1,0 +1,8 @@
+graph G {
+	graph [hostidtype="hostname", version="1:0", date="04/12/2013"];
+	edge [dir=none, notify="log"];
+	bottom0:swp1 -- top0:swp1;
+	bottom0:swp2 -- top1:swp1;
+	bottom1:swp1 -- top0:swp2;
+	bottom1:swp2 -- top1:swp2;
+}

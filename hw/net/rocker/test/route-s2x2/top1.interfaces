@@ -1,0 +1,28 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto eth0
+iface eth0 inet dhcp
+
+# ssim2 added
+
+
+
+
+
+auto swp1
+iface swp1 inet static
+    address 11.0.0.6
+    netmask 255.255.255.252
+    down ip addr flush dev swp1
+
+auto swp2
+iface swp2 inet static
+    address 11.0.0.14
+    netmask 255.255.255.252
+    down ip addr flush dev swp2
