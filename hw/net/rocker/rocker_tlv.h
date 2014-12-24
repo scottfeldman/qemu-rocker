@@ -132,8 +132,9 @@ static inline void rocker_tlv_parse(struct rocker_tlv **tb, int maxtype,
     rocker_tlv_for_each(tlv, head, buf_len, rem) {
         uint32_t type = rocker_tlv_type(tlv);
 
-        if (type > 0 && type <= maxtype)
+        if (type > 0 && type <= maxtype) {
             tb[type] = (struct rocker_tlv *) tlv;
+        }
     }
 }
 
@@ -234,7 +235,7 @@ static inline struct rocker_tlv *rocker_tlv_nest_start(char *buf, int *buf_pos,
 static inline void rocker_tlv_nest_end(char *buf, int *buf_pos,
                                        struct rocker_tlv *start)
 {
-    start->len = (char * ) rocker_tlv_start(buf, *buf_pos) - (char *) start;
+    start->len = (char *) rocker_tlv_start(buf, *buf_pos) - (char *) start;
 }
 
 static inline void rocker_tlv_nest_cancel(char *buf, int *buf_pos,

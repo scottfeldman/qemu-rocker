@@ -78,16 +78,18 @@ struct rocker *rocker_find(const char *name)
     struct rocker *r;
 
     QLIST_FOREACH(r, &rockers, next)
-        if (strcmp(r->name, name) == 0)
+        if (strcmp(r->name, name) == 0) {
             return r;
+        }
 
     return NULL;
 }
 
 struct world *rocker_get_world(struct rocker *r, enum rocker_world_type type)
 {
-    if (type < ROCKER_WORLD_TYPE_MAX)
+    if (type < ROCKER_WORLD_TYPE_MAX) {
         return r->worlds[type];
+    }
     return NULL;
 }
 
@@ -165,52 +167,63 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
     int rem;
     int i;
 
-    if (!buf)
+    if (!buf) {
         return -ENXIO;
+    }
 
     rocker_tlv_parse(tlvs, ROCKER_TLV_TX_MAX, buf, desc_tlv_size(info));
 
-    if (!tlvs[ROCKER_TLV_TX_FRAGS])
+    if (!tlvs[ROCKER_TLV_TX_FRAGS]) {
         return -EINVAL;
-
-    lport = rocker_get_lport_by_tx_ring(r, desc_get_ring(info));
-    if (!fp_port_from_lport(lport, &port))
-        return -EINVAL;
-
-    if (tlvs[ROCKER_TLV_TX_OFFLOAD])
-        tx_offload = rocker_tlv_get_u8(tlvs[ROCKER_TLV_TX_OFFLOAD]);
-
-    switch (tx_offload) {
-        case ROCKER_TX_OFFLOAD_L3_CSUM:
-        if (!tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
-            return -EINVAL;
-        case ROCKER_TX_OFFLOAD_TSO:
-        if (!tlvs[ROCKER_TLV_TX_TSO_MSS] ||
-            !tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
-            return -EINVAL;
     }
 
-    if (tlvs[ROCKER_TLV_TX_L3_CSUM_OFF])
+    lport = rocker_get_lport_by_tx_ring(r, desc_get_ring(info));
+    if (!fp_port_from_lport(lport, &port)) {
+        return -EINVAL;
+    }
+
+    if (tlvs[ROCKER_TLV_TX_OFFLOAD]) {
+        tx_offload = rocker_tlv_get_u8(tlvs[ROCKER_TLV_TX_OFFLOAD]);
+    }
+
+    switch (tx_offload) {
+    case ROCKER_TX_OFFLOAD_L3_CSUM:
+        if (!tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]) {
+            return -EINVAL;
+        }
+    case ROCKER_TX_OFFLOAD_TSO:
+        if (!tlvs[ROCKER_TLV_TX_TSO_MSS] ||
+            !tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]) {
+            return -EINVAL;
+        }
+    }
+
+    if (tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]) {
         tx_l3_csum_off = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_L3_CSUM_OFF]);
+    }
 
-    if (tlvs[ROCKER_TLV_TX_TSO_MSS])
+    if (tlvs[ROCKER_TLV_TX_TSO_MSS]) {
         tx_tso_mss = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_TSO_MSS]);
+    }
 
-    if (tlvs[ROCKER_TLV_TX_TSO_HDR_LEN])
+    if (tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]) {
         tx_tso_hdr_len = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_TSO_HDR_LEN]);
+    }
 
     rocker_tlv_for_each_nested(tlv_frag, tlvs[ROCKER_TLV_TX_FRAGS], rem) {
         hwaddr frag_addr;
         uint16_t frag_len;
 
-        if (rocker_tlv_type(tlv_frag) != ROCKER_TLV_TX_FRAG)
+        if (rocker_tlv_type(tlv_frag) != ROCKER_TLV_TX_FRAG) {
             return -EINVAL;
+        }
 
         rocker_tlv_parse_nested(tlvs, ROCKER_TLV_TX_FRAG_ATTR_MAX, tlv_frag);
 
         if (!tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR] ||
-            !tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN])
+            !tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN]) {
             return -EINVAL;
+        }
 
         frag_addr = rocker_tlv_get_le64(tlvs[ROCKER_TLV_TX_FRAG_ATTR_ADDR]);
         frag_len = rocker_tlv_get_le16(tlvs[ROCKER_TLV_TX_FRAG_ATTR_LEN]);
@@ -228,13 +241,14 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
             goto err_bad_io;
         }
 
-        if (++iovcnt > ROCKER_TX_FRAGS_MAX)
+        if (++iovcnt > ROCKER_TX_FRAGS_MAX) {
             goto err_too_many_frags;
+        }
     }
 
     if (iovcnt) {
-        // XXX perform Tx offloads
-        // XXX   silence compiler for now
+        /* XXX perform Tx offloads */
+        /* XXX   silence compiler for now */
         tx_l3_csum_off += tx_tso_mss = tx_tso_hdr_len = 0;
     }
 
@@ -243,9 +257,11 @@ static int tx_consume(struct rocker *r, struct desc_info *info)
 err_no_mem:
 err_bad_io:
 err_too_many_frags:
-    for (i = 0; i < iovcnt; i++)
-        if (iov[i].iov_base)
+    for (i = 0; i < iovcnt; i++) {
+        if (iov[i].iov_base) {
             g_free(iov[i].iov_base);
+        }
+    }
 
     return err;
 }
@@ -272,17 +288,20 @@ static int cmd_get_port_settings(struct rocker *r,
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
 
-    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
+    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]) {
         return -EINVAL;
+    }
 
     lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
-    if (!fp_port_from_lport(lport, &port))
+    if (!fp_port_from_lport(lport, &port)) {
         return -EINVAL;
+    }
     fp_port = r->fp_port[port];
 
     err = fp_port_get_settings(fp_port, &speed, &duplex, &autoneg);
-    if (err)
+    if (err) {
         return err;
+    }
 
     fp_port_get_macaddr(fp_port, &macaddr);
     mode = world_type(fp_port_get_world(fp_port));
@@ -297,8 +316,9 @@ static int cmd_get_port_settings(struct rocker *r,
                rocker_tlv_total_size(sizeof(uint8_t)) +   /*   mode */
                rocker_tlv_total_size(sizeof(uint8_t));    /*   learning */
 
-    if (tlv_size > desc_buf_size(info))
+    if (tlv_size > desc_buf_size(info)) {
         return -EMSGSIZE;
+    }
 
     pos = 0;
     nest = rocker_tlv_nest_start(buf, &pos, ROCKER_TLV_CMD_INFO);
@@ -334,12 +354,14 @@ static int cmd_set_port_settings(struct rocker *r,
     rocker_tlv_parse_nested(tlvs, ROCKER_TLV_CMD_PORT_SETTINGS_MAX,
                             cmd_info_tlv);
 
-    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT])
+    if (!tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]) {
         return -EINVAL;
+    }
 
     lport = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_LPORT]);
-    if (!fp_port_from_lport(lport, &port))
+    if (!fp_port_from_lport(lport, &port)) {
         return -EINVAL;
+    }
     fp_port = r->fp_port[port];
 
     if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_SPEED] &&
@@ -351,14 +373,16 @@ static int cmd_set_port_settings(struct rocker *r,
         autoneg = rocker_tlv_get_u8(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_AUTONEG]);
 
         err = fp_port_set_settings(fp_port, speed, duplex, autoneg);
-        if (err)
+        if (err) {
             return err;
+        }
     }
 
     if (tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]) {
         if (rocker_tlv_len(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]) !=
-            sizeof(macaddr.a))
+            sizeof(macaddr.a)) {
             return -EINVAL;
+        }
         memcpy(macaddr.a,
                rocker_tlv_data(tlvs[ROCKER_TLV_CMD_PORT_SETTINGS_MACADDR]),
                sizeof(macaddr.a));
@@ -388,13 +412,15 @@ static int cmd_consume(struct rocker *r, struct desc_info *info)
     uint16_t cmd;
     int err;
 
-    if (!buf)
+    if (!buf) {
         return -ENXIO;
+    }
 
     rocker_tlv_parse(tlvs, ROCKER_TLV_CMD_MAX, buf, desc_tlv_size(info));
 
-    if (!tlvs[ROCKER_TLV_CMD_TYPE] || !tlvs[ROCKER_TLV_CMD_INFO])
+    if (!tlvs[ROCKER_TLV_CMD_TYPE] || !tlvs[ROCKER_TLV_CMD_INFO]) {
         return -EINVAL;
+    }
 
     cmd = rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE]);
     info_tlv = tlvs[ROCKER_TLV_CMD_INFO];
@@ -455,8 +481,9 @@ int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up)
     int pos;
     int err;
 
-    if (!info)
+    if (!info) {
         return -ENOBUFS;
+    }
 
     tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +  /* event type */
                rocker_tlv_total_size(0) +                 /* nest */
@@ -487,8 +514,9 @@ int rocker_event_link_changed(struct rocker *r, uint32_t lport, bool link_up)
 
 err_too_big:
 err_no_mem:
-    if (desc_ring_post_desc(ring, err))
+    if (desc_ring_post_desc(ring, err)) {
         rocker_msix_irq(r, ROCKER_MSIX_VEC_EVENT);
+    }
 
     return err;
 }
@@ -506,15 +534,18 @@ int rocker_event_mac_vlan_seen(struct rocker *r, uint32_t lport, uint8_t *addr,
     int pos;
     int err;
 
-    if (!fp_port_from_lport(lport, &port))
+    if (!fp_port_from_lport(lport, &port)) {
         return -EINVAL;
+    }
     fp_port = r->fp_port[port];
-    if (!fp_port_get_learning(fp_port))
+    if (!fp_port_get_learning(fp_port)) {
         return 0;
+    }
 
     info = desc_ring_fetch_desc(ring);
-    if (!info)
+    if (!info) {
         return -ENOBUFS;
+    }
 
     tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) +  /* event type */
                rocker_tlv_total_size(0) +                 /* nest */
@@ -546,8 +577,9 @@ int rocker_event_mac_vlan_seen(struct rocker *r, uint32_t lport, uint8_t *addr,
 
 err_too_big:
 err_no_mem:
-    if (desc_ring_post_desc(ring, err))
+    if (desc_ring_post_desc(ring, err)) {
         rocker_msix_irq(r, ROCKER_MSIX_VEC_EVENT);
+    }
 
     return err;
 }
@@ -577,8 +609,9 @@ int rx_produce(struct world *world, uint32_t lport,
     int pos;
     int err;
 
-    if (!info)
+    if (!info) {
         return -ENOBUFS;
+    }
 
     buf = desc_get_buf(info, false);
     if (!buf) {
@@ -601,7 +634,7 @@ int rx_produce(struct world *world, uint32_t lport,
         goto out;
     }
 
-    // XXX calc rx flags/csum
+    /* XXX calc rx flags/csum */
 
     tlv_size = rocker_tlv_total_size(sizeof(uint16_t)) + /* flags */
                rocker_tlv_total_size(sizeof(uint16_t)) + /* scum */
@@ -639,8 +672,9 @@ int rx_produce(struct world *world, uint32_t lport,
     err = desc_set_buf(info, tlv_size);
 
 out:
-    if (desc_ring_post_desc(ring, err))
+    if (desc_ring_post_desc(ring, err)) {
         rocker_msix_irq(r, ROCKER_MSIX_VEC_RX(lport - 1));
+    }
 
     return err;
 }
@@ -651,8 +685,9 @@ int rocker_port_eg(struct rocker *r, uint32_t lport,
     struct fp_port *fp_port;
     uint32_t port;
 
-    if (!fp_port_from_lport(lport, &port))
+    if (!fp_port_from_lport(lport, &port)) {
         return -EINVAL;
+    }
 
     fp_port = r->fp_port[port];
 
@@ -681,8 +716,9 @@ static void rocker_test_dma_ctrl(struct rocker *r, uint32_t val)
         break;
     case ROCKER_TEST_DMA_CTRL_INVERT:
         pci_dma_read(dev, r->test_dma_addr, buf, r->test_dma_size);
-        for (i = 0; i < r->test_dma_size; i++)
+        for (i = 0; i < r->test_dma_size; i++) {
             buf[i] = ~buf[i];
+        }
         break;
     default:
         DPRINTF("not test dma control val=0x%08x\n", val);
@@ -697,8 +733,9 @@ static void rocker_reset(DeviceState *dev);
 
 static void rocker_control(struct rocker *r, uint32_t val)
 {
-    if (val & ROCKER_CONTROL_RESET)
+    if (val & ROCKER_CONTROL_RESET) {
         rocker_reset(DEVICE(r));
+    }
 }
 
 static int rocker_pci_ring_count(struct rocker *r)
@@ -732,18 +769,21 @@ static void rocker_io_writel(void *opaque, hwaddr addr, uint32_t val)
             desc_ring_set_size(r->rings[index], val);
             break;
         case ROCKER_DMA_DESC_HEAD_OFFSET:
-            if (desc_ring_set_head(r->rings[index], val))
+            if (desc_ring_set_head(r->rings[index], val)) {
                 rocker_msix_irq(r, desc_ring_get_msix_vector(r->rings[index]));
+            }
             break;
         case ROCKER_DMA_DESC_CTRL_OFFSET:
             desc_ring_set_ctrl(r->rings[index], val);
             break;
         case ROCKER_DMA_DESC_CREDITS_OFFSET:
-            if (desc_ring_ret_credits(r->rings[index], val))
+            if (desc_ring_ret_credits(r->rings[index], val)) {
                 rocker_msix_irq(r, desc_ring_get_msix_vector(r->rings[index]));
+            }
             break;
         default:
-            DPRINTF("not implemented dma reg write(l) addr=0x%lx val=0x%08x (ring %d, addr=0x%02x)\n",
+            DPRINTF("not implemented dma reg write(l) addr=0x%lx "
+                    "val=0x%08x (ring %d, addr=0x%02x)\n",
                     addr, val, index, offset);
             break;
         }
@@ -783,12 +823,14 @@ static void rocker_port_phys_enable_write(struct rocker *r, uint64_t new)
         fp_port = r->fp_port[i];
         old_enabled = fp_port_enabled(fp_port);
         new_enabled = (new >> (i + 1)) & 0x1;
-        if (new_enabled == old_enabled)
+        if (new_enabled == old_enabled) {
             continue;
-        if (new_enabled)
+        }
+        if (new_enabled) {
             fp_port_enable(r->fp_port[i]);
-        else
+        } else {
             fp_port_disable(r->fp_port[i]);
+        }
     }
 }
 
@@ -805,7 +847,8 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
             desc_ring_set_base_addr(r->rings[index], val);
             break;
         default:
-            DPRINTF("not implemented dma reg write(q) addr=0x%lx val=0x%016lx (ring %d, addr=0x%02x)\n",
+            DPRINTF("not implemented dma reg write(q) addr=0x%lx "
+                    "val=0x%016lx (ring %d, addr=0x%02x)\n",
                     addr, val, index, offset);
             break;
         }
@@ -823,7 +866,8 @@ static void rocker_io_writeq(void *opaque, hwaddr addr, uint64_t val)
         rocker_port_phys_enable_write(r, val);
         break;
     default:
-        DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n", addr, val);
+        DPRINTF("not implemented write(q) addr=0x%lx val=0x%016lx\n",
+                addr, val);
         break;
     }
 }
@@ -841,15 +885,15 @@ static const char *rocker_reg_name(void *opaque, hwaddr addr)
         char ring_name[10];
 
         switch (index) {
-            case 0:
-                sprintf(ring_name, "cmd");
-                break;
-            case 1:
-                sprintf(ring_name, "event");
-                break;
-            default:
-                sprintf(ring_name, "%s-%d", index % 2 ? "rx" : "tx",
-                        (index - 2) / 2); 
+        case 0:
+            sprintf(ring_name, "cmd");
+            break;
+        case 1:
+            sprintf(ring_name, "event");
+            break;
+        default:
+            sprintf(ring_name, "%s-%d", index % 2 ? "rx" : "tx",
+                    (index - 2) / 2);
         }
 
         switch (offset) {
@@ -942,8 +986,8 @@ static uint32_t rocker_io_readl(void *opaque, hwaddr addr)
             ret = desc_ring_get_credits(r->rings[index]);
             break;
         default:
-            DPRINTF("not implemented dma reg read(l) addr=0x%lx (ring %d, addr=0x%02x)\n",
-                    addr, index, offset);
+            DPRINTF("not implemented dma reg read(l) addr=0x%lx "
+                    "(ring %d, addr=0x%02x)\n", addr, index, offset);
             ret = 0;
             break;
         }
@@ -982,8 +1026,9 @@ static uint64_t rocker_port_phys_link_status(struct rocker *r)
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
 
-        if (fp_port_get_link_up(port))
+        if (fp_port_get_link_up(port)) {
             status |= 1 << (i + 1);
+        }
     }
     return status;
 }
@@ -996,8 +1041,9 @@ static uint64_t rocker_port_phys_enable_read(struct rocker *r)
     for (i = 0; i < r->fp_ports; i++) {
         struct fp_port *port = r->fp_port[i];
 
-        if (fp_port_enabled(port))
+        if (fp_port_enabled(port)) {
             ret |= 1 << (i + 1);
+        }
     }
     return ret;
 }
@@ -1016,8 +1062,8 @@ static uint64_t rocker_io_readq(void *opaque, hwaddr addr)
             ret = desc_ring_get_base_addr(r->rings[index]);
             break;
         default:
-            DPRINTF("not implemented dma reg read(q) addr=0x%lx (ring %d, addr=0x%02x)\n",
-                    addr, index, offset);
+            DPRINTF("not implemented dma reg read(q) addr=0x%lx "
+                    "(ring %d, addr=0x%02x)\n", addr, index, offset);
             ret = 0;
             break;
         }
@@ -1101,8 +1147,9 @@ static int rocker_msix_vectors_use(struct rocker *r,
 
     for (i = 0; i < num_vectors; i++) {
         err = msix_vector_use(dev, i);
-        if (err)
+        if (err) {
             goto rollback;
+        }
     }
     return 0;
 
@@ -1122,12 +1169,14 @@ static int rocker_msix_init(struct rocker *r)
                     &r->msix_bar,
                     ROCKER_PCI_MSIX_BAR_IDX, ROCKER_PCI_MSIX_PBA_OFFSET,
                     0);
-    if (err)
+    if (err) {
         return err;
+    }
 
     err = rocker_msix_vectors_use(r, ROCKER_MSIX_VEC_COUNT(r->fp_ports));
-    if (err)
+    if (err) {
         goto err_msix_vectors_use;
+    }
 
     return 0;
 
@@ -1147,9 +1196,9 @@ static void rocker_msix_uninit(struct rocker *r)
 static int pci_rocker_init(PCIDevice *dev)
 {
     struct rocker *r = to_rocker(dev);
-    const MACAddr zero = { .a = { 0,0,0,0,0,0 } };
+    const MACAddr zero = { .a = { 0, 0, 0, 0, 0, 0 } };
     const MACAddr dflt = { .a = { 0x52, 0x54, 0x00, 0x12, 0x35, 0x01 } };
-    static int sw_index = 0;
+    static int sw_index;
     int i, err = 0;
 
     /* allocate worlds */
@@ -1157,9 +1206,11 @@ static int pci_rocker_init(PCIDevice *dev)
     r->worlds[ROCKER_WORLD_TYPE_OF_DPA] = of_dpa_world_alloc(r);
     r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
 
-    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
-        if (!r->worlds[i])
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
+        if (!r->worlds[i]) {
             goto err_world_alloc;
+        }
+    }
 
     /* set up memory-mapped region at BAR0 */
 
@@ -1178,13 +1229,15 @@ static int pci_rocker_init(PCIDevice *dev)
     /* MSI-X init */
 
     err = rocker_msix_init(r);
-    if (err)
+    if (err) {
         goto err_msix_init;
+    }
 
     /* validate switch properties */
 
-    if (!r->name)
+    if (!r->name) {
         r->name = g_strdup(ROCKER);
+    }
 
     if (rocker_find(r->name)) {
         err = -EEXIST;
@@ -1196,16 +1249,19 @@ static int pci_rocker_init(PCIDevice *dev)
         r->fp_start_macaddr.a[4] += (sw_index++);
     }
 
-    if (!r->switch_id)
+    if (!r->switch_id) {
         memcpy(&r->switch_id, &r->fp_start_macaddr,
                sizeof(r->fp_start_macaddr));
+    }
 
-    if (r->fp_ports > ROCKER_FP_PORTS_MAX)
+    if (r->fp_ports > ROCKER_FP_PORTS_MAX) {
         r->fp_ports = ROCKER_FP_PORTS_MAX;
+    }
 
     r->rings = g_malloc(sizeof(struct desc_ring *) * rocker_pci_ring_count(r));
-    if (!r->rings)
+    if (!r->rings) {
         goto err_rings_alloc;
+    }
 
     /* Rings are ordered like this:
      * - command ring
@@ -1220,16 +1276,21 @@ static int pci_rocker_init(PCIDevice *dev)
     for (i = 0; i < rocker_pci_ring_count(r); i++) {
         struct desc_ring *ring = desc_ring_alloc(r, i);
 
-        if (!ring)
+        if (!ring) {
             goto err_ring_alloc;
-        if (i == ROCKER_RING_CMD)
+        }
+
+        if (i == ROCKER_RING_CMD) {
             desc_ring_set_consume(ring, cmd_consume, ROCKER_MSIX_VEC_CMD);
-        else if (i == ROCKER_RING_EVENT)
+        } else if (i == ROCKER_RING_EVENT) {
             desc_ring_set_consume(ring, NULL, ROCKER_MSIX_VEC_EVENT);
-        else if (i % 2 == 0)
-            desc_ring_set_consume(ring, tx_consume, ROCKER_MSIX_VEC_TX((i - 2) / 2));
-        else if (i % 2 == 1)
+        } else if (i % 2 == 0) {
+            desc_ring_set_consume(ring, tx_consume,
+                                  ROCKER_MSIX_VEC_TX((i - 2) / 2));
+        } else if (i % 2 == 1) {
             desc_ring_set_consume(ring, NULL, ROCKER_MSIX_VEC_RX((i - 3) / 2));
+        }
+
         r->rings[i] = ring;
     }
 
@@ -1238,8 +1299,9 @@ static int pci_rocker_init(PCIDevice *dev)
             fp_port_alloc(r, r->name, &r->fp_start_macaddr,
                           i, &r->fp_ports_peers[i]);
 
-        if (!port)
+        if (!port) {
             goto err_port_alloc;
+        }
 
         r->fp_port[i] = port;
         fp_port_set_world(port, r->world_dflt);
@@ -1256,8 +1318,9 @@ err_port_alloc:
     }
     i = rocker_pci_ring_count(r);
 err_ring_alloc:
-    for (--i; i >= 0; i--)
+    for (--i; i >= 0; i--) {
         desc_ring_free(r->rings[i]);
+    }
     g_free(r->rings);
 err_rings_alloc:
 err_duplicate:
@@ -1266,10 +1329,11 @@ err_msix_init:
     object_unparent(OBJECT(&r->msix_bar));
     object_unparent(OBJECT(&r->mmio));
 err_world_alloc:
-    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
-        if (r->worlds[i])
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
+        if (r->worlds[i]) {
             world_free(r->worlds[i]);
-
+        }
+    }
     return err;
 }
 
@@ -1287,18 +1351,22 @@ static void pci_rocker_uninit(PCIDevice *dev)
         r->fp_port[i] = NULL;
     }
 
-    for (i = 0; i < rocker_pci_ring_count(r); i++)
-        if (r->rings[i])
-             desc_ring_free(r->rings[i]);
+    for (i = 0; i < rocker_pci_ring_count(r); i++) {
+        if (r->rings[i]) {
+            desc_ring_free(r->rings[i]);
+        }
+    }
     g_free(r->rings);
 
     rocker_msix_uninit(r);
     object_unparent(OBJECT(&r->msix_bar));
     object_unparent(OBJECT(&r->mmio));
 
-    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
-        if (r->worlds[i])
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
+        if (r->worlds[i]) {
             world_free(r->worlds[i]);
+        }
+    }
     g_free(r->fp_ports_peers);
 }
 
@@ -1307,10 +1375,11 @@ static void rocker_reset(DeviceState *dev)
     struct rocker *r = to_rocker(dev);
     int i;
 
-    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++)
-        if (r->worlds[i])
+    for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
+        if (r->worlds[i]) {
             world_reset(r->worlds[i]);
-
+        }
+    }
     for (i = 0; i < r->fp_ports; i++) {
         fp_port_reset(r->fp_port[i]);
         fp_port_set_world(r->fp_port[i], r->world_dflt);
@@ -1321,8 +1390,9 @@ static void rocker_reset(DeviceState *dev)
     r->test_dma_addr = 0;
     r->test_dma_size = 0;
 
-    for (i = 0; i < rocker_pci_ring_count(r); i++)
+    for (i = 0; i < rocker_pci_ring_count(r); i++) {
         desc_ring_reset(r->rings[i]);
+    }
 
     DPRINTF("Reset done\n");
 }

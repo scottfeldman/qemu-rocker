@@ -22,7 +22,7 @@
 
 #include "rocker_world.h"
 
-#if defined (DEBUG_ROCKER)
+#if defined(DEBUG_ROCKER)
 #  define DPRINTF(fmt, ...) \
     do { fprintf(stderr, "ROCKER: " fmt, ## __VA_ARGS__); } while (0)
 #else
@@ -47,9 +47,9 @@ static inline bool ipv4_addr_is_multicast(__be32 addr)
 
 typedef struct _ipv6_addr {
     union {
-	uint8_t addr8[16];
-	__be16 addr16[8];
-	__be32 addr32[4];
+        uint8_t addr8[16];
+        __be16 addr16[8];
+        __be32 addr32[4];
     };
 } ipv6_addr;
 

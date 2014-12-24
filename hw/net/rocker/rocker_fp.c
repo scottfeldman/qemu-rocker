@@ -64,7 +64,7 @@ void fp_port_get_macaddr(struct fp_port *port, MACAddr *macaddr)
 
 void fp_port_set_macaddr(struct fp_port *port, MACAddr *macaddr)
 {
-//XXX    memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a));
+/*XXX memcpy(port->conf.macaddr.a, macaddr.a, sizeof(port->conf.macaddr.a)); */
 }
 
 uint8_t fp_port_get_learning(struct fp_port *port)
@@ -90,7 +90,7 @@ int fp_port_get_settings(struct fp_port *port, uint32_t *speed,
 int fp_port_set_settings(struct fp_port *port, uint32_t speed,
                          uint8_t duplex, uint8_t autoneg)
 {
-    // XXX validate inputs
+    /* XXX validate inputs */
 
     port->speed = speed;
     port->duplex = duplex;
@@ -101,8 +101,9 @@ int fp_port_set_settings(struct fp_port *port, uint32_t speed,
 
 bool fp_port_from_lport(uint32_t lport, uint32_t *port)
 {
-    if (lport < 1 || lport > ROCKER_FP_PORTS_MAX)
+    if (lport < 1 || lport > ROCKER_FP_PORTS_MAX) {
         return false;
+    }
     *port = lport - 1;
     return true;
 }
@@ -111,8 +112,9 @@ int fp_port_eg(struct fp_port *port, const struct iovec *iov, int iovcnt)
 {
     NetClientState *nc = qemu_get_queue(port->nic);
 
-    if (port->enabled)
+    if (port->enabled) {
         qemu_sendv_packet(nc, iov, iovcnt);
+    }
 
     return 0;
 }
@@ -198,8 +200,9 @@ struct fp_port *fp_port_alloc(struct rocker *r, char *sw_name,
 {
     struct fp_port *port = g_malloc0(sizeof(struct fp_port));
 
-    if (!port)
+    if (!port) {
         return NULL;
+    }
 
     port->r = r;
     port->index = index;

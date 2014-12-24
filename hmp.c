@@ -1827,30 +1827,34 @@ void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict)
         RockerOfDpaFlowMask *mask = flow->mask;
         RockerOfDpaFlowAction *action = flow->action;
 
-        if (flow->hits)
+        if (flow->hits) {
             monitor_printf(mon, "%-4d %-3d %-4ld",
                            key->priority, key->tbl_id, flow->hits);
-        else
+        } else {
             monitor_printf(mon, "%-4d %-3d     ",
                            key->priority, key->tbl_id);
+        }
 
         if (key->has_in_lport) {
             monitor_printf(mon, " lport %d", key->in_lport);
-            if (mask->has_in_lport)
+            if (mask->has_in_lport) {
                 monitor_printf(mon, "(0x%x)", mask->in_lport);
+            }
         }
 
         if (key->has_vlan_id) {
             monitor_printf(mon, " vlan %d",
                            key->vlan_id & VLAN_VID_MASK);
-            if (mask->has_vlan_id)
+            if (mask->has_vlan_id) {
                 monitor_printf(mon, "(0x%x)", mask->vlan_id);
+            }
         }
 
         if (key->has_tunnel_id) {
             monitor_printf(mon, " tunnel %d", key->tunnel_id);
-            if (mask->has_tunnel_id)
+            if (mask->has_tunnel_id) {
                 monitor_printf(mon, "(0x%x)", mask->tunnel_id);
+            }
         }
 
         if (key->has_eth_type) {
@@ -1887,8 +1891,9 @@ void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict)
                 monitor_printf(mon, " src <any ucast>");
             } else {
                 monitor_printf(mon, " src %s", key->eth_src);
-                if (mask->has_eth_src)
+                if (mask->has_eth_src) {
                     monitor_printf(mon, "(%s)", mask->eth_src);
+                }
             }
         }
 
@@ -1903,39 +1908,47 @@ void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict)
                 monitor_printf(mon, " dst <any ucast>");
             } else {
                 monitor_printf(mon, " dst %s", key->eth_dst);
-                if (mask->has_eth_dst)
+                if (mask->has_eth_dst) {
                     monitor_printf(mon, "(%s)", mask->eth_dst);
+                }
             }
         }
 
         if (key->has_ip_proto) {
             monitor_printf(mon, " proto %d", key->ip_proto);
-            if (mask->has_ip_proto)
+            if (mask->has_ip_proto) {
                 monitor_printf(mon, "(0x%x)", mask->ip_proto);
+            }
         }
 
         if (key->has_ip_tos) {
             monitor_printf(mon, " TOS %d", key->ip_tos);
-            if (mask->has_ip_tos)
+            if (mask->has_ip_tos) {
                 monitor_printf(mon, "(0x%x)", mask->ip_tos);
+            }
         }
 
-        if (key->has_ip_dst)
+        if (key->has_ip_dst) {
             monitor_printf(mon, " dst %s", key->ip_dst);
+        }
 
         if (action->has_goto_tbl || action->has_group_id ||
-            action->has_new_vlan_id)
+            action->has_new_vlan_id) {
             monitor_printf(mon, " -->");
+        }
 
-        if (action->has_new_vlan_id)
+        if (action->has_new_vlan_id) {
             monitor_printf(mon, " apply new vlan %d",
                            ntohs(action->new_vlan_id));
+        }
 
-        if (action->has_group_id)
+        if (action->has_group_id) {
             monitor_printf(mon, " write group 0x%08x", action->group_id);
+        }
 
-        if (action->has_goto_tbl)
+        if (action->has_goto_tbl) {
             monitor_printf(mon, " goto tbl %d", action->goto_tbl);
+        }
 
         monitor_printf(mon, "\n");
     }
@@ -1975,14 +1988,17 @@ void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict)
                                          group->type == 8 ? "L2 overlay" :
                                          "unknown");
 
-        if (group->has_vlan_id)
+        if (group->has_vlan_id) {
             monitor_printf(mon, " vlan %d", group->vlan_id);
+        }
 
-        if (group->has_lport)
+        if (group->has_lport) {
             monitor_printf(mon, " lport %d", group->lport);
+        }
 
-        if (group->has_index)
+        if (group->has_index) {
             monitor_printf(mon, " index %d", group->index);
+        }
 
         monitor_printf(mon, ") -->");
 
@@ -2010,17 +2026,21 @@ void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict)
 
         set = false;
 
-        if (group->has_ttl_check && group->ttl_check)
+        if (group->has_ttl_check && group->ttl_check) {
             monitor_printf(mon, " check TTL");
+        }
 
-        if (group->has_group_id && group->group_id)
+        if (group->has_group_id && group->group_id) {
             monitor_printf(mon, " group id 0x%08x", group->group_id);
+        }
 
-        if (group->has_pop_vlan && group->pop_vlan)
+        if (group->has_pop_vlan && group->pop_vlan) {
             monitor_printf(mon, " pop vlan");
+        }
 
-        if (group->has_out_lport)
+        if (group->has_out_lport) {
             monitor_printf(mon, " out lport %d", group->out_lport);
+        }
 
         if (group->has_group_ids) {
             struct uint32List *id;
@@ -2028,8 +2048,9 @@ void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict)
             monitor_printf(mon, " groups [");
             for (id = group->group_ids; id; id = id->next) {
                 monitor_printf(mon, "0x%08x", id->value);
-                if (id->next)
+                if (id->next) {
                     monitor_printf(mon, ",");
+                }
             }
             monitor_printf(mon, "]");
         }

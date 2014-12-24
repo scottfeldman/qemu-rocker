@@ -66,11 +66,13 @@ char *desc_get_buf(struct desc_info *info, bool read_only)
         info->buf_size = size;
     }
 
-    if (!info->buf)
+    if (!info->buf) {
         return NULL;
+    }
 
-    if (pci_dma_read(dev, le64_to_cpu(info->desc.buf_addr), info->buf, size))
+    if (pci_dma_read(dev, le64_to_cpu(info->desc.buf_addr), info->buf, size)) {
         return NULL;
+    }
 
     return info->buf;
 }
@@ -80,7 +82,8 @@ int desc_set_buf(struct desc_info *info, size_t tlv_size)
     PCIDevice *dev = PCI_DEVICE(info->ring->r);
 
     if (tlv_size > info->buf_size) {
-        DPRINTF("ERROR: trying to write more to desc buf than it can hold buf_size %ld tlv_size %ld\n",
+        DPRINTF("ERROR: trying to write more to desc buf than it "
+                "can hold buf_size %ld tlv_size %ld\n",
                 info->buf_size, tlv_size);
         return -EMSGSIZE;
     }
@@ -129,26 +132,30 @@ bool desc_ring_set_size(struct desc_ring *ring, uint32_t size)
     int i;
 
     if (size < 2 || size > 0x10000 || (size & (size - 1))) {
-        DPRINTF("ERROR: ring[%d] size (%d) not a power of 2 or in range [2, 64K]\n",
-                ring->index, size);
+        DPRINTF("ERROR: ring[%d] size (%d) not a power of 2 "
+                "or in range [2, 64K]\n", ring->index, size);
         return false;
     }
 
-    for (i = 0; i < ring->size; i++)
-        if (ring->info[i].buf)
+    for (i = 0; i < ring->size; i++) {
+        if (ring->info[i].buf) {
             g_free(ring->info[i].buf);
+        }
+    }
 
     ring->size = size;
     ring->head = ring->tail = 0;
 
     ring->info = g_realloc(ring->info, size * sizeof(struct desc_info));
-    if (!ring->info)
+    if (!ring->info) {
         return false;
+    }
 
     memset(ring->info, 0, size * sizeof(struct desc_info));
 
-    for (i = 0; i < size; i++)
+    for (i = 0; i < size; i++) {
         ring->info[i].ring = ring;
+    }
 
     return true;
 }
@@ -195,8 +202,9 @@ static struct desc_info *__desc_ring_fetch_desc(struct desc_ring *ring)
 
 struct desc_info *desc_ring_fetch_desc(struct desc_ring *ring)
 {
-    if (desc_ring_empty(ring) || !desc_ring_base_addr_check(ring))
+    if (desc_ring_empty(ring) || !desc_ring_base_addr_check(ring)) {
         return NULL;
+    }
 
     return desc_read(ring, ring->tail);
 }
@@ -212,7 +220,7 @@ static bool __desc_ring_post_desc(struct desc_ring *ring, int err)
 
     /* return true if starting credit count */
 
-    return (ring->credits++ == 0);
+    return ring->credits++ == 0;
 }
 
 bool desc_ring_post_desc(struct desc_ring *ring, int err)
@@ -223,8 +231,9 @@ bool desc_ring_post_desc(struct desc_ring *ring, int err)
         return false;
     }
 
-    if (!desc_ring_base_addr_check(ring))
+    if (!desc_ring_base_addr_check(ring)) {
         return false;
+    }
 
     return __desc_ring_post_desc(ring, err);
 }
@@ -244,8 +253,9 @@ static bool ring_pump(struct desc_ring *ring)
         while (ring->head != ring->tail) {
             info = __desc_ring_fetch_desc(ring);
             err = ring->consume(ring->r, info);
-            if (__desc_ring_post_desc(ring, err))
+            if (__desc_ring_post_desc(ring, err)) {
                 primed = true;
+            }
         }
     }
 
@@ -257,24 +267,27 @@ bool desc_ring_set_head(struct desc_ring *ring, uint32_t new)
     uint32_t tail = ring->tail;
     uint32_t head = ring->head;
 
-    if (!desc_ring_base_addr_check(ring))
+    if (!desc_ring_base_addr_check(ring)) {
         return false;
+    }
 
     if (new >= ring->size) {
-        DPRINTF("ERROR: trying to set head (%d) past ring[%d] size (%d) \n",
+        DPRINTF("ERROR: trying to set head (%d) past ring[%d] size (%d)\n",
                 new, ring->index, ring->size);
         return false;
     }
 
     if (((head < tail) && ((new >= tail) || (new < head))) ||
         ((head > tail) && ((new >= tail) && (new < head)))) {
-        DPRINTF("ERROR: trying to wrap ring[%d] (head %d, tail %d, new head %d)\n",
+        DPRINTF("ERROR: trying to wrap ring[%d] "
+                "(head %d, tail %d, new head %d)\n",
                 ring->index, head, tail, new);
         return false;
     }
 
-    if (new == ring->head)
+    if (new == ring->head) {
         DPRINTF("WARNING: setting head (%d) to current head position\n", new);
+    }
 
     ring->head = new;
 
@@ -302,8 +315,8 @@ void desc_ring_set_ctrl(struct desc_ring *ring, uint32_t val)
 bool desc_ring_ret_credits(struct desc_ring *ring, uint32_t credits)
 {
     if (credits > ring->credits) {
-        DPRINTF("ERROR: trying to return more credits (%d) than are outstanding (%d)\n",
-                credits, ring->credits);
+        DPRINTF("ERROR: trying to return more credits (%d) "
+                "than are outstanding (%d)\n", credits, ring->credits);
         ring->credits = 0;
         return false;
     }
@@ -337,8 +350,9 @@ struct desc_ring *desc_ring_alloc(struct rocker *r, int index)
     struct desc_ring *ring;
 
     ring = g_malloc0(sizeof(struct desc_ring));
-    if (!ring)
+    if (!ring) {
         return NULL;
+    }
 
     ring->r = r;
     ring->index = index;
@@ -348,8 +362,9 @@ struct desc_ring *desc_ring_alloc(struct rocker *r, int index)
 
 void desc_ring_free(struct desc_ring *ring)
 {
-    if (ring->info)
+    if (ring->info) {
         g_free(ring->info);
+    }
     g_free(ring);
 }
 

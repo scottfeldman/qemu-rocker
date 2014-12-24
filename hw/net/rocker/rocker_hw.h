@@ -75,7 +75,8 @@ enum {
 #define ROCKER_DMA_DESC_BASE            0x1000
 #define ROCKER_DMA_DESC_SIZE            32
 #define ROCKER_DMA_DESC_MASK            0x1F
-#define ROCKER_DMA_DESC_TOTAL_SIZE      (ROCKER_DMA_DESC_SIZE * 64) /* 62 ports + event + cmd */
+#define ROCKER_DMA_DESC_TOTAL_SIZE \
+    (ROCKER_DMA_DESC_SIZE * 64) /* 62 ports + event + cmd */
 #define ROCKER_DMA_DESC_ADDR_OFFSET     0x00     /* 8-byte */
 #define ROCKER_DMA_DESC_SIZE_OFFSET     0x08
 #define ROCKER_DMA_DESC_HEAD_OFFSET     0x0c
@@ -113,7 +114,7 @@ struct rocker_desc {
     __le16 tlv_size;
     __le16 rsvd[5];   /* pad to 32 bytes */
     __le16 comp_err;
-} __attribute__((packed, aligned (8)));
+} __attribute__((packed, aligned(8)));
 
 /*
  * Rocker TLV type fields
@@ -123,7 +124,7 @@ struct rocker_tlv {
     __le32 type;
     __le16 len;
     __le16 rsvd;
-} __attribute__((packed, aligned (8)));
+} __attribute__((packed, aligned(8)));
 
 /* cmd msg */
 enum {

@@ -244,30 +244,30 @@ access exceptions in software.  Note that the payload for each TLV is also
 
 Figure 1 shows an example descriptor buffer with two TLVs.
 
-                  <------- 8 bytes ------->                                      
-                                                                                 
-  8-byte  +––––+  +–––––––––––+–––––+–––––+                     +–+              
-  align           |   type    | len | pad |    TLV#1 hdr          |              
-                  +–––––––––––+–––––+–––––+    (len=22)           |              
-                  |                       |                       |              
-                  |  value                |    TVL#1 value        |              
-                  |                       |    (padded to 8-byte  |              
-                  |                 +–––––+     alignment)        |              
-                  |                 |/////|                       |              
-   8-byte +––––+  +–––––––––––+–––––––––––+                       |              
+                  <------- 8 bytes ------->
+
+  8-byte  +––––+  +–––––––––––+–––––+–––––+                     +–+
+  align           |   type    | len | pad |    TLV#1 hdr          |
+                  +–––––––––––+–––––+–––––+    (len=22)           |
+                  |                       |                       |
+                  |  value                |    TVL#1 value        |
+                  |                       |    (padded to 8-byte  |
+                  |                 +–––––+     alignment)        |
+                  |                 |/////|                       |
+   8-byte +––––+  +–––––––––––+–––––––––––+                       |
    align          |   type    | len | pad |    TLV#2 hdr    DESC_BUF_SIZE
-                  +–––––+–––––+–––––+–––––+    (len=2)            |              
-                  |value|/////////////////|    TLV#2 value        |              
-                  +–––––+/////////////////|                       |              
-                  |///////////////////////|                       |              
-                  |///////////////////////|                       |              
-                  |///////////////////////|                       |              
-                  |////////unused/////////|                       |              
-                  |////////space//////////|                       |              
-                  |///////////////////////|                       |              
-                  |///////////////////////|                       |              
-                  |///////////////////////|                       |              
-                  +–––––––––––––––––––––––+                     +–+              
+                  +–––––+–––––+–––––+–––––+    (len=2)            |
+                  |value|/////////////////|    TLV#2 value        |
+                  +–––––+/////////////////|                       |
+                  |///////////////////////|                       |
+                  |///////////////////////|                       |
+                  |///////////////////////|                       |
+                  |////////unused/////////|                       |
+                  |////////space//////////|                       |
+                  |///////////////////////|                       |
+                  |///////////////////////|                       |
+                  |///////////////////////|                       |
+                  +–––––––––––––––––––––––+                     +–+
 
 				fig. 1
 
@@ -404,7 +404,7 @@ Other properties for front-panel ports are available via DMA CMD descriptors:
 		PORT_SETTINGS	2	CMD_GET
 		LPORT		4	Logical port #
 
-	Get PORT_SETTINGS completion:	
+	Get PORT_SETTINGS completion:
 
 		field		width	description
 		----------------------------------------------
@@ -493,31 +493,31 @@ can be released.
 Figure 2 shows an example 3-fragment packet queued with one Tx descriptor.  A
 TLV is used for each packet fragment.
 
-	                                           pkt frag 1        
-	                                           +–––––––+  +–+   
-	                                       +–––+       |    |   
-	                         desc buf      |   |       |    |   
-	                        +––––––––+     |   |       |    |   
-	        Tx ring     +–––+        +–––––+   |       |    |   
-	      +–––––––––+   |   |  TLVs  |         +–––––––+    |   
-	      |         +–––+   +––––––––+         pkt frag 2   |   
-	      | desc 0  |       |        +–––––+   +–––––––+    |   
-	      +–––––––––+       |  TLVs  |     +–––+       |    |   
-	head+–+         |       +––––––––+         |       |    |   
+	                                           pkt frag 1
+	                                           +–––––––+  +–+
+	                                       +–––+       |    |
+	                         desc buf      |   |       |    |
+	                        +––––––––+     |   |       |    |
+	        Tx ring     +–––+        +–––––+   |       |    |
+	      +–––––––––+   |   |  TLVs  |         +–––––––+    |
+	      |         +–––+   +––––––––+         pkt frag 2   |
+	      | desc 0  |       |        +–––––+   +–––––––+    |
+	      +–––––––––+       |  TLVs  |     +–––+       |    |
+	head+–+         |       +––––––––+         |       |    |
 	      | desc 1  |       |        +–––––+   +–––––––+    |pkt
-	      +–––––––––+       |  TLVs  |     |                |   
-	      |         |       +––––––––+     |   pkt frag 3   |   
-	      |         |                      |   +–––––––+    |   
-	      +–––––––––+                      +–––+       |    |   
-	      |         |                          |       |    |   
-	      |         |                          |       |    |   
-	      +–––––––––+                          |       |    |   
-	      |         |                          |       |    |   
-	      |         |                          |       |    |   
-	      +–––––––––+                          |       |    |   
-	      |         |                          +–––––––+  +–+   
-	      |         |                                           
-	      +–––––––––+                                             
+	      +–––––––––+       |  TLVs  |     |                |
+	      |         |       +––––––––+     |   pkt frag 3   |
+	      |         |                      |   +–––––––+    |
+	      +–––––––––+                      +–––+       |    |
+	      |         |                          |       |    |
+	      |         |                          |       |    |
+	      +–––––––––+                          |       |    |
+	      |         |                          |       |    |
+	      |         |                          |       |    |
+	      +–––––––––+                          |       |    |
+	      |         |                          +–––––––+  +–+
+	      |         |
+	      +–––––––––+
 
 				fig 2.
 
@@ -618,8 +618,8 @@ hardware with flow functionality, as defined in OF-DPA.  The block diagram is:
 		|        OF            |
 		|  Remote Controller   |
 		+––––––––+––----–––––––+
-		         |          
-		         |          
+		         |
+		         |
 		+––––––––+–––––––––+
 		|       OF         |
 		|   Local Agent    |
@@ -627,7 +627,7 @@ hardware with flow functionality, as defined in OF-DPA.  The block diagram is:
 		|                  |
 		|   Rocker Driver  |
 		+––––––––––––––––––+
-		    <this spec>       
+		    <this spec>
 		+––––––––––––––––––+
 		|                  |
 		|   Rocker Switch  |
@@ -911,8 +911,8 @@ TLVs for add and modify commands are:
 	  FLOW_POP_VLAN_TAG	1	strip outer VLAN tag (type 1
 					only)
 	  FLOW_VLAN_ID		2	(types 1, 5)
-	  FLOW_SRC_MAC		6	(types 1, 2, 5) 
-	  FLOW_DST_MAC		6	(types 1, 2) 
+	  FLOW_SRC_MAC		6	(types 1, 2, 5)
+	  FLOW_DST_MAC		6	(types 1, 2)
 
 TLVs for flow delete and get stats command are:
 
@@ -929,7 +929,7 @@ the following TLVs:
 	FLOW_GROUP_ID		2	Flow group ID
 	FLOW_STAT_DURATION	4	Flow duration
 	FLOW_STAT_REF_COUNT	4	Flow reference count
-	FLOW_STAT_BUCKET_COUNT	4	Flow bucket acount 
+	FLOW_STAT_BUCKET_COUNT	4	Flow bucket acount
 
 Possible status return codes in descriptor on completion are:
 

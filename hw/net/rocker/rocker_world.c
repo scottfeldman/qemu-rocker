@@ -31,8 +31,9 @@ struct world {
 ssize_t world_ingress(struct world *world, uint32_t lport,
                       const struct iovec *iov, int iovcnt)
 {
-    if (world->ops->ig)
+    if (world->ops->ig) {
         return world->ops->ig(world, lport, iov, iovcnt);
+    }
 
     return iov_size(iov, iovcnt);
 }
@@ -40,8 +41,9 @@ ssize_t world_ingress(struct world *world, uint32_t lport,
 int world_do_cmd(struct world *world, struct desc_info *info,
                  char *buf, uint16_t cmd, struct rocker_tlv *cmd_info_tlv)
 {
-    if (world->ops->cmd)
+    if (world->ops->cmd) {
         return world->ops->cmd(world, info, buf, cmd, cmd_info_tlv);
+    }
 
     return -ENOTSUP;
 }
@@ -55,8 +57,9 @@ struct world *world_alloc(struct rocker *r, size_t sizeof_private,
         w->r = r;
         w->type = type;
         w->ops = ops;
-        if (w->ops->init)
+        if (w->ops->init) {
             w->ops->init(w);
+        }
     }
 
     return w;
@@ -64,17 +67,20 @@ struct world *world_alloc(struct rocker *r, size_t sizeof_private,
 
 void world_free(struct world *world)
 {
-    if (world->ops->uninit)
+    if (world->ops->uninit) {
         world->ops->uninit(world);
+    }
     g_free(world);
 }
 
 void world_reset(struct world *world)
 {
-    if (world->ops->uninit)
+    if (world->ops->uninit) {
         world->ops->uninit(world);
-    if (world->ops->init)
+    }
+    if (world->ops->init) {
         world->ops->init(world);
+    }
 }
 
 void *world_private(struct world *world)
