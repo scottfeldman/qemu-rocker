@@ -40,5 +40,6 @@ available in this repo.
     p4lib/p4_l2l3_bm.a
     p4lib/p4utils.a
 
-For any questions/problems contact -
-paragbhide@gmail.com
+
+P4 behavioral model uses libJudy. Please install ligjudy-dev package.
+

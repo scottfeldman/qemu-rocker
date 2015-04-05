@@ -1,5 +1,5 @@
 /*
- * QEMU rocker switch emulation - OF-DPA flow processing support
+ * QEMU rocker switch emulation - P4 L2L3 pipeline support
  *
  * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *

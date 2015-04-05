@@ -60,7 +60,7 @@ World *world_alloc(Rocker *r, size_t sizeof_private,
         if (name) {
             w->name = g_strdup(name);
         } else {
-            w->name = g_strdup("unknown");
+            w->name = g_strdup("unknown-world");
         }
         if (w->ops->init) {
             w->ops->init(w);

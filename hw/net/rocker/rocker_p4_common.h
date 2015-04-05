@@ -24,7 +24,7 @@ typedef int  (p4_rmt_process_pkt_fn_t)(int ingress, void *pkt, int len);
 typedef struct p4_rmt_world {
     World  *world;
     Rocker *rocker;
-    // XXX add all the tables etc ???
+    // P4 world specific functions and table-ops
     p4_is_cpu_port_fn_t     *is_cpu_port;
     p4_is_table_valid_fn_t  *is_table_valid;
     p4_rmt_process_pkt_fn_t *process_pkt;
