@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
  * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1323,8 +1324,7 @@ static int pci_rocker_init(PCIDevice *dev)
     r->worlds[ROCKER_WORLD_TYPE_OF_DPA] = of_dpa_world_alloc(r);
     r->worlds[ROCKER_WORLD_TYPE_P4_L2L3] = p4_l2l3_world_alloc(r);
 
-    //r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
-    r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_P4_L2L3];
+    r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
 
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
         if (!r->worlds[i]) {

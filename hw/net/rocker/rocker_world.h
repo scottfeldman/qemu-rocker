@@ -46,7 +46,8 @@ int world_do_cmd(World *world, DescInfo *info,
                  char *buf, uint16_t cmd, RockerTlv *cmd_info_tlv);
 
 World *world_alloc(Rocker *r, size_t sizeof_private,
-                   enum rocker_world_type type, WorldOps *ops);
+                   enum rocker_world_type type, 
+                   const char *name, WorldOps *ops);
 void world_free(World *world);
 void world_reset(World *world);
 

@@ -1885,20 +1885,22 @@ void hmp_rocker_ports(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    monitor_printf(mon, "            ena/    speed/ auto\n");
-    monitor_printf(mon, "      port  link    duplex neg?\n");
+    monitor_printf(mon, "            ena/    speed/ auto    world\n");
+    monitor_printf(mon, "      port  link    duplex neg?    name\n");
 
     for (port = list; port; port = port->next)
-        monitor_printf(mon, "%10s  %-4s   %-3s  %2s  %-3s\n",
+        monitor_printf(mon, "%10s  %-4s   %-3s  %2s  %-3s    %s\n",
                        port->value->name,
                        port->value->enabled ? port->value->link_up ?
                        "up" : "down" : "!ena",
                        port->value->speed == 10000 ? "10G" : "??",
                        port->value->duplex ? "FD" : "HD",
-                       port->value->autoneg ? "Yes" : "No");
+                       port->value->autoneg ? "Yes" : "No",
+                       port->value->world_name);
 
     qapi_free_RockerPortList(list);
 }
+
 
 void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict)
 {

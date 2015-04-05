@@ -2,6 +2,7 @@
  * QEMU rocker switch emulation - switch worlds
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +21,8 @@
 #include "rocker_world.h"
 
 struct world {
-    Rocker *r;
+    char    *name;
+    Rocker  *r;
     enum rocker_world_type type;
     WorldOps *ops;
 };
@@ -46,7 +48,8 @@ int world_do_cmd(World *world, DescInfo *info,
 }
 
 World *world_alloc(Rocker *r, size_t sizeof_private,
-                   enum rocker_world_type type, WorldOps *ops)
+                   enum rocker_world_type type, 
+                   const char *name, WorldOps *ops)
 {
     World *w = g_malloc0(sizeof(World) + sizeof_private);
 
@@ -54,6 +57,11 @@ World *world_alloc(Rocker *r, size_t sizeof_private,
         w->r = r;
         w->type = type;
         w->ops = ops;
+        if (name) {
+            w->name = g_strdup(name);
+        } else {
+            w->name = g_strdup("unknown");
+        }
         if (w->ops->init) {
             w->ops->init(w);
         }
@@ -66,6 +74,9 @@ void world_free(World *world)
 {
     if (world->ops->uninit) {
         world->ops->uninit(world);
+    }
+    if (world->name) {
+        g_free(world->name);
     }
     g_free(world);
 }
@@ -97,12 +108,8 @@ enum rocker_world_type world_type(World *world)
 
 const char *world_name(World *world)
 {
-    switch (world->type) {
-    case ROCKER_WORLD_TYPE_OF_DPA:
-        return "OF_DPA";
-    case ROCKER_WORLD_TYPE_P4_L2L3:
-        return "P4_L2L3";
-    default:
-        return "unknown";
+    if (world) {
+        return world->name;
     }
+    return "unknown-world";
 }

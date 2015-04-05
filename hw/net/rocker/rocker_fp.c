@@ -59,6 +59,7 @@ void fp_port_get_info(FpPort *port, RockerPortList *info)
     info->value->speed = port->speed;
     info->value->duplex = port->duplex;
     info->value->autoneg = port->autoneg;
+    info->value->world_name = g_strdup(world_name(port->world));
 }
 
 void fp_port_get_macaddr(FpPort *port, MACAddr *macaddr)

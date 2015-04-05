@@ -1,5 +1,5 @@
 /*
- * QEMU rocker switch emulation - PCI device
+ * QEMU rocker switch emulation - PCI device - P4 support
  *
  * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
