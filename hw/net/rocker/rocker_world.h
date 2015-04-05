@@ -21,6 +21,7 @@
 
 enum rocker_world_type {
     ROCKER_WORLD_TYPE_OF_DPA = ROCKER_PORT_MODE_OF_DPA,
+    ROCKER_WORLD_TYPE_P4_L2L3 = ROCKER_PORT_MODE_P4_L2L3,
     ROCKER_WORLD_TYPE_MAX,
 };
 
@@ -56,5 +57,6 @@ enum rocker_world_type world_type(World *world);
 const char *world_name(World *world);
 
 World *rocker_get_world(Rocker *r, enum rocker_world_type type);
+World *rocker_world_from_pport(int pport);
 
 #endif /* _ROCKER_WORLD_H_ */

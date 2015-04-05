@@ -135,7 +135,7 @@ obj-y += memory.o savevm.o cputlb.o
 obj-y += memory_mapping.o
 obj-y += dump.o
 obj-$(call lnot,$(CONFIG_ROCKER)) += hw/net/rocker/qmp-norocker.o
-LIBS+=$(libs_softmmu)
+LIBS+=$(libs_softmmu) -lJudy
 
 # xen support
 obj-$(CONFIG_XEN) += xen-common.o
@@ -178,8 +178,15 @@ all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
 
 $(QEMU_PROG_BUILD): config-devices.mak
 
+# once P4 compiler is integrated into this repo, these libs can be locally built
+P4_LIBS = ../hw/net/rocker/p4lib/p4_l2l3_bm.a
+P4_LIBS += ../hw/net/rocker/p4lib/p4utils.a
+
+$(P4_LIBS):
+	echo "Using P4 libs....."
+
 # build either PROG or PROGW
-$(QEMU_PROG_BUILD): $(all-obj-y) ../libqemuutil.a ../libqemustub.a
+$(QEMU_PROG_BUILD): $(all-obj-y) ../libqemuutil.a ../libqemustub.a $(P4_LIBS)
 	$(call LINK, $(filter-out %.mak, $^))
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh

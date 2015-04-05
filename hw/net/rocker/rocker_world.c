@@ -100,6 +100,8 @@ const char *world_name(World *world)
     switch (world->type) {
     case ROCKER_WORLD_TYPE_OF_DPA:
         return "OF_DPA";
+    case ROCKER_WORLD_TYPE_P4_L2L3:
+        return "P4_L2L3";
     default:
         return "unknown";
     }
