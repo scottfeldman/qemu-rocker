@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
  * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  */
 
@@ -146,6 +147,7 @@ typedef struct rocker_tlv {
 enum {
     ROCKER_TLV_CMD_UNSPEC,
     ROCKER_TLV_CMD_TYPE,                /* u16 */
+    ROCKER_TLV_CMD_WORLD,               /* u32 - world id */
     ROCKER_TLV_CMD_INFO,                /* nest */
 
     __ROCKER_TLV_CMD_MAX,
@@ -164,6 +166,14 @@ enum {
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD,
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL,
     ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS,
+
+    ROCKER_TLV_CMD_TYPE_CLEAR_PORT_STATS,
+    ROCKER_TLV_CMD_TYPE_GET_PORT_STATS,
+
+    ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_ADD,
+    ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_DEL,
+    ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_ENTRY_MOD,
+    ROCKER_TLV_CMD_TYPE_P4_RMT_TABLE_DEFAULT_ACTION,
 
     __ROCKER_TLV_CMD_TYPE_MAX,
     ROCKER_TLV_CMD_TYPE_MAX = __ROCKER_TLV_CMD_TYPE_MAX - 1,
@@ -186,7 +196,26 @@ enum {
 };
 
 enum {
-    ROCKER_PORT_MODE_OF_DPA,
+	ROCKER_TLV_CMD_PORT_STATS_UNSPEC,
+	ROCKER_TLV_CMD_PORT_STATS_PPORT,            /* u32 */
+
+	ROCKER_TLV_CMD_PORT_STATS_RX_PKTS,          /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_RX_BYTES,         /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_RX_DROPPED,       /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_RX_ERRORS,        /* u64 */
+
+	ROCKER_TLV_CMD_PORT_STATS_TX_PKTS,          /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_TX_BYTES,         /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_TX_DROPPED,       /* u64 */
+	ROCKER_TLV_CMD_PORT_STATS_TX_ERRORS,        /* u64 */
+
+	__ROCKER_TLV_CMD_PORT_STATS_MAX,
+	ROCKER_TLV_CMD_PORT_STATS_MAX = __ROCKER_TLV_CMD_PORT_STATS_MAX - 1,
+};
+
+enum {
+    ROCKER_PORT_MODE_OF_DPA = 0,
+    ROCKER_PORT_MODE_P4_L2L3,
 };
 
 /* event msg */
@@ -474,6 +503,16 @@ enum rocker_of_dpa_overlay_type {
 #define ROCKER_GROUP_L3_UNICAST(index) \
     (ROCKER_GROUP_TYPE_SET(ROCKER_OF_DPA_GROUP_TYPE_L3_UCAST) |\
      ROCKER_GROUP_INDEX_LONG_SET(index))
+
+/* cmd info (nested tlvs) for P4 */
+enum {
+    ROCKER_TLV_P4_RMT_INFO_UNSPEC = 0,  /* don't use 0 for tlv type */
+    ROCKER_TLV_P4_RMT_INFO_TABLE_ID,
+    ROCKER_TLV_P4_RMT_INFO_TABLE_ENTRY,    /* opaque table entry */
+
+    __ROCKER_TLV_P4_RMT_INFO_MAX,
+    ROCKER_TLV_P4_RMT_INFO_MAX = __ROCKER_TLV_P4_RMT_INFO_MAX - 1,
+};
 
 /*
  * Rocker general purpose registers

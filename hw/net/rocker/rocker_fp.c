@@ -59,6 +59,7 @@ void fp_port_get_info(FpPort *port, RockerPortList *info)
     info->value->speed = port->speed;
     info->value->duplex = port->duplex;
     info->value->autoneg = port->autoneg;
+    info->value->world_name = g_strdup(world_name(port->world));
 }
 
 void fp_port_get_macaddr(FpPort *port, MACAddr *macaddr)
@@ -119,6 +120,7 @@ int fp_port_eg(FpPort *port, const struct iovec *iov, int iovcnt)
     NetClientState *nc = qemu_get_queue(port->nic);
 
     if (port->enabled) {
+	    DPRINTF("Send to port %d\n", port->pport);
         qemu_sendv_packet(nc, iov, iovcnt);
     }
 

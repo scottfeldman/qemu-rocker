@@ -2623,5 +2623,5 @@ static WorldOps of_dpa_ops = {
 
 World *of_dpa_world_alloc(Rocker *r)
 {
-    return world_alloc(r, sizeof(OfDpa), ROCKER_WORLD_TYPE_OF_DPA, &of_dpa_ops);
+    return world_alloc(r, sizeof(OfDpa), ROCKER_WORLD_TYPE_OF_DPA, "OF_DPA", &of_dpa_ops);
 }

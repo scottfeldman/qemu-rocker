@@ -2,6 +2,7 @@
  * QEMU rocker switch emulation - switch worlds
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 
 enum rocker_world_type {
     ROCKER_WORLD_TYPE_OF_DPA = ROCKER_PORT_MODE_OF_DPA,
+    ROCKER_WORLD_TYPE_P4_L2L3 = ROCKER_PORT_MODE_P4_L2L3,
     ROCKER_WORLD_TYPE_MAX,
 };
 
@@ -45,7 +47,8 @@ int world_do_cmd(World *world, DescInfo *info,
                  char *buf, uint16_t cmd, RockerTlv *cmd_info_tlv);
 
 World *world_alloc(Rocker *r, size_t sizeof_private,
-                   enum rocker_world_type type, WorldOps *ops);
+                   enum rocker_world_type type, 
+                   const char *name, WorldOps *ops);
 void world_free(World *world);
 void world_reset(World *world);
 
@@ -56,5 +59,6 @@ enum rocker_world_type world_type(World *world);
 const char *world_name(World *world);
 
 World *rocker_get_world(Rocker *r, enum rocker_world_type type);
+World *rocker_world_from_pport(int pport);
 
 #endif /* _ROCKER_WORLD_H_ */

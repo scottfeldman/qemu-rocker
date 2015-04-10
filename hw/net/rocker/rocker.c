@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2014 Scott Feldman <sfeldma@gmail.com>
  * Copyright (c) 2014 Jiri Pirko <jiri@resnulli.us>
+ * Copyright (c) 2015 Parag Bhide <parag.bhide@barefootnetworks.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +33,10 @@
 #include "rocker_tlv.h"
 #include "rocker_world.h"
 #include "rocker_of_dpa.h"
+#include "rocker_p4_l2l3.h"
+
+// Global array to locate port info and world based on port #
+static FpPort *g_fp_ports[ROCKER_FP_PORTS_MAX];
 
 struct rocker {
     /* private */
@@ -143,6 +148,17 @@ RockerPortList *qmp_query_rocker_ports(const char *name, Error **errp)
 uint32_t rocker_fp_ports(Rocker *r)
 {
     return r->fp_ports;
+}
+
+World *rocker_world_from_pport(int pport)
+{
+    unsigned int port;
+    if (!fp_port_from_pport((unsigned int)pport, &port)) {
+        return NULL;
+    }
+    return fp_port_get_world(g_fp_ports[port]);
+
+
 }
 
 static uint32_t rocker_get_pport_by_tx_ring(Rocker *r,
@@ -420,7 +436,8 @@ static int cmd_consume(Rocker *r, DescInfo *info)
     RockerTlv *info_tlv;
     World *world;
     uint16_t cmd;
-    int err;
+    uint32_t world_id = ROCKER_WORLD_TYPE_MAX;
+    int err = 0;
 
     if (!buf) {
         return -ROCKER_ENXIO;
@@ -434,6 +451,7 @@ static int cmd_consume(Rocker *r, DescInfo *info)
 
     cmd = rocker_tlv_get_le16(tlvs[ROCKER_TLV_CMD_TYPE]);
     info_tlv = tlvs[ROCKER_TLV_CMD_INFO];
+
 
     /* This might be reworked to something like this:
      * Every world will have an array of command handlers from
@@ -452,20 +470,37 @@ static int cmd_consume(Rocker *r, DescInfo *info)
     case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_MOD:
     case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_DEL:
     case ROCKER_TLV_CMD_TYPE_OF_DPA_GROUP_GET_STATS:
+        // Add world_id TLV to OF_DPA cmds - XXX
+        DPRINTF("Rocker OF-DPA CMD %d\n", (int)cmd);
         world = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
         err = world_do_cmd(world, info, buf, cmd, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_GET_PORT_SETTINGS:
+        DPRINTF("Rocker port-get CMD %d\n", (int)cmd);
         err = cmd_get_port_settings(r, info, buf, info_tlv);
         break;
     case ROCKER_TLV_CMD_TYPE_SET_PORT_SETTINGS:
+        DPRINTF("Rocker port-set CMD %d\n", (int)cmd);
         err = cmd_set_port_settings(r, info_tlv);
         break;
     default:
-        err = -ROCKER_EINVAL;
+        if (tlvs[ROCKER_TLV_CMD_WORLD]) {
+            world_id = rocker_tlv_get_le32(tlvs[ROCKER_TLV_CMD_WORLD]);
+            if (world_id < ROCKER_WORLD_TYPE_MAX) {
+                world = r->worlds[world_id];
+                DPRINTF("Rocker CMD %d for world %s\n", (int)cmd, 
+                            world_name(world));
+                err = world_do_cmd(world, info, buf, cmd, info_tlv);
+            }
+            else {
+                DPRINTF("Command for UNKNOWN World !!\n");
+                err = -ROCKER_EINVAL;
+            }
+        } else {
+            err = -ROCKER_EINVAL;
+        }
         break;
     }
-
     return err;
 }
 
@@ -473,7 +508,7 @@ static void rocker_msix_irq(Rocker *r, unsigned vector)
 {
     PCIDevice *dev = PCI_DEVICE(r);
 
-    DPRINTF("MSI-X notify request for vector %d\n", vector);
+    // DPRINTF("MSI-X notify request for vector %d\n", vector);
     if (vector >= ROCKER_MSIX_VEC_COUNT(r->fp_ports)) {
         DPRINTF("incorrect vector %d\n", vector);
         return;
@@ -997,9 +1032,9 @@ static const char *rocker_reg_name(void *opaque, hwaddr addr)
 static void rocker_mmio_write(void *opaque, hwaddr addr, uint64_t val,
                               unsigned size)
 {
-    DPRINTF("Write %s addr " TARGET_FMT_plx
-            ", size %u, val " TARGET_FMT_plx "\n",
-            rocker_reg_name(opaque, addr), addr, size, val);
+    // DPRINTF("Write %s addr " TARGET_FMT_plx
+    //        ", size %u, val " TARGET_FMT_plx "\n",
+    //         rocker_reg_name(opaque, addr), addr, size, val);
 
     switch (size) {
     case 4:
@@ -1285,9 +1320,10 @@ static int pci_rocker_init(PCIDevice *dev)
     static int sw_index;
     int i, err = 0;
 
-    /* allocate worlds */
-
+    /* allocate all worlds */
     r->worlds[ROCKER_WORLD_TYPE_OF_DPA] = of_dpa_world_alloc(r);
+    r->worlds[ROCKER_WORLD_TYPE_P4_L2L3] = p4_l2l3_world_alloc(r);
+
     r->world_dflt = r->worlds[ROCKER_WORLD_TYPE_OF_DPA];
 
     for (i = 0; i < ROCKER_WORLD_TYPE_MAX; i++) {
@@ -1405,6 +1441,7 @@ static int pci_rocker_init(PCIDevice *dev)
 
         r->fp_port[i] = port;
         fp_port_set_world(port, r->world_dflt);
+        g_fp_ports[i] = port;
     }
 
     QLIST_INSERT_HEAD(&rockers, r, next);
@@ -1449,6 +1486,7 @@ static void pci_rocker_uninit(PCIDevice *dev)
 
         fp_port_free(port);
         r->fp_port[i] = NULL;
+        g_fp_ports[i] = NULL;
     }
 
     for (i = 0; i < rocker_pci_ring_count(r); i++) {
