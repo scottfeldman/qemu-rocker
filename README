@@ -1,3 +1,18 @@
+*************************************************************************
+NOTE: Qemu rocker device is now merged into the qemu 2.4.0 tree.
+      Please get rocker directly from the upstream qemu tree.
+      This qemu-rocker project is dead; new work happens
+      on the upstream tree.
+      
+      get upstream tree: git clone git://git.qemu-project.org/qemu.git
+      
+      $ cd qemu
+      $ make distclean
+      $ ./configure --target-list=x86_64-softmmu --extra-cflags=-DDEBUG_ROCKER
+      $ make -j8
+      
+*************************************************************************
+
 qemu-rocker is a simulated ethernet switch device.  The device supports
 up to 62 front-panel ports and supports L2 and L3 switching and routing
 functions.  The device presents a single PCI device for the switch, with
