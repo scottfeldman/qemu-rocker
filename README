@@ -11,6 +11,11 @@ NOTE: Qemu rocker device is now merged into the qemu 2.4.0 tree.
       $ ./configure --target-list=x86_64-softmmu --extra-cflags=-DDEBUG_ROCKER
       $ make -j8
       
+      spec is here: docs/specs/rocker.txt
+      tests are here: tests/rocker
+      
+      Get latest 4.1 (or greater) linux kernel for rocker driver supoport
+      
 *************************************************************************
 
 qemu-rocker is a simulated ethernet switch device.  The device supports
